@@ -75,8 +75,9 @@
       position: relative;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
-      height: 14px;
+      height: 18px;
       overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .bar span {
@@ -85,6 +86,17 @@
       background: linear-gradient(90deg, rgba(52, 211, 153, 0.8), rgba(96, 165, 250, 0.8));
       width: 50%;
       border-radius: 999px;
+    }
+
+    .bar .label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #f8fafc;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
     }
 
     .bar .hp {
@@ -192,15 +204,113 @@
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
+    .enemy-list {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .enemy-card {
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .enemy-card:active {
+      transform: translateY(1px);
+    }
+
+    .enemy-card:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    .enemy-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: space-between;
+    }
+
+    .enemy-name {
+      display: grid;
+      gap: 2px;
+      font-weight: 600;
+    }
+
+    .enemy-chip {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .mini-bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .mini-bar span {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #f87171, #fb7185);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 50;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      width: min(420px, 90%);
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .modal-close {
+      border: none;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border-radius: 999px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+    }
+
     details summary {
       cursor: pointer;
       color: var(--accent);
-    }
-
-    .enemy-list {
-      display: grid;
-      gap: 4px;
-      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .turn-indicator {
@@ -230,25 +340,38 @@
 
     <section class="card">
       <div class="section-title">プレイヤー</div>
+      <div class="subtle" style="justify-content: flex-start; gap: 10px; margin-bottom: 4px;">
+        <span>LV <span id="level"></span></span>
+        <span class="pill">階層 <span id="floor-inline"></span>F</span>
+      </div>
       <div class="bars">
-        <div class="subtle">HP <span id="hp-text"></span></div>
-        <div class="bar"><span id="hp-bar" class="hp"></span></div>
-        <div class="subtle">MP <span id="mp-text"></span></div>
-        <div class="bar"><span id="mp-bar" class="mp"></span></div>
-        <div class="subtle">EXP <span id="exp-text"></span></div>
-        <div class="bar"><span id="exp-bar" class="exp"></span></div>
+        <div class="bar">
+          <span id="hp-bar" class="hp"></span>
+          <span id="hp-label" class="label"></span>
+        </div>
+        <div class="bar">
+          <span id="mp-bar" class="mp"></span>
+          <span id="mp-label" class="label"></span>
+        </div>
+        <div class="bar">
+          <span id="exp-bar" class="exp"></span>
+          <span id="exp-label" class="label"></span>
+        </div>
       </div>
-      <div class="stats">
-        <div>LV <span id="level"></span></div>
-        <div>🔥 ATK <span id="atk"></span></div>
-        <div>🛡️ DEF <span id="def"></span></div>
-        <div>⚡ SPD <span id="spd"></span></div>
-      </div>
-      <div class="inline-buttons">
-        <div class="pill">能力P: <span id="stat-points"></span></div>
-        <div class="pill">スキルP: <span id="skill-points"></span></div>
-      </div>
-      <div class="inline-buttons" id="stat-buttons"></div>
+
+      <details id="player-extra">
+        <summary>詳細を表示</summary>
+        <div class="stats" style="margin-top: 6px;">
+          <div>🔥 ATK <span id="atk"></span></div>
+          <div>🛡️ DEF <span id="def"></span></div>
+          <div>⚡ SPD <span id="spd"></span></div>
+        </div>
+        <div class="inline-buttons">
+          <div class="pill">能力P: <span id="stat-points"></span></div>
+          <div class="pill">スキルP: <span id="skill-points"></span></div>
+        </div>
+        <div class="inline-buttons" id="stat-buttons"></div>
+      </details>
     </section>
 
     <section class="card" style="min-height: 120px;">
@@ -273,6 +396,25 @@
       <div class="section-title">スキルポイントを消費して強化</div>
       <div id="skills"></div>
     </details>
+  </div>
+
+  <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">敵の詳細</div>
+          <div id="modal-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="modal-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div>HP <span id="modal-hp"></span></div>
+        <div>ATK <span id="modal-atk"></span></div>
+        <div>DEF <span id="modal-def"></span></div>
+        <div>SPD <span id="modal-spd"></span></div>
+      </div>
+      <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
+    </div>
   </div>
 
   <script>
@@ -386,10 +528,11 @@
 
     function updateUI() {
       document.getElementById("floor").textContent = game.floor;
+      document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("status").textContent = game.awaitingInput ? "あなたの番" : "";
-      document.getElementById("hp-text").textContent = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-      document.getElementById("mp-text").textContent = `${Math.ceil(player.mp)} / ${player.maxMp}`;
-      document.getElementById("exp-text").textContent = `${player.exp} / ${player.expToLevel}`;
+      document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${player.maxHp}`;
+      document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${player.maxMp}`;
+      document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
       document.getElementById("atk").textContent = player.atk;
       document.getElementById("def").textContent = player.def;
@@ -410,18 +553,41 @@
       const wrapper = document.getElementById("enemies");
       wrapper.innerHTML = "";
       game.enemies.forEach((enemy, index) => {
-        const row = document.createElement("div");
+        const card = document.createElement("div");
+        card.className = "enemy-card";
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `${enemy.name} の詳細`);
+        card.onclick = () => openEnemyModal(enemy);
+
+        const top = document.createElement("div");
+        top.className = "enemy-top";
+
+        const name = document.createElement("div");
+        name.className = "enemy-name";
+        name.innerHTML = `<span>${enemy.isBoss ? "👑" : "👾"} ${enemy.name}</span><span class="subtle" style="gap: 4px;">#${index + 1}</span>`;
+
         const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
-        const parts = [
-          enemy.isBoss ? "👑" : "👾",
-          `[${index + 1}] ${enemy.name}`,
-          `HP:${Math.ceil(enemy.hp)}/${enemy.maxHp} (${hpPct}%)`,
-          `ATK:${Math.ceil(enemy.atk)}`,
-          `DEF:${Math.ceil(enemy.def)}`,
-          `SPD:${enemy.spd.toFixed(1)}`,
-        ];
-        row.innerHTML = parts.join(" ");
-        wrapper.appendChild(row);
+        const chip = document.createElement("div");
+        chip.className = "enemy-chip";
+        chip.textContent = `HP ${hpPct}%`;
+
+        top.appendChild(name);
+        top.appendChild(chip);
+
+        const miniBar = document.createElement("div");
+        miniBar.className = "mini-bar";
+        const fill = document.createElement("span");
+        fill.style.width = `${hpPct}%`;
+        miniBar.appendChild(fill);
+
+        const hpText = document.createElement("div");
+        hpText.className = "subtle";
+        hpText.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+
+        card.appendChild(top);
+        card.appendChild(miniBar);
+        card.appendChild(hpText);
+        wrapper.appendChild(card);
       });
     }
 
@@ -486,6 +652,23 @@
         row.appendChild(desc);
         container.appendChild(row);
       });
+    }
+
+    const enemyModal = document.getElementById("enemy-modal");
+    const closeModalButton = document.getElementById("modal-close");
+
+    function openEnemyModal(enemy) {
+      document.getElementById("modal-name").textContent = enemy.name;
+      document.getElementById("modal-hp").textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+      document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
+      document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
+      document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
+      document.getElementById("modal-tag").style.display = enemy.isBoss ? "inline-flex" : "none";
+      enemyModal.classList.remove("hidden");
+    }
+
+    function closeEnemyModal() {
+      enemyModal.classList.add("hidden");
     }
 
     function promptPlayerTurn() {
@@ -683,6 +866,10 @@
     document.getElementById("btn-next").addEventListener("click", nextFloor);
     document.getElementById("btn-skill-tree").addEventListener("click", () => {
       document.getElementById("skill-tree").open = !document.getElementById("skill-tree").open;
+    });
+    closeModalButton.addEventListener("click", closeEnemyModal);
+    enemyModal.addEventListener("click", (e) => {
+      if (e.target === enemyModal) closeEnemyModal();
     });
 
     resetGame();
