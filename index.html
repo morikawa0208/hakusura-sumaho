@@ -114,9 +114,9 @@
       font-size: 13px;
       line-height: 1.5;
       overflow: auto;
-      height: 200px;
-      max-height: 320px;
-      min-height: 150px;
+      height: 170px;
+      max-height: 280px;
+      min-height: 130px;
       resize: vertical;
       display: flex;
       flex-direction: column;
@@ -393,7 +393,6 @@
     <nav class="menu">
       <button id="btn-player-modal">プレイヤー詳細</button>
       <button id="btn-skill-tree">スキル</button>
-      <button id="btn-reset">リスタート</button>
     </nav>
   </div>
 
@@ -894,27 +893,6 @@
       updateUI();
     }
 
-    function resetGame() {
-      player.level = 1;
-      player.exp = 0;
-      player.expToLevel = 20;
-      player.hp = player.maxHp = 50;
-      player.mp = player.maxMp = 20;
-      player.atk = 8;
-      player.def = 4;
-      player.spd = 6;
-      player.statPoints = 0;
-      player.skillPoints = 0;
-      player.buffs = { guard: 0, haste: 0, focus: 0 };
-      Object.values(skills).forEach(s => (s.level = 0));
-      game.floor = 1;
-      document.getElementById("log").innerHTML = "";
-      log("=== 新規挑戦 ===", "info");
-      spawnEnemies();
-      updateUI();
-    }
-
-    document.getElementById("btn-reset").addEventListener("click", resetGame);
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
     document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
@@ -930,7 +908,9 @@
       if (e.target === skillsModal) closeSkillsModal();
     });
 
-    resetGame();
+    log("=== 挑戦開始 ===", "info");
+    spawnEnemies();
+    updateUI();
   </script>
 </body>
 </html>
