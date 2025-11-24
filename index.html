@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-  
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -228,6 +227,57 @@
       margin-top: 6px;
     }
 
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-label {
+      display: grid;
+      gap: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-weight: 700;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .stat-value .total {
+      font-weight: 800;
+    }
+
+    .stat-value .base {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .stat-value .bonus {
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .stat-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     details {
       background: rgba(255, 255, 255, 0.03);
       border-radius: 10px;
@@ -421,20 +471,18 @@
       <div class="modal-header">
         <div>
           <div class="section-title" style="margin: 0;">プレイヤー詳細</div>
-          <div style="font-weight: 700;">現在のステータス</div>
+          <div style="font-weight: 700;">一次ステータスと二次ステータス</div>
         </div>
         <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="stats" style="margin-top: 8px;">
-        <div>🔥 ATK <span id="atk"></span></div>
-        <div>🛡️ DEF <span id="def"></span></div>
-        <div>⚡ SPD <span id="spd"></span></div>
-      </div>
+      <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+      <div id="secondary-stats" class="stat-grid"></div>
       <div class="inline-buttons" style="margin-top: 8px;">
         <div class="pill">能力P: <span id="stat-points"></span></div>
         <div class="pill">スキルP: <span id="skill-points"></span></div>
       </div>
-      <div class="inline-buttons" id="stat-buttons" style="margin-top: 8px;"></div>
+      <div class="section-title" style="margin: 10px 0 6px;">一次ステータス / ステ振り</div>
+      <div id="primary-stats" class="stat-grid"></div>
     </div>
   </div>
 
@@ -457,14 +505,41 @@
       level: 1,
       exp: 0,
       expToLevel: 20,
-      hp: 50,
-      mp: 20,
-      maxHp: 50,
-      maxMp: 20,
-      atk: 8,
-      def: 4,
-      spd: 6,
-      statPoints: 0,
+      hp: 0,
+      mp: 0,
+      maxHp: 0,
+      maxMp: 0,
+      atk: 0,
+      def: 0,
+      spd: 0,
+      base: {
+        hp: 80,
+        mp: 30,
+        physAtk: 10,
+        magAtk: 8,
+        physDef: 4,
+        magDef: 4,
+        speed: 4,
+      },
+      primary: {
+        str: { label: "力", base: 8, bonus: 0 },
+        int: { label: "知識", base: 4, bonus: 0 },
+        vit: { label: "体力", base: 10, bonus: 0 },
+        agi: { label: "敏捷", base: 6, bonus: 0 },
+        luck: { label: "運", base: 5, bonus: 0 },
+      },
+      bonus: {
+        hp: 0,
+        mp: 0,
+        physAtk: 0,
+        magAtk: 0,
+        physDef: 0,
+        magDef: 0,
+        speed: 0,
+        critRate: 0,
+        evade: 0,
+      },
+      statPoints: 3,
       skillPoints: 0,
       buffs: { guard: 0, haste: 0, focus: 0 },
     };
@@ -478,9 +553,27 @@
     };
 
     const skills = {
-      sharpEdge: { name: "鋭刃", desc: "ATK+2 (最大3)", level: 0, max: 3, apply: () => player.atk += 2 },
-      quickStep: { name: "疾駆", desc: "SPD+2 (最大2)", level: 0, max: 2, apply: () => player.spd += 2 },
-      arcaneFlow: { name: "魔力循環", desc: "MP回復+2/階層", level: 0, max: 2, apply: () => player.maxMp += 2 },
+      sharpEdge: {
+        name: "鋭刃",
+        desc: "物理攻撃+2 (最大3)",
+        level: 0,
+        max: 3,
+        apply: () => (player.bonus.physAtk += 2),
+      },
+      quickStep: {
+        name: "疾駆",
+        desc: "速度+2 (最大2)",
+        level: 0,
+        max: 2,
+        apply: () => (player.bonus.speed += 2),
+      },
+      arcaneFlow: {
+        name: "魔力循環",
+        desc: "最大MP+2 (最大2)",
+        level: 0,
+        max: 2,
+        apply: () => (player.bonus.mp += 2),
+      },
     };
 
     function log(message, type = "info") {
@@ -490,6 +583,96 @@
       entry.textContent = message;
       logBox.appendChild(entry);
       logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    const primaryOrder = ["str", "int", "vit", "agi", "luck"];
+    let cachedSecondaries = null;
+
+    const displayNumber = (num) => (Number.isInteger(num) ? num : Number(num.toFixed(1)));
+
+    const formatStatValue = (stat, unit = "") => {
+      if (!stat) return "-";
+      const total = `${displayNumber(stat.total)}${unit}`;
+      if (!stat.bonus) {
+        return `<span class="total">${total}</span>`;
+      }
+      const bonusSign = stat.bonus > 0 ? "+" : "";
+      return `<span class="total">${total}</span> (<span class="base">${displayNumber(stat.base)}</span> <span class="bonus">${bonusSign}${displayNumber(stat.bonus)}</span>)`;
+    };
+
+    const formatPrimaryValue = (stat) => {
+      const total = stat.base + stat.bonus;
+      if (!stat.bonus) return `<span class="total">${total}</span>`;
+      const bonusSign = stat.bonus > 0 ? "+" : "";
+      return `<span class="total">${total}</span> (<span class="base">${stat.base}</span> <span class="bonus">${bonusSign}${stat.bonus}</span>)`;
+    };
+
+    const statTotal = (key) => {
+      const stat = player.primary[key];
+      return stat.base + stat.bonus;
+    };
+
+    function calcSecondaryStats() {
+      const str = statTotal("str");
+      const int = statTotal("int");
+      const vit = statTotal("vit");
+      const agi = statTotal("agi");
+      const luck = statTotal("luck");
+
+      const maxHpBase = player.base.hp + vit * 10;
+      const maxMpBase = player.base.mp + int * 2 + vit * 0.5;
+      const physAtkBase = player.base.physAtk + str * 1.2;
+      const magAtkBase = player.base.magAtk + int * 1.3;
+      const physDefBase = player.base.physDef + vit * 0.6 + str * 0.2;
+      const magDefBase = player.base.magDef + vit * 0.5 + int * 0.3;
+      const speedBase = player.base.speed + agi;
+      const critBase = Math.min(40, 5 + (agi + luck) * 0.35);
+      const evadeBase = Math.min(30, 5 + (agi + luck) * 0.25);
+      const accuracyBase = Math.min(95, 70 + agi * 0.1);
+
+      return {
+        maxHp: { base: maxHpBase, bonus: player.bonus.hp, total: maxHpBase + player.bonus.hp },
+        maxMp: { base: maxMpBase, bonus: player.bonus.mp, total: maxMpBase + player.bonus.mp },
+        physAtk: { base: physAtkBase, bonus: player.bonus.physAtk, total: physAtkBase + player.bonus.physAtk },
+        magAtk: { base: magAtkBase, bonus: player.bonus.magAtk, total: magAtkBase + player.bonus.magAtk },
+        physDef: { base: physDefBase, bonus: player.bonus.physDef, total: physDefBase + player.bonus.physDef },
+        magDef: { base: magDefBase, bonus: player.bonus.magDef, total: magDefBase + player.bonus.magDef },
+        speed: { base: speedBase, bonus: player.bonus.speed, total: speedBase + player.bonus.speed },
+        critRate: { base: critBase, bonus: player.bonus.critRate, total: Math.min(70, critBase + player.bonus.critRate) },
+        evade: { base: evadeBase, bonus: player.bonus.evade, total: Math.min(60, evadeBase + player.bonus.evade) },
+        accuracy: { base: accuracyBase, bonus: 0, total: accuracyBase },
+      };
+    }
+
+    function recalcDerivedStats() {
+      const derived = calcSecondaryStats();
+      const prevMaxHp = player.maxHp || derived.maxHp.total;
+      const prevMaxMp = player.maxMp || derived.maxMp.total;
+
+      if (player.maxHp === 0) {
+        player.hp = derived.maxHp.total;
+      } else {
+        const hpDelta = derived.maxHp.total - prevMaxHp;
+        if (hpDelta > 0) player.hp += hpDelta;
+        if (player.hp > derived.maxHp.total) player.hp = derived.maxHp.total;
+      }
+
+      if (player.maxMp === 0) {
+        player.mp = derived.maxMp.total;
+      } else {
+        const mpDelta = derived.maxMp.total - prevMaxMp;
+        if (mpDelta > 0) player.mp += mpDelta;
+        if (player.mp > derived.maxMp.total) player.mp = derived.maxMp.total;
+      }
+
+      player.maxHp = Math.round(derived.maxHp.total);
+      player.maxMp = Math.round(derived.maxMp.total);
+      player.atk = Math.round(derived.physAtk.total);
+      player.def = Math.round(derived.physDef.total);
+      player.spd = Math.round(derived.speed.total);
+
+      cachedSecondaries = derived;
+      return derived;
     }
 
     function createEnemy(isBoss = false) {
@@ -542,23 +725,22 @@
     }
 
     function updateUI() {
+      const derived = recalcDerivedStats();
       document.getElementById("floor-inline").textContent = game.floor;
-      document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${player.maxHp}`;
-      document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${player.maxMp}`;
+      document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
+      document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
-      document.getElementById("atk").textContent = player.atk;
-      document.getElementById("def").textContent = player.def;
-      document.getElementById("spd").textContent = player.spd;
       document.getElementById("stat-points").textContent = player.statPoints;
       document.getElementById("skill-points").textContent = player.skillPoints;
-      updateBars("hp-bar", player.hp, player.maxHp, "hp");
-      updateBars("mp-bar", player.mp, player.maxMp, "mp");
+      updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
+      updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
       updateBars("exp-bar", player.exp, player.expToLevel, "exp");
 
       renderEnemies();
       renderActions();
-      renderStatButtons();
+      renderSecondaryStats(derived);
+      renderPrimaryStats();
       renderSkills();
     }
 
@@ -618,28 +800,73 @@
       container.appendChild(btn);
     }
 
-    function renderStatButtons() {
-      const container = document.getElementById("stat-buttons");
+    function renderSecondaryStats(derived) {
+      const container = document.getElementById("secondary-stats");
       container.innerHTML = "";
-      const stats = [
-        { key: "hp", label: "体力+5", apply: () => { player.maxHp += 5; player.hp += 5; } },
-        { key: "mp", label: "魔力+3", apply: () => { player.maxMp += 3; player.mp += 3; } },
-        { key: "atk", label: "攻撃+2", apply: () => player.atk += 2 },
-        { key: "def", label: "防御+1", apply: () => player.def += 1 },
-        { key: "spd", label: "速度+1", apply: () => player.spd += 1 },
+      const rows = [
+        { label: "物理攻撃力", hint: "武器 + 力 × 1.2", value: derived.physAtk },
+        { label: "魔法攻撃力", hint: "魔器 + 知識 × 1.3", value: derived.magAtk },
+        { label: "物理防御力", hint: "体力×0.6 + 力×0.2", value: derived.physDef },
+        { label: "魔法防御力", hint: "体力×0.5 + 知識×0.3", value: derived.magDef },
+        { label: "最大HP", hint: "基礎 + 体力 × 10", value: derived.maxHp },
+        { label: "最大MP", hint: "基礎 + 知識 ×2", value: derived.maxMp },
+        { label: "行動速度", hint: "基礎 + 敏捷", value: derived.speed },
+        { label: "命中率", hint: "70% + 敏捷×0.1%", value: derived.accuracy, unit: "%" },
+        { label: "クリティカル率", hint: "(敏捷+運) 減衰", value: derived.critRate, unit: "%" },
+        { label: "回避率", hint: "(敏捷+運) 減衰", value: derived.evade, unit: "%" },
       ];
-      stats.forEach(stat => {
+
+      rows.forEach((row) => {
+        const el = document.createElement("div");
+        el.className = "stat-row";
+        const left = document.createElement("div");
+        left.className = "stat-label";
+        left.innerHTML = `<span>${row.label}</span><span>${row.hint}</span>`;
+        const right = document.createElement("div");
+        right.className = "stat-value";
+        const rendered = formatStatValue(row.value, row.unit || "");
+        right.innerHTML = rendered;
+        el.appendChild(left);
+        el.appendChild(right);
+        container.appendChild(el);
+      });
+    }
+
+    function renderPrimaryStats() {
+      const container = document.getElementById("primary-stats");
+      container.innerHTML = "";
+      primaryOrder.forEach((key) => {
+        const stat = player.primary[key];
+        const total = stat.base + stat.bonus;
+        const el = document.createElement("div");
+        el.className = "stat-row";
+
+        const left = document.createElement("div");
+        left.className = "stat-label";
+        left.innerHTML = `<span>${stat.label}</span><span>合計 = ベース + 加算</span>`;
+
+        const actions = document.createElement("div");
+        actions.className = "stat-actions";
+        const value = document.createElement("div");
+        value.className = "stat-value";
+        value.innerHTML = formatPrimaryValue(stat);
         const btn = document.createElement("button");
-        btn.textContent = stat.label;
+        btn.textContent = "+1";
         btn.disabled = player.statPoints <= 0;
         btn.onclick = () => {
           if (player.statPoints <= 0) return;
           player.statPoints -= 1;
-          stat.apply();
-          log(`能力Pを使用: ${stat.label}`, "good");
+          stat.base += 1;
+          log(`能力Pを使用: ${stat.label} +1`, "good");
           updateUI();
         };
-        container.appendChild(btn);
+
+        actions.appendChild(value);
+        actions.appendChild(btn);
+
+        el.appendChild(left);
+        el.appendChild(actions);
+        container.appendChild(el);
       });
     }
 
@@ -871,15 +1098,16 @@
     function levelUp() {
       player.level += 1;
       player.expToLevel = Math.round(player.expToLevel * 1.18);
-      player.maxHp += 6;
-      player.maxMp += 2;
+      const growth = { str: 2, int: 2, vit: 3, agi: 2, luck: 1 };
+      Object.entries(growth).forEach(([key, amount]) => {
+        player.primary[key].base += amount;
+      });
+      recalcDerivedStats();
       player.hp = player.maxHp;
       player.mp = player.maxMp;
-      player.atk += 2;
-      player.def += 1;
-      player.statPoints += 1;
+      player.statPoints += 2;
       player.skillPoints += 1;
-      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+1 / スキルP+1`, "good");
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
     }
 
     function nextFloor() {
@@ -909,6 +1137,7 @@
       if (e.target === skillsModal) closeSkillsModal();
     });
 
+    recalcDerivedStats();
     log("=== 挑戦開始 ===", "info");
     spawnEnemies();
     updateUI();
