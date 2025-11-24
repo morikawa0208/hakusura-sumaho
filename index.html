@@ -35,12 +35,12 @@
       background: rgba(17, 24, 39, 0.9);
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 12px;
-      width: min(440px, 100%);
+      width: min(460px, 100%);
       height: calc(100vh - 12px);
       display: grid;
       grid-template-rows: auto auto 1fr auto auto auto;
       gap: 6px;
-      padding: 7px;
+      padding: 8px;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
       overflow: hidden;
     }
@@ -49,7 +49,7 @@
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 10px;
-      padding: 6px;
+      padding: 8px;
     }
 
     .subtle {
@@ -63,7 +63,7 @@
 
     .bars {
       display: grid;
-      gap: 5px;
+      gap: 6px;
       margin-bottom: 10px;
     }
 
@@ -71,7 +71,7 @@
       position: relative;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
-      height: 20px;
+      height: 22px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
@@ -110,15 +110,17 @@
       background: rgba(0, 0, 0, 0.35);
       border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 12px;
-      padding: 9px;
+      padding: 10px;
       font-size: 13px;
-      line-height: 1;
-      overflow-y: auto;
-      height: 300px;
-      max-height: 300px;
+      line-height: 1.5;
+      overflow: auto;
+      height: 200px;
+      max-height: 320px;
+      min-height: 150px;
+      resize: vertical;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
     .log-card {
@@ -172,7 +174,7 @@
       color: var(--text);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
-      padding: 9px 12px;
+      padding: 10px 12px;
       font-size: 13px;
       cursor: pointer;
       transition: transform 0.08s ease, box-shadow 0.1s ease;
@@ -278,7 +280,7 @@
       position: relative;
       background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
-      height: 16px;
+      height: 18px;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
@@ -294,9 +296,11 @@
     .enemy-bar .label {
       position: absolute;
       inset: 0;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 11px;
+      line-height: 1;
       color: #f8fafc;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
       pointer-events: none;
@@ -376,20 +380,6 @@
           <span id="exp-label" class="label"></span>
         </div>
       </div>
-
-      <details id="player-extra" style="margin-top: 8px;">
-        <summary>詳細を表示</summary>
-        <div class="stats" style="margin-top: 6px;">
-          <div>🔥 ATK <span id="atk"></span></div>
-          <div>🛡️ DEF <span id="def"></span></div>
-          <div>⚡ SPD <span id="spd"></span></div>
-        </div>
-        <div class="inline-buttons">
-          <div class="pill">能力P: <span id="stat-points"></span></div>
-          <div class="pill">スキルP: <span id="skill-points"></span></div>
-        </div>
-        <div class="inline-buttons" id="stat-buttons"></div>
-      </details>
     </section>
 
     <section class="card log-card">
@@ -401,15 +391,10 @@
     </section>
 
     <nav class="menu">
-      <button id="btn-skill-tree">スキルツリー</button>
+      <button id="btn-player-modal">プレイヤー詳細</button>
+      <button id="btn-skill-tree">スキル</button>
       <button id="btn-reset">リスタート</button>
     </nav>
-
-    <details id="skill-tree">
-      <summary>スキルツリー / パーク</summary>
-      <div class="section-title">スキルポイントを消費して強化</div>
-      <div id="skills"></div>
-    </details>
   </div>
 
   <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -428,6 +413,41 @@
         <div>SPD <span id="modal-spd"></span></div>
       </div>
       <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
+    </div>
+  </div>
+
+  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">プレイヤー詳細</div>
+          <div style="font-weight: 700;">現在のステータス</div>
+        </div>
+        <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="stats" style="margin-top: 8px;">
+        <div>🔥 ATK <span id="atk"></span></div>
+        <div>🛡️ DEF <span id="def"></span></div>
+        <div>⚡ SPD <span id="spd"></span></div>
+      </div>
+      <div class="inline-buttons" style="margin-top: 8px;">
+        <div class="pill">能力P: <span id="stat-points"></span></div>
+        <div class="pill">スキルP: <span id="skill-points"></span></div>
+      </div>
+      <div class="inline-buttons" id="stat-buttons" style="margin-top: 8px;"></div>
+    </div>
+  </div>
+
+  <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">スキル / パーク</div>
+          <div style="font-weight: 700;">スキルポイントを消費して強化</div>
+        </div>
+        <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="skills" style="margin-top: 6px;"></div>
     </div>
   </div>
 
@@ -650,7 +670,11 @@
     }
 
     const enemyModal = document.getElementById("enemy-modal");
+    const playerModal = document.getElementById("player-modal");
+    const skillsModal = document.getElementById("skills-modal");
     const closeModalButton = document.getElementById("modal-close");
+    const playerModalCloseButton = document.getElementById("player-close");
+    const skillsModalCloseButton = document.getElementById("skills-close");
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
@@ -664,6 +688,24 @@
 
     function closeEnemyModal() {
       enemyModal.classList.add("hidden");
+    }
+
+    function openPlayerModal() {
+      updateUI();
+      playerModal.classList.remove("hidden");
+    }
+
+    function closePlayerModal() {
+      playerModal.classList.add("hidden");
+    }
+
+    function openSkillsModal() {
+      updateUI();
+      skillsModal.classList.remove("hidden");
+    }
+
+    function closeSkillsModal() {
+      skillsModal.classList.add("hidden");
     }
 
     function promptPlayerTurn() {
@@ -712,8 +754,9 @@
       const target = selectTarget();
       if (!target) return;
       const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
-      target.hp -= dmg;
+      target.hp = Math.max(0, target.hp - dmg);
       log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`, "player");
+      updateUI();
       if (target.hp <= 0) {
         log(`${target.name} を粉砕！`, "good");
         checkVictory();
@@ -750,11 +793,11 @@
       if (action === "attack") {
         dmg = calcDamage(enemy, player);
         if (player.buffs.guard) dmg = Math.round(dmg * 0.5);
-        player.hp -= dmg;
+        player.hp = Math.max(0, player.hp - dmg);
         log(`👾 ${enemy.name} の攻撃。${dmg} ダメージ`, "enemy");
       } else if (action === "heavy") {
         dmg = Math.round(calcDamage(enemy, player) * 1.4);
-        player.hp -= dmg;
+        player.hp = Math.max(0, player.hp - dmg);
         log(`💥 ${enemy.name} の強撃！ ${dmg} ダメージ`, "enemy");
       } else {
         player.def = Math.max(0, player.def - 1);
@@ -774,6 +817,7 @@
       player.buffs.guard = 0;
       game.turnQueue = [];
       log(`あなたは倒れた… ${previousFloor}F → ${game.floor}F に後退。EXP -5%`, "danger");
+      updateUI();
       setTimeout(() => {
         player.hp = player.maxHp;
         player.mp = player.maxMp;
@@ -871,12 +915,19 @@
     }
 
     document.getElementById("btn-reset").addEventListener("click", resetGame);
-    document.getElementById("btn-skill-tree").addEventListener("click", () => {
-      document.getElementById("skill-tree").open = !document.getElementById("skill-tree").open;
-    });
+    document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
+    document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
+    playerModalCloseButton.addEventListener("click", closePlayerModal);
+    skillsModalCloseButton.addEventListener("click", closeSkillsModal);
     enemyModal.addEventListener("click", (e) => {
       if (e.target === enemyModal) closeEnemyModal();
+    });
+    playerModal.addEventListener("click", (e) => {
+      if (e.target === playerModal) closePlayerModal();
+    });
+    skillsModal.addEventListener("click", (e) => {
+      if (e.target === skillsModal) closeSkillsModal();
     });
 
     resetGame();
