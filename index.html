@@ -14,6 +14,10 @@
       --muted: #9ca3af;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       background: radial-gradient(circle at 20% 20%, rgba(52, 211, 153, 0.08), transparent 25%),
         radial-gradient(circle at 80% 10%, rgba(96, 165, 250, 0.08), transparent 22%),
@@ -31,12 +35,12 @@
       background: rgba(17, 24, 39, 0.9);
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 12px;
-      width: min(430px, 100%);
+      width: min(420px, 100%);
       height: calc(100vh - 12px);
       display: grid;
       grid-template-rows: auto auto 1fr auto auto auto;
       gap: 6px;
-      padding: 8px;
+      padding: 7px;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
       overflow: hidden;
     }
@@ -45,7 +49,7 @@
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 10px;
-      padding: 5px;
+      padding: 4px;
     }
 
     .subtle {
@@ -60,7 +64,7 @@
     .bars {
       display: grid;
       gap: 4px;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     .bar {
@@ -110,8 +114,8 @@
       font-size: 13px;
       line-height: 1.5;
       overflow-y: auto;
-      height: 145px;
-      max-height: 145px;
+      height: 165px;
+      max-height: 165px;
       display: flex;
       flex-direction: column;
       gap: 5px;
@@ -168,8 +172,8 @@
       color: var(--text);
       border: 1px solid rgba(255, 255, 255, 0.15);
       border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 14px;
+      padding: 9px 12px;
+      font-size: 13px;
       cursor: pointer;
       transition: transform 0.08s ease, box-shadow 0.1s ease;
     }
@@ -230,8 +234,8 @@
 
     .enemy-list {
       display: grid;
-      grid-template-columns: repeat(3, minmax(120px, 1fr));
-      gap: 5px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
       font-size: 13px;
       padding-bottom: 2px;
     }
@@ -350,11 +354,6 @@
 <body>
   <div class="phone">
     <section class="card">
-      <div class="subtle" style="gap: 6px; justify-content: flex-start;">
-        <span class="pill">階層 <span id="floor"></span>F</span>
-        <span id="status"></span>
-        <span id="boss-tag" class="tag" style="display:none;">BOSS</span>
-      </div>
       <div id="enemies" class="enemy-list"></div>
     </section>
 
@@ -493,7 +492,6 @@
       const isBossFloor = game.floor % 5 === 0;
       const count = isBossFloor ? 1 : 2 + Math.floor(Math.random() * 2);
       game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
-      document.getElementById("boss-tag").style.display = isBossFloor ? "inline-flex" : "none";
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
       updateUI();
@@ -524,9 +522,7 @@
     }
 
     function updateUI() {
-      document.getElementById("floor").textContent = game.floor;
       document.getElementById("floor-inline").textContent = game.floor;
-      document.getElementById("status").textContent = game.awaitingInput ? "あなたの番" : "";
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${player.maxHp}`;
       document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${player.maxMp}`;
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
@@ -672,13 +668,11 @@
 
     function promptPlayerTurn() {
       game.awaitingInput = true;
-      document.getElementById("status").textContent = "あなたの番";
       renderActions();
     }
 
     function endPlayerTurn() {
       game.awaitingInput = false;
-      document.getElementById("status").textContent = "";
       renderActions();
       setTimeout(() => nextTurn(), 350);
     }
