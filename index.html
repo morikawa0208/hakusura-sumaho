@@ -31,12 +31,14 @@
       background: rgba(17, 24, 39, 0.9);
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 18px;
-      width: min(480px, 100%);
+      width: min(460px, 100%);
+      height: calc(100vh - 24px);
       display: grid;
-      grid-template-rows: auto auto 1fr auto auto;
+      grid-template-rows: auto auto auto 1fr auto auto;
       gap: 8px;
-      padding: 14px;
+      padding: 12px;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
     }
 
     h1 {
@@ -54,7 +56,7 @@
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 12px;
-      padding: 10px;
+      padding: 8px;
     }
 
     .subtle {
@@ -83,7 +85,6 @@
     .bar span {
       position: absolute;
       inset: 0;
-      background: linear-gradient(90deg, rgba(52, 211, 153, 0.8), rgba(96, 165, 250, 0.8));
       width: 50%;
       border-radius: 999px;
     }
@@ -100,22 +101,15 @@
     }
 
     .bar .hp {
-      background: linear-gradient(90deg, #ef4444, #f87171);
+      background: #ef4444;
     }
 
     .bar .mp {
-      background: linear-gradient(90deg, #3b82f6, #60a5fa);
+      background: #3b82f6;
     }
 
     .bar .exp {
-      background: linear-gradient(90deg, #facc15, #fbbf24);
-    }
-
-    .section-title {
-      font-size: 13px;
-      letter-spacing: 0.04em;
-      margin-bottom: 6px;
-      color: var(--muted);
+      background: #facc15;
     }
 
     #log {
@@ -126,8 +120,17 @@
       font-size: 13px;
       line-height: 1.5;
       overflow-y: auto;
-      height: 180px;
-      max-height: 180px;
+      height: 160px;
+      max-height: 160px;
+    }
+
+    .log-card {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-card #log {
+      flex: 1;
     }
 
     #log .entry {
@@ -223,7 +226,7 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-      min-width: 170px;
+      flex: 1 0 clamp(140px, 45%, 220px);
     }
 
     .enemy-card:active {
@@ -337,12 +340,10 @@
     </header>
 
     <section class="card">
-      <div class="section-title">敵情報</div>
       <div id="enemies" class="enemy-list"></div>
     </section>
 
     <section class="card">
-      <div class="section-title">プレイヤー</div>
       <div class="subtle" style="justify-content: flex-start; gap: 10px; margin-bottom: 4px;">
         <span>LV <span id="level"></span></span>
         <span class="pill">階層 <span id="floor-inline"></span>F</span>
@@ -377,12 +378,11 @@
       </details>
     </section>
 
-    <section class="card" style="min-height: 120px;">
+    <section class="card log-card">
       <div id="log"></div>
     </section>
 
     <section class="card">
-      <div class="section-title">操作</div>
       <div id="actions"></div>
     </section>
 
