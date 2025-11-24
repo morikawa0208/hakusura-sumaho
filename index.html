@@ -100,15 +100,15 @@
     }
 
     .bar .hp {
-      background: linear-gradient(90deg, #f87171, #fb7185);
+      background: linear-gradient(90deg, #ef4444, #f87171);
     }
 
     .bar .mp {
-      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      background: linear-gradient(90deg, #3b82f6, #60a5fa);
     }
 
     .bar .exp {
-      background: linear-gradient(90deg, #fbbf24, #34d399);
+      background: linear-gradient(90deg, #facc15, #fbbf24);
     }
 
     .section-title {
@@ -126,6 +126,8 @@
       font-size: 13px;
       line-height: 1.5;
       overflow-y: auto;
+      height: 180px;
+      max-height: 180px;
     }
 
     #log .entry {
@@ -135,7 +137,7 @@
 
     #actions {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 1fr;
       gap: 8px;
     }
 
@@ -205,9 +207,11 @@
     }
 
     .enemy-list {
-      display: grid;
-      gap: 6px;
+      display: flex;
+      gap: 8px;
       font-size: 13px;
+      overflow-x: auto;
+      padding-bottom: 4px;
     }
 
     .enemy-card {
@@ -219,6 +223,7 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+      min-width: 170px;
     }
 
     .enemy-card:active {
@@ -243,27 +248,32 @@
       font-weight: 600;
     }
 
-    .enemy-chip {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 999px;
-      padding: 2px 8px;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    .mini-bar {
-      height: 8px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      overflow: hidden;
+    .enemy-bar {
       position: relative;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      height: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .mini-bar span {
+    .enemy-bar .fill {
       position: absolute;
       inset: 0;
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      width: 50%;
       border-radius: 999px;
-      background: linear-gradient(90deg, #f87171, #fb7185);
+    }
+
+    .enemy-bar .label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      color: #f8fafc;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
     }
 
     .modal {
@@ -313,13 +323,6 @@
       gap: 8px;
     }
 
-    .turn-indicator {
-      font-size: 12px;
-      color: var(--muted);
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
   </style>
 </head>
 <body>
@@ -375,9 +378,7 @@
     </section>
 
     <section class="card" style="min-height: 120px;">
-      <div class="section-title">バトルログ</div>
       <div id="log"></div>
-      <div class="turn-indicator" id="turn-order"></div>
     </section>
 
     <section class="card">
@@ -388,7 +389,6 @@
     <nav class="menu">
       <button id="btn-skill-tree">スキルツリー</button>
       <button id="btn-reset">リスタート</button>
-      <button id="btn-next">次の階層へ</button>
     </nav>
 
     <details id="skill-tree">
@@ -449,13 +449,6 @@
       arcaneFlow: { name: "魔力循環", desc: "MP回復+2/階層", level: 0, max: 2, apply: () => player.maxMp += 2 },
     };
 
-    const actions = [
-      { key: "attack", label: "⚔️ 攻撃", handler: () => playerAttack() },
-      { key: "skill", label: "🌌 スキル", handler: () => powerStrike() },
-      { key: "heal", label: "✨ ヒール", handler: () => heal() },
-      { key: "guard", label: "🛡️ ガード", handler: () => guard() },
-    ];
-
     function log(message) {
       const logBox = document.getElementById("log");
       const entry = document.createElement("div");
@@ -506,17 +499,6 @@
       });
       queue.sort((a, b) => b.speed - a.speed);
       game.turnQueue = queue;
-      renderTurnOrder();
-    }
-
-    function renderTurnOrder() {
-      const el = document.getElementById("turn-order");
-      el.innerHTML = "";
-      game.turnQueue.forEach((t, i) => {
-        const span = document.createElement("span");
-        span.textContent = `${i + 1}. ${t.type === "player" ? "🙂" : "👾"}`;
-        el.appendChild(span);
-      });
     }
 
     function updateBars(id, current, max, cls) {
@@ -566,27 +548,22 @@
         name.className = "enemy-name";
         name.innerHTML = `<span>${enemy.isBoss ? "👑" : "👾"} ${enemy.name}</span><span class="subtle" style="gap: 4px;">#${index + 1}</span>`;
 
-        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
-        const chip = document.createElement("div");
-        chip.className = "enemy-chip";
-        chip.textContent = `HP ${hpPct}%`;
-
         top.appendChild(name);
-        top.appendChild(chip);
 
-        const miniBar = document.createElement("div");
-        miniBar.className = "mini-bar";
+        const bar = document.createElement("div");
+        bar.className = "enemy-bar";
         const fill = document.createElement("span");
+        fill.className = "fill";
+        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
         fill.style.width = `${hpPct}%`;
-        miniBar.appendChild(fill);
-
-        const hpText = document.createElement("div");
-        hpText.className = "subtle";
-        hpText.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+        const label = document.createElement("span");
+        label.className = "label";
+        label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+        bar.appendChild(fill);
+        bar.appendChild(label);
 
         card.appendChild(top);
-        card.appendChild(miniBar);
-        card.appendChild(hpText);
+        card.appendChild(bar);
         wrapper.appendChild(card);
       });
     }
@@ -594,13 +571,20 @@
     function renderActions() {
       const container = document.getElementById("actions");
       container.innerHTML = "";
-      actions.forEach(action => {
-        const btn = document.createElement("button");
-        btn.textContent = action.label;
+      const btn = document.createElement("button");
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      if (player.hp <= 0) {
+        btn.textContent = "戦闘不能";
+        btn.disabled = true;
+      } else if (!enemiesAlive) {
+        btn.textContent = "次の階層へ";
+        btn.onclick = nextFloor;
+      } else {
+        btn.textContent = "⚔️ こうげき";
         btn.disabled = !game.awaitingInput;
-        btn.onclick = action.handler;
-        container.appendChild(btn);
-      });
+        btn.onclick = playerAttack;
+      }
+      container.appendChild(btn);
     }
 
     function renderStatButtons() {
@@ -767,9 +751,25 @@
         log(`🌀 ${enemy.name} が弱体呪い。防御が下がった`);
       }
       if (player.hp <= 0) {
-        player.hp = 0;
-        log("あなたは倒れた… リスタートで再挑戦");
+        handleDefeat();
       }
+    }
+
+    function handleDefeat() {
+      const previousFloor = game.floor;
+      game.floor = Math.max(1, game.floor - 20);
+      player.hp = 0;
+      game.awaitingInput = false;
+      player.exp = Math.max(0, Math.floor(player.exp * 0.95));
+      player.buffs.guard = 0;
+      game.turnQueue = [];
+      log(`あなたは倒れた… ${previousFloor}F → ${game.floor}F に後退。EXP -5%`);
+      setTimeout(() => {
+        player.hp = player.maxHp;
+        player.mp = player.maxMp;
+        spawnEnemies();
+        updateUI();
+      }, 400);
     }
 
     function nextTurn() {
@@ -783,7 +783,6 @@
         buildTurnQueue();
       }
       const actor = game.turnQueue.shift();
-      renderTurnOrder();
       if (!actor) return;
       if (actor.type === "player") {
         promptPlayerTurn();
@@ -810,8 +809,8 @@
         player.exp -= player.expToLevel;
         levelUp();
       }
-      document.getElementById("btn-next").disabled = false;
       game.awaitingInput = false;
+      game.turnQueue = [];
       renderActions();
     }
 
@@ -836,7 +835,7 @@
       }
       game.floor += 1;
       player.buffs.guard = 0;
-      document.getElementById("btn-next").disabled = true;
+      game.turnQueue = [];
       spawnEnemies();
       updateUI();
     }
@@ -855,7 +854,6 @@
       player.buffs = { guard: 0, haste: 0, focus: 0 };
       Object.values(skills).forEach(s => (s.level = 0));
       game.floor = 1;
-      document.getElementById("btn-next").disabled = true;
       document.getElementById("log").innerHTML = "";
       log("=== 新規挑戦 ===");
       spawnEnemies();
@@ -863,7 +861,6 @@
     }
 
     document.getElementById("btn-reset").addEventListener("click", resetGame);
-    document.getElementById("btn-next").addEventListener("click", nextFloor);
     document.getElementById("btn-skill-tree").addEventListener("click", () => {
       document.getElementById("skill-tree").open = !document.getElementById("skill-tree").open;
     });
@@ -873,7 +870,6 @@
     });
 
     resetGame();
-    document.getElementById("btn-next").disabled = true;
   </script>
 </body>
 </html>
