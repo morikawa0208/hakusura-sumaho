@@ -122,6 +122,9 @@
       overflow-y: auto;
       height: 160px;
       max-height: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .log-card {
@@ -134,8 +137,34 @@
     }
 
     #log .entry {
-      opacity: 0.92;
-      margin-bottom: 4px;
+      opacity: 0.95;
+      padding: 4px 6px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    #log .entry.info {
+      color: #e5e7eb;
+    }
+
+    #log .entry.player {
+      color: #93c5fd;
+    }
+
+    #log .entry.enemy {
+      color: #fca5a5;
+    }
+
+    #log .entry.good {
+      color: #6ee7b7;
+    }
+
+    #log .entry.warning {
+      color: #fcd34d;
+    }
+
+    #log .entry.danger {
+      color: #fb7185;
     }
 
     #actions {
@@ -210,11 +239,12 @@
     }
 
     .enemy-list {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 8px;
       font-size: 13px;
-      overflow-x: auto;
       padding-bottom: 4px;
+      overflow: hidden;
     }
 
     .enemy-card {
@@ -226,7 +256,7 @@
       border-radius: 10px;
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
-      flex: 1 0 clamp(140px, 45%, 220px);
+      min-width: 0;
     }
 
     .enemy-card:active {
@@ -449,10 +479,10 @@
       arcaneFlow: { name: "魔力循環", desc: "MP回復+2/階層", level: 0, max: 2, apply: () => player.maxMp += 2 },
     };
 
-    function log(message) {
+    function log(message, type = "info") {
       const logBox = document.getElementById("log");
       const entry = document.createElement("div");
-      entry.className = "entry";
+      entry.className = `entry ${type}`;
       entry.textContent = message;
       logBox.appendChild(entry);
       logBox.scrollTop = logBox.scrollHeight;
@@ -605,7 +635,7 @@
           if (player.statPoints <= 0) return;
           player.statPoints -= 1;
           stat.apply();
-          log(`能力Pを使用: ${stat.label}`);
+          log(`能力Pを使用: ${stat.label}`, "good");
           updateUI();
         };
         container.appendChild(btn);
@@ -626,7 +656,7 @@
           player.skillPoints -= 1;
           skill.level += 1;
           skill.apply();
-          log(`スキル『${skill.name}』を強化 (${skill.level}/${skill.max})`);
+          log(`スキル『${skill.name}』を強化 (${skill.level}/${skill.max})`, "good");
           updateUI();
         };
         const desc = document.createElement("div");
@@ -684,9 +714,9 @@
       if (!target) return;
       const dmg = calcDamage(player, target);
       target.hp -= dmg;
-      log(`⚔️ あなたの攻撃！ ${target.name} に ${dmg} ダメージ`);
+      log(`⚔️ あなたの攻撃！ ${target.name} に ${dmg} ダメージ`, "player");
       if (target.hp <= 0) {
-        log(`${target.name} を倒した！`);
+        log(`${target.name} を倒した！`, "good");
         checkVictory();
       }
       endPlayerTurn();
@@ -695,7 +725,7 @@
     function powerStrike() {
       if (!game.awaitingInput) return;
       if (player.mp < 5) {
-        log("MPが足りない！");
+        log("MPが足りない！", "warning");
         return;
       }
       player.mp -= 5;
@@ -703,9 +733,9 @@
       if (!target) return;
       const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
       target.hp -= dmg;
-      log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`);
+      log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`, "player");
       if (target.hp <= 0) {
-        log(`${target.name} を粉砕！`);
+        log(`${target.name} を粉砕！`, "good");
         checkVictory();
       }
       endPlayerTurn();
@@ -714,20 +744,20 @@
     function heal() {
       if (!game.awaitingInput) return;
       if (player.mp < 4) {
-        log("MPが足りない！");
+        log("MPが足りない！", "warning");
         return;
       }
       player.mp -= 4;
       const amount = Math.min(player.maxHp - player.hp, 12 + player.level * 1.5);
       player.hp += amount;
-      log(`✨ ヒールで ${Math.round(amount)} 回復`);
+      log(`✨ ヒールで ${Math.round(amount)} 回復`, "good");
       endPlayerTurn();
     }
 
     function guard() {
       if (!game.awaitingInput) return;
       player.buffs.guard = 1;
-      log("🛡️ 防御体勢！ 1ターン被ダメ軽減");
+      log("🛡️ 防御体勢！ 1ターン被ダメ軽減", "info");
       endPlayerTurn();
     }
 
@@ -741,14 +771,14 @@
         dmg = calcDamage(enemy, player);
         if (player.buffs.guard) dmg = Math.round(dmg * 0.5);
         player.hp -= dmg;
-        log(`👾 ${enemy.name} の攻撃。${dmg} ダメージ`);
+        log(`👾 ${enemy.name} の攻撃。${dmg} ダメージ`, "enemy");
       } else if (action === "heavy") {
         dmg = Math.round(calcDamage(enemy, player) * 1.4);
         player.hp -= dmg;
-        log(`💥 ${enemy.name} の強撃！ ${dmg} ダメージ`);
+        log(`💥 ${enemy.name} の強撃！ ${dmg} ダメージ`, "enemy");
       } else {
         player.def = Math.max(0, player.def - 1);
-        log(`🌀 ${enemy.name} が弱体呪い。防御が下がった`);
+        log(`🌀 ${enemy.name} が弱体呪い。防御が下がった`, "warning");
       }
       if (player.hp <= 0) {
         handleDefeat();
@@ -763,7 +793,7 @@
       player.exp = Math.max(0, Math.floor(player.exp * 0.95));
       player.buffs.guard = 0;
       game.turnQueue = [];
-      log(`あなたは倒れた… ${previousFloor}F → ${game.floor}F に後退。EXP -5%`);
+      log(`あなたは倒れた… ${previousFloor}F → ${game.floor}F に後退。EXP -5%`, "danger");
       setTimeout(() => {
         player.hp = player.maxHp;
         player.mp = player.maxMp;
@@ -803,7 +833,7 @@
       if (game.enemies.some(e => e.hp > 0)) return;
       const gained = 10 + game.floor * 3 + (game.floor % 5 === 0 ? 10 : 0);
       player.exp += gained;
-      log(`🎁 ${gained} EXP と少量のMPを得た`);
+      log(`🎁 ${gained} EXP と少量のMPを得た`, "good");
       player.mp = Math.min(player.maxMp, player.mp + 3 + skills.arcaneFlow.level * 2);
       while (player.exp >= player.expToLevel) {
         player.exp -= player.expToLevel;
@@ -825,12 +855,12 @@
       player.def += 1;
       player.statPoints += 1;
       player.skillPoints += 1;
-      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+1 / スキルP+1`);
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+1 / スキルP+1`, "good");
     }
 
     function nextFloor() {
       if (game.enemies.some(e => e.hp > 0) && player.hp > 0) {
-        log("敵が残っている！");
+        log("敵が残っている！", "warning");
         return;
       }
       game.floor += 1;
@@ -855,7 +885,7 @@
       Object.values(skills).forEach(s => (s.level = 0));
       game.floor = 1;
       document.getElementById("log").innerHTML = "";
-      log("=== 新規挑戦 ===");
+      log("=== 新規挑戦 ===", "info");
       spawnEnemies();
       updateUI();
     }
