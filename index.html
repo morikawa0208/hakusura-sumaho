@@ -371,12 +371,14 @@
     }
 
     .modal-content {
-      width: min(420px, 90%);
+      width: min(420px, 94%);
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 14px;
       padding: 14px;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-header {
@@ -384,6 +386,38 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .help-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .help-panel {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .help-panel ul {
+      padding-left: 16px;
+      margin: 6px 0;
     }
 
     .modal-close {
@@ -475,13 +509,33 @@
         </div>
         <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+        <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
+      </div>
+      <div id="stat-help-panel" class="help-panel" style="display: none;">
+        <div style="font-weight: 700; margin-bottom: 4px;">計算メモ</div>
+        <ul>
+          <li>最大HP = 基礎HP + 体力 × 10</li>
+          <li>最大MP = 基礎MP + 知識 ×2 + 体力×0.5</li>
+          <li>物理攻撃力 = 武器 + 力 × 1.2</li>
+          <li>魔法攻撃力 = 魔器 + 知識 × 1.3</li>
+          <li>物理防御力 = 体力×0.6 + 力×0.2</li>
+          <li>魔法防御力 = 体力×0.5 + 知識×0.3</li>
+          <li>行動速度 = 基礎速度 + 敏捷</li>
+          <li>命中率 = 70% + 敏捷×0.1%</li>
+          <li>クリティカル率 / 回避率 = (敏捷+運) を減衰式で</li>
+        </ul>
+      </div>
       <div id="secondary-stats" class="stat-grid"></div>
       <div class="inline-buttons" style="margin-top: 8px;">
         <div class="pill">能力P: <span id="stat-points"></span></div>
         <div class="pill">スキルP: <span id="skill-points"></span></div>
       </div>
-      <div class="section-title" style="margin: 10px 0 6px;">一次ステータス / ステ振り</div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div class="section-title" style="margin: 10px 0 6px;">一次ステータス / ステ振り</div>
+        <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
+      </div>
       <div id="primary-stats" class="stat-grid"></div>
     </div>
   </div>
@@ -527,6 +581,13 @@
         vit: { label: "体力", base: 10, bonus: 0 },
         agi: { label: "敏捷", base: 6, bonus: 0 },
         luck: { label: "運", base: 5, bonus: 0 },
+      },
+      allocations: {
+        str: 0,
+        int: 0,
+        vit: 0,
+        agi: 0,
+        luck: 0,
       },
       bonus: {
         hp: 0,
@@ -588,16 +649,20 @@
     const primaryOrder = ["str", "int", "vit", "agi", "luck"];
     let cachedSecondaries = null;
 
-    const displayNumber = (num) => (Number.isInteger(num) ? num : Number(num.toFixed(1)));
+    const displayNumber = (num, isPercent = false) => {
+      if (Number.isInteger(num)) return num;
+      return Number(num.toFixed(isPercent ? 1 : 0));
+    };
 
     const formatStatValue = (stat, unit = "") => {
       if (!stat) return "-";
-      const total = `${displayNumber(stat.total)}${unit}`;
+      const isPercent = unit === "%";
+      const total = `${displayNumber(stat.total, isPercent)}${unit}`;
       if (!stat.bonus) {
         return `<span class="total">${total}</span>`;
       }
       const bonusSign = stat.bonus > 0 ? "+" : "";
-      return `<span class="total">${total}</span> (<span class="base">${displayNumber(stat.base)}</span> <span class="bonus">${bonusSign}${displayNumber(stat.bonus)}</span>)`;
+      return `<span class="total">${total}</span> (<span class="base">${displayNumber(stat.base, isPercent)}</span> <span class="bonus">${bonusSign}${displayNumber(stat.bonus, isPercent)}</span>)`;
     };
 
     const formatPrimaryValue = (stat) => {
@@ -837,7 +902,6 @@
       container.innerHTML = "";
       primaryOrder.forEach((key) => {
         const stat = player.primary[key];
-        const total = stat.base + stat.bonus;
         const el = document.createElement("div");
         el.className = "stat-row";
 
@@ -857,6 +921,7 @@
           if (player.statPoints <= 0) return;
           player.statPoints -= 1;
           stat.base += 1;
+          player.allocations[key] += 1;
           log(`能力Pを使用: ${stat.label} +1`, "good");
           updateUI();
         };
@@ -902,6 +967,9 @@
     const closeModalButton = document.getElementById("modal-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
+    const statHelpButton = document.getElementById("stat-help");
+    const statHelpPanel = document.getElementById("stat-help-panel");
+    const resetButton = document.getElementById("reset-stats");
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
@@ -1110,6 +1178,25 @@
       log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
     }
 
+    function resetAllocations() {
+      const spent = Object.values(player.allocations).reduce((a, b) => a + b, 0);
+      if (spent === 0) {
+        log("リセットするポイントがありません", "info");
+        return;
+      }
+      if (!confirm(`ステータスを初期化して能力P${spent}を戻しますか？`)) return;
+      Object.entries(player.allocations).forEach(([key, amount]) => {
+        if (amount > 0) {
+          player.primary[key].base -= amount;
+          player.allocations[key] = 0;
+        }
+      });
+      player.statPoints += spent;
+      recalcDerivedStats();
+      updateUI();
+      log("ステータスをリセットしました", "info");
+    }
+
     function nextFloor() {
       if (game.enemies.some(e => e.hp > 0) && player.hp > 0) {
         log("敵が残っている！", "warning");
@@ -1127,6 +1214,11 @@
     closeModalButton.addEventListener("click", closeEnemyModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    statHelpButton.addEventListener("click", () => {
+      const isHidden = statHelpPanel.style.display === "none";
+      statHelpPanel.style.display = isHidden ? "block" : "none";
+    });
+    resetButton.addEventListener("click", resetAllocations);
     enemyModal.addEventListener("click", (e) => {
       if (e.target === enemyModal) closeEnemyModal();
     });
