@@ -256,6 +256,17 @@
       color: var(--muted);
     }
 
+    .stat-label.secondary {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .stat-value {
       font-weight: 700;
       font-size: 13px;
@@ -288,10 +299,23 @@
       min-width: 36px;
     }
 
+    .primary-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .primary-summary .stat-value {
+      white-space: nowrap;
+    }
+
     .stat-label.inline {
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     details {
@@ -1054,7 +1078,7 @@
         const el = document.createElement("div");
         el.className = "stat-row";
         const left = document.createElement("div");
-        left.className = "stat-label";
+        left.className = "stat-label secondary";
         left.innerHTML = `<span>${row.label}</span>`;
         const right = document.createElement("div");
         right.className = "stat-value";
@@ -1097,9 +1121,7 @@
         detail.open = primaryExpanded[key];
 
         const summary = document.createElement("summary");
-        summary.style.display = "flex";
-        summary.style.justifyContent = "space-between";
-        summary.style.alignItems = "center";
+        summary.className = "primary-summary";
 
         const label = document.createElement("div");
         label.className = "stat-label inline";
