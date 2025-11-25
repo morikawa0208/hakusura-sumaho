@@ -283,9 +283,15 @@
     }
 
     .stat-actions .mini-btn {
-      padding: 4px 6px;
-      font-size: 11px;
-      min-width: 42px;
+      padding: 3px 6px;
+      font-size: 10px;
+      min-width: 36px;
+    }
+
+    .stat-label.inline {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     details {
@@ -1096,7 +1102,7 @@
         summary.style.alignItems = "center";
 
         const label = document.createElement("div");
-        label.className = "stat-label";
+        label.className = "stat-label inline";
         label.innerHTML = `<span>${stat.label}</span>`;
 
         const value = document.createElement("div");
