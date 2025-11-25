@@ -243,7 +243,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 6px;
-      padding: 6px;
+      padding: 5px 6px;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -282,10 +282,16 @@
       gap: 6px;
     }
 
+    .stat-actions .mini-btn {
+      padding: 4px 6px;
+      font-size: 11px;
+      min-width: 42px;
+    }
+
     details {
       background: rgba(255, 255, 255, 0.03);
       border-radius: 10px;
-      padding: 8px;
+      padding: 6px;
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
@@ -379,7 +385,7 @@
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
-      padding: 10px;
+      padding: 8px;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
       max-height: 88vh;
       overflow-y: auto;
@@ -748,6 +754,13 @@
     }
 
     const primaryOrder = ["str", "int", "vit", "agi", "luck"];
+    const primaryExpanded = {
+      str: false,
+      int: false,
+      vit: false,
+      agi: false,
+      luck: false,
+    };
     let cachedSecondaries = null;
     let pendingResetSpent = 0;
 
@@ -1047,73 +1060,6 @@
       });
     }
 
-    function renderPrimaryStats() {
-      const container = document.getElementById("primary-stats");
-      container.innerHTML = "";
-      primaryOrder.forEach((key) => {
-        const stat = player.primary[key];
-        const detail = document.createElement("details");
-        detail.className = "stat-row";
-        detail.open = true;
-
-        const summary = document.createElement("summary");
-        summary.style.display = "flex";
-        summary.style.justifyContent = "space-between";
-        summary.style.alignItems = "center";
-
-        const label = document.createElement("div");
-        label.className = "stat-label";
-        label.innerHTML = `<span>${stat.label}</span>`;
-
-        const value = document.createElement("div");
-        value.className = "stat-value";
-        value.innerHTML = formatPrimaryValue(stat);
-
-        summary.appendChild(label);
-        summary.appendChild(value);
-        detail.appendChild(summary);
-
-        const actions = document.createElement("div");
-        actions.className = "stat-actions";
-
-        const inc1 = document.createElement("button");
-        inc1.textContent = "+1";
-        inc1.disabled = player.statPoints <= 0;
-        inc1.onclick = () => adjustPrimary(key, 1);
-
-        const inc10 = document.createElement("button");
-        inc10.textContent = "+10";
-        inc10.disabled = player.statPoints <= 0;
-        inc10.onclick = () => adjustPrimary(key, 10);
-
-        const dec1 = document.createElement("button");
-        dec1.textContent = "-1";
-        dec1.disabled = player.allocations[key] <= 0;
-        dec1.onclick = () => adjustPrimary(key, -1);
-
-        const dec10 = document.createElement("button");
-        dec10.textContent = "-10";
-        dec10.disabled = player.allocations[key] <= 0;
-        dec10.onclick = () => adjustPrimary(key, -10);
-
-        actions.appendChild(inc1);
-        actions.appendChild(dec1);
-        actions.appendChild(inc10);
-        actions.appendChild(dec10);
-
-        const actionWrapper = document.createElement("div");
-        actionWrapper.style.display = "flex";
-        actionWrapper.style.justifyContent = "flex-end";
-        actionWrapper.style.gap = "6px";
-        actionWrapper.style.flexWrap = "wrap";
-        actionWrapper.style.marginTop = "6px";
-        actionWrapper.appendChild(actions);
-
-        detail.appendChild(actionWrapper);
-        container.appendChild(detail);
-      });
-    }
-
     function adjustPrimary(key, delta) {
       if (delta === 0) return;
       if (delta > 0) {
@@ -1133,6 +1079,81 @@
         log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
       }
       updateUI();
+    }
+
+    function renderPrimaryStats() {
+      const container = document.getElementById("primary-stats");
+      container.innerHTML = "";
+      primaryOrder.forEach((key) => {
+        const stat = player.primary[key];
+        const detail = document.createElement("details");
+        detail.className = "stat-row";
+        detail.open = primaryExpanded[key];
+
+        const summary = document.createElement("summary");
+        summary.style.display = "flex";
+        summary.style.justifyContent = "space-between";
+        summary.style.alignItems = "center";
+
+        const label = document.createElement("div");
+        label.className = "stat-label";
+        label.innerHTML = `<span>${stat.label}</span>`;
+
+        const value = document.createElement("div");
+        value.className = "stat-value";
+        value.innerHTML = formatPrimaryValue(stat);
+
+        summary.appendChild(label);
+        summary.appendChild(value);
+        detail.appendChild(summary);
+
+        detail.addEventListener("toggle", () => {
+          primaryExpanded[key] = detail.open;
+        });
+
+        const actions = document.createElement("div");
+        actions.className = "stat-actions";
+
+        const inc1 = document.createElement("button");
+        inc1.textContent = "+1";
+        inc1.classList.add("mini-btn");
+        inc1.disabled = player.statPoints <= 0;
+        inc1.onclick = () => adjustPrimary(key, 1);
+
+        const inc10 = document.createElement("button");
+        inc10.textContent = "+10";
+        inc10.classList.add("mini-btn");
+        inc10.disabled = player.statPoints <= 0;
+        inc10.onclick = () => adjustPrimary(key, 10);
+
+        const dec1 = document.createElement("button");
+        dec1.textContent = "-1";
+        dec1.classList.add("mini-btn");
+        dec1.disabled = player.allocations[key] <= 0;
+        dec1.onclick = () => adjustPrimary(key, -1);
+
+        const dec10 = document.createElement("button");
+        dec10.textContent = "-10";
+        dec10.classList.add("mini-btn");
+        dec10.disabled = player.allocations[key] <= 0;
+        dec10.onclick = () => adjustPrimary(key, -10);
+
+        actions.appendChild(inc1);
+        actions.appendChild(dec1);
+        actions.appendChild(inc10);
+        actions.appendChild(dec10);
+
+        const actionWrapper = document.createElement("div");
+        actionWrapper.style.display = "flex";
+        actionWrapper.style.justifyContent = "flex-end";
+        actionWrapper.style.gap = "6px";
+        actionWrapper.style.flexWrap = "wrap";
+        actionWrapper.style.marginTop = "4px";
+        actionWrapper.appendChild(actions);
+
+        detail.appendChild(actionWrapper);
+        container.appendChild(detail);
+      });
     }
 
     function renderSkills() {
