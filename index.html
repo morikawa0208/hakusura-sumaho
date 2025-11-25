@@ -114,18 +114,19 @@
       font-size: 13px;
       line-height: 1.5;
       overflow: auto;
-      height: 170px;
-      max-height: 280px;
-      min-height: 130px;
-      resize: vertical;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+      resize: none;
     }
 
     .log-card {
       display: flex;
       flex-direction: column;
+      height: 100%;
     }
 
     .log-card #log {
@@ -230,6 +231,13 @@
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .primary-grid {
+      display: grid;
+      grid-template-columns: 1fr;
       gap: 6px;
       margin-top: 4px;
     }
@@ -381,6 +389,27 @@
       overflow-y: auto;
     }
 
+    .player-modal-content {
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+
+    .secondary-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 4px;
+      margin-bottom: 8px;
+    }
+
+    .primary-fixed {
+      flex-shrink: 0;
+      display: grid;
+      gap: 8px;
+    }
+
     .modal-actions {
       display: flex;
       justify-content: flex-end;
@@ -514,7 +543,7 @@
   </div>
 
   <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
+    <div class="modal-content player-modal-content">
       <div class="modal-header">
         <div>
           <div class="section-title" style="margin: 0;">プレイヤー詳細</div>
@@ -522,19 +551,23 @@
         </div>
         <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
-        <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
+      <div class="secondary-scroll">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+          <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
+        </div>
+        <div id="secondary-stats" class="stat-grid"></div>
       </div>
-      <div id="secondary-stats" class="stat-grid"></div>
-      <div class="inline-buttons" style="margin-top: 8px;">
-        <div class="pill">能力P: <span id="stat-points"></span></div>
+      <div class="primary-fixed">
+        <div class="inline-buttons">
+          <div class="pill">能力P: <span id="stat-points"></span></div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div class="section-title" style="margin: 2px 0 4px;">一次ステータス / ステ振り</div>
+          <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
+        </div>
+        <div id="primary-stats" class="primary-grid"></div>
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div class="section-title" style="margin: 10px 0 6px;">一次ステータス / ステ振り</div>
-        <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
-      </div>
-      <div id="primary-stats" class="stat-grid" style="grid-template-columns: 1fr;"></div>
     </div>
   </div>
 
@@ -603,7 +636,9 @@
         </div>
         <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="pill" style="margin-bottom: 6px;">スキルP: <span id="skill-points"></span></div>
+      <div class="inline-buttons" style="margin-bottom: 6px;">
+        <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
+      </div>
       <div id="skills" style="margin-top: 6px;"></div>
     </div>
   </div>
@@ -719,31 +754,31 @@
     let cachedSecondaries = null;
     let pendingResetSpent = 0;
 
-    const displayNumber = (num, { forceDecimal = false } = {}) => {
-      if (forceDecimal) {
+    const displayNumber = (num, { isPercent = false } = {}) => {
+      if (isPercent) {
         return (Math.round(num * 10) / 10).toFixed(1);
       }
-      return Number.isInteger(num) ? Math.round(num) : Number((Math.round(num * 10) / 10).toFixed(1));
+      return Math.round(num);
     };
 
     const formatStatValue = (stat, unit = "") => {
       if (!stat) return "-";
       const isPercent = unit === "%";
-      const total = `${displayNumber(stat.total, { forceDecimal: isPercent })}${unit}`;
+      const total = `${displayNumber(stat.total, { isPercent })}${unit}`;
       if (!stat.bonus) {
         return `<span class="total">${total}</span>`;
       }
       const bonusSign = stat.bonus > 0 ? "+" : "";
-      const base = displayNumber(stat.base, { forceDecimal: isPercent });
-      const bonus = displayNumber(stat.bonus, { forceDecimal: isPercent });
+      const base = displayNumber(stat.base, { isPercent });
+      const bonus = displayNumber(stat.bonus, { isPercent });
       return `<span class="total">${total}</span> (<span class="base">${base}</span> <span class="bonus">${bonusSign}${bonus}</span>)`;
     };
 
     const formatPrimaryValue = (stat) => {
       const total = stat.base + stat.bonus;
+      if (!stat.bonus) return `<span class="total">${total}</span>`;
       const bonusSign = stat.bonus > 0 ? "+" : "";
-      const baseText = stat.bonus ? ` (<span class="base">${stat.base}</span> <span class="bonus">${bonusSign}${stat.bonus}</span>)` : "";
-      return `<span class="total">${total}</span>${baseText}`;
+      return `<span class="total">${total}</span> (<span class="base">${stat.base}</span> <span class="bonus">${bonusSign}${stat.bonus}</span>)`;
     };
 
     const statTotal = (key) => {
@@ -758,12 +793,14 @@
       const agi = statTotal("agi");
       const luck = statTotal("luck");
 
-      const maxHpBase = player.base.hp + vit * 10;
-      const maxMpBase = player.base.mp + int * 2 + vit * 0.5;
-      const physAtkBase = player.base.physAtk + str * 1.2;
-      const magAtkBase = player.base.magAtk + int * 1.3;
-      const physDefBase = player.base.physDef + vit * 0.6 + str * 0.2;
-      const magDefBase = player.base.magDef + vit * 0.5 + int * 0.3;
+      const roundInt = (v) => Math.round(v);
+
+      const maxHpBase = roundInt(player.base.hp + vit * 10);
+      const maxMpBase = roundInt(player.base.mp + int * 2 + vit * 0.5);
+      const physAtkBase = roundInt(player.base.physAtk + str * 1.2);
+      const magAtkBase = roundInt(player.base.magAtk + int * 1.3);
+      const physDefBase = roundInt(player.base.physDef + vit * 0.6 + str * 0.2);
+      const magDefBase = roundInt(player.base.magDef + vit * 0.5 + int * 0.3);
       const speedBase = player.base.speed + agi;
       const critBase = Math.min(40, 5 + (agi + luck) * 0.35);
       const evadeBase = Math.min(30, 5 + (agi + luck) * 0.25);
@@ -899,7 +936,7 @@
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
       document.getElementById("stat-points").textContent = player.statPoints;
-      document.getElementById("skill-points").textContent = player.skillPoints;
+      document.getElementById("skill-points-skill").textContent = player.skillPoints;
       updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
       updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
       updateBars("exp-bar", player.exp, player.expToLevel, "exp");
@@ -1031,31 +1068,31 @@
         value.className = "stat-value";
         value.innerHTML = formatPrimaryValue(stat);
 
-        const add1 = document.createElement("button");
-        add1.textContent = "+1";
-        add1.disabled = player.statPoints <= 0;
-        add1.onclick = () => adjustPrimary(key, 1);
+        const inc1 = document.createElement("button");
+        inc1.textContent = "+1";
+        inc1.disabled = player.statPoints <= 0;
+        inc1.onclick = () => adjustPrimary(key, 1);
 
-        const sub1 = document.createElement("button");
-        sub1.textContent = "-1";
-        sub1.disabled = player.allocations[key] <= 0;
-        sub1.onclick = () => adjustPrimary(key, -1);
+        const inc10 = document.createElement("button");
+        inc10.textContent = "+10";
+        inc10.disabled = player.statPoints <= 0;
+        inc10.onclick = () => adjustPrimary(key, 10);
 
-        const add10 = document.createElement("button");
-        add10.textContent = "+10";
-        add10.disabled = player.statPoints <= 0;
-        add10.onclick = () => adjustPrimary(key, 10);
+        const dec1 = document.createElement("button");
+        dec1.textContent = "-1";
+        dec1.disabled = player.allocations[key] <= 0;
+        dec1.onclick = () => adjustPrimary(key, -1);
 
-        const sub10 = document.createElement("button");
-        sub10.textContent = "-10";
-        sub10.disabled = player.allocations[key] < 10;
-        sub10.onclick = () => adjustPrimary(key, -10);
+        const dec10 = document.createElement("button");
+        dec10.textContent = "-10";
+        dec10.disabled = player.allocations[key] <= 0;
+        dec10.onclick = () => adjustPrimary(key, -10);
 
         actions.appendChild(value);
-        actions.appendChild(add1);
-        actions.appendChild(sub1);
-        actions.appendChild(add10);
-        actions.appendChild(sub10);
+        actions.appendChild(inc1);
+        actions.appendChild(dec1);
+        actions.appendChild(inc10);
+        actions.appendChild(dec10);
 
         el.appendChild(left);
         el.appendChild(actions);
@@ -1064,6 +1101,7 @@
     }
 
     function adjustPrimary(key, delta) {
+      if (delta === 0) return;
       if (delta > 0) {
         const use = Math.min(delta, player.statPoints);
         if (use <= 0) return;
@@ -1072,12 +1110,13 @@
         player.allocations[key] += use;
         log(`能力Pを使用: ${player.primary[key].label} +${use}`, "good");
       } else {
-        const take = Math.min(Math.abs(delta), player.allocations[key]);
-        if (take <= 0) return;
-        player.statPoints += take;
-        player.primary[key].base -= take;
-        player.allocations[key] -= take;
-        log(`能力Pを戻す: ${player.primary[key].label} -${take}`, "info");
+        const refundable = player.allocations[key];
+        const giveBack = Math.min(refundable, Math.abs(delta));
+        if (giveBack <= 0) return;
+        player.primary[key].base -= giveBack;
+        player.allocations[key] -= giveBack;
+        player.statPoints += giveBack;
+        log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
       }
       updateUI();
     }
