@@ -117,20 +117,16 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      min-height: 0;
-      height: 100%;
-      max-height: none;
+      height: clamp(180px, 26vh, 240px);
+      max-height: clamp(180px, 26vh, 240px);
+      min-height: 160px;
       resize: none;
     }
 
     .log-card {
       display: flex;
       flex-direction: column;
-      height: 100%;
-    }
-
-    .log-card #log {
-      flex: 1;
+      align-items: stretch;
     }
 
     #log .entry {
@@ -231,8 +227,8 @@
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-      margin-top: 4px;
+      gap: 5px;
+      margin-top: 2px;
     }
 
     .primary-grid {
@@ -246,8 +242,8 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 8px;
-      padding: 8px;
+      gap: 6px;
+      padding: 6px;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.05);
@@ -382,18 +378,19 @@
       width: min(420px, 94%);
       background: rgba(17, 24, 39, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 14px;
+      border-radius: 12px;
+      padding: 10px;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
-      max-height: 90vh;
+      max-height: 88vh;
       overflow-y: auto;
     }
 
     .player-modal-content {
       display: flex;
       flex-direction: column;
-      max-height: 90vh;
+      max-height: 88vh;
       overflow: hidden;
+      gap: 6px;
     }
 
     .secondary-scroll {
@@ -401,7 +398,7 @@
       min-height: 0;
       overflow-y: auto;
       padding-right: 4px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .primary-fixed {
@@ -1055,18 +1052,29 @@
       container.innerHTML = "";
       primaryOrder.forEach((key) => {
         const stat = player.primary[key];
-        const el = document.createElement("div");
-        el.className = "stat-row";
+        const detail = document.createElement("details");
+        detail.className = "stat-row";
+        detail.open = true;
 
-        const left = document.createElement("div");
-        left.className = "stat-label";
-        left.innerHTML = `<span>${stat.label}</span>`;
+        const summary = document.createElement("summary");
+        summary.style.display = "flex";
+        summary.style.justifyContent = "space-between";
+        summary.style.alignItems = "center";
 
-        const actions = document.createElement("div");
-        actions.className = "stat-actions";
+        const label = document.createElement("div");
+        label.className = "stat-label";
+        label.innerHTML = `<span>${stat.label}</span>`;
+
         const value = document.createElement("div");
         value.className = "stat-value";
         value.innerHTML = formatPrimaryValue(stat);
+
+        summary.appendChild(label);
+        summary.appendChild(value);
+        detail.appendChild(summary);
+
+        const actions = document.createElement("div");
+        actions.className = "stat-actions";
 
         const inc1 = document.createElement("button");
         inc1.textContent = "+1";
@@ -1088,15 +1096,21 @@
         dec10.disabled = player.allocations[key] <= 0;
         dec10.onclick = () => adjustPrimary(key, -10);
 
-        actions.appendChild(value);
         actions.appendChild(inc1);
         actions.appendChild(dec1);
         actions.appendChild(inc10);
         actions.appendChild(dec10);
 
-        el.appendChild(left);
-        el.appendChild(actions);
-        container.appendChild(el);
+        const actionWrapper = document.createElement("div");
+        actionWrapper.style.display = "flex";
+        actionWrapper.style.justifyContent = "flex-end";
+        actionWrapper.style.gap = "6px";
+        actionWrapper.style.flexWrap = "wrap";
+        actionWrapper.style.marginTop = "6px";
+        actionWrapper.appendChild(actions);
+
+        detail.appendChild(actionWrapper);
+        container.appendChild(detail);
       });
     }
 
