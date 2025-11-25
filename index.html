@@ -6,16 +6,12 @@
   <title>縦持ちハクスラ試作</title>
   <style>
     :root {
-      --bg: #070912;
-      --panel: rgba(18, 24, 38, 0.55);
-      --glass-highlight: rgba(255, 255, 255, 0.28);
-      --glass-shadow: rgba(0, 0, 0, 0.28);
+      --bg: #0b0e14;
+      --panel: #111827;
       --accent: #34d399;
       --accent-2: #60a5fa;
-      --accent-3: #a78bfa;
       --text: #e5e7eb;
       --muted: #9ca3af;
-      --blur: 18px;
     }
 
     * {
@@ -23,72 +19,37 @@
     }
 
     body {
-      background: radial-gradient(circle at 16% 18%, rgba(52, 211, 153, 0.16), transparent 30%),
-        radial-gradient(circle at 84% 22%, rgba(96, 165, 250, 0.15), transparent 30%),
-        radial-gradient(circle at 50% 90%, rgba(167, 139, 250, 0.12), transparent 32%),
-        linear-gradient(135deg, #080b16 0%, #0c1020 40%, #080b16 100%);
+      background: radial-gradient(circle at 20% 20%, rgba(52, 211, 153, 0.08), transparent 25%),
+        radial-gradient(circle at 80% 10%, rgba(96, 165, 250, 0.08), transparent 22%),
+        var(--bg);
       color: var(--text);
       font-family: "Segoe UI", "Hiragino Sans", system-ui, -apple-system, sans-serif;
       margin: 0;
       display: flex;
       justify-content: center;
       min-height: 100vh;
-      padding: 12px;
-      backdrop-filter: blur(8px);
-      position: relative;
-      overflow: hidden;
-    }
-
-    body::before {
-      content: "";
-      position: absolute;
-      inset: 12px;
-      border-radius: 24px;
-      background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.06), transparent 50%),
-        radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.05), transparent 50%);
-      filter: blur(30px);
-      pointer-events: none;
-      opacity: 0.55;
+      padding: 6px;
     }
 
     .phone {
-      background: linear-gradient(140deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 22px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
       width: min(460px, 100%);
       height: calc(100vh - 12px);
       display: grid;
       grid-template-rows: auto auto 1fr auto auto auto;
-      gap: 8px;
-      padding: 12px;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      gap: 6px;
+      padding: 8px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
       overflow: hidden;
-      backdrop-filter: blur(var(--blur));
-      border-top: 1px solid rgba(255, 255, 255, 0.38);
-      border-left: 1px solid rgba(255, 255, 255, 0.24);
-      border-right: 1px solid rgba(255, 255, 255, 0.12);
-      position: relative;
-    }
-
-    .phone::before {
-      content: "";
-      position: absolute;
-      inset: -20%;
-      background: radial-gradient(circle at 20% 15%, rgba(52, 211, 153, 0.18), transparent 35%),
-        radial-gradient(circle at 80% 20%, rgba(96, 165, 250, 0.14), transparent 32%),
-        radial-gradient(circle at 60% 75%, rgba(167, 139, 250, 0.14), transparent 35%);
-      filter: blur(60px);
-      opacity: 0.55;
-      pointer-events: none;
     }
 
     .card {
-      background: linear-gradient(150deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
-      border-radius: 12px;
-      padding: 10px;
-      backdrop-filter: blur(var(--blur));
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 8px;
     }
 
     .subtle {
@@ -108,13 +69,11 @@
 
     .bar {
       position: relative;
-      background: linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+      background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
       height: 22px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: inset 0 1px 5px rgba(255, 255, 255, 0.1), 0 10px 22px rgba(0, 0, 0, 0.26);
-      backdrop-filter: blur(calc(var(--blur) * 0.75));
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .bar span {
@@ -122,8 +81,6 @@
       inset: 0;
       width: 50%;
       border-radius: 999px;
-      filter: saturate(1.2);
-      box-shadow: inset 0 -4px 12px rgba(0, 0, 0, 0.18), 0 0 12px rgba(255, 255, 255, 0.1);
     }
 
     .bar .label {
@@ -150,8 +107,8 @@
     }
 
     #log {
-      background: linear-gradient(160deg, rgba(17, 24, 39, 0.5), rgba(255, 255, 255, 0.05));
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.05);
       border-radius: 12px;
       padding: 10px;
       font-size: 13px;
@@ -164,8 +121,6 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      backdrop-filter: blur(calc(var(--blur) * 0.8));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 32px rgba(0, 0, 0, 0.24);
     }
 
     .log-card {
@@ -178,12 +133,10 @@
     }
 
     #log .entry {
-      opacity: 0.97;
+      opacity: 0.95;
       padding: 4px 6px;
       border-radius: 8px;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     #log .entry.info {
@@ -217,21 +170,14 @@
     }
 
     button {
-      background: linear-gradient(135deg, rgba(52, 211, 153, 0.32), rgba(96, 165, 250, 0.32));
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(96, 165, 250, 0.2));
       color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
       padding: 10px 12px;
       font-size: 13px;
       cursor: pointer;
-      transition: transform 0.08s ease, box-shadow 0.1s ease, border-color 0.1s ease;
-      box-shadow: 0 14px 26px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(var(--blur));
-    }
-
-    button:hover {
-      border-color: rgba(255, 255, 255, 0.5);
-      box-shadow: 0 16px 28px rgba(0, 0, 0, 0.36);
+      transition: transform 0.08s ease, box-shadow 0.1s ease;
     }
 
     button:active {
@@ -239,7 +185,7 @@
     }
 
     button:disabled {
-      opacity: 0.55;
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
@@ -251,26 +197,20 @@
 
     .pill {
       font-size: 12px;
-      background: linear-gradient(120deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
+      background: rgba(255, 255, 255, 0.06);
       padding: 4px 8px;
       border-radius: 999px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      backdrop-filter: blur(calc(var(--blur) * 0.55));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 18px rgba(0, 0, 0, 0.18);
     }
 
     .tag {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+      background: rgba(255, 255, 255, 0.1);
       padding: 2px 6px;
       border-radius: 6px;
       font-size: 11px;
       letter-spacing: 0.03em;
-      border: 1px solid rgba(255, 255, 255, 0.28);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-      backdrop-filter: blur(calc(var(--blur) * 0.55));
     }
 
     .stats {
@@ -300,11 +240,9 @@
       align-items: flex-start;
       gap: 8px;
       padding: 8px;
-      border-radius: 10px;
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 22px rgba(0, 0, 0, 0.26);
-      backdrop-filter: blur(calc(var(--blur) * 0.55));
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .stat-label {
@@ -341,12 +279,10 @@
     }
 
     details {
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
       padding: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(calc(var(--blur) * 0.55));
+      border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .enemy-list {
@@ -361,14 +297,12 @@
       display: grid;
       gap: 6px;
       padding: 9px;
-      background: linear-gradient(150deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       min-width: 0;
-      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.28);
-      backdrop-filter: blur(calc(var(--blur) * 0.62));
     }
 
     .enemy-card:active {
@@ -376,8 +310,8 @@
     }
 
     .enemy-card:hover {
-      border-color: rgba(255, 255, 255, 0.42);
-      box-shadow: 0 18px 30px rgba(0, 0, 0, 0.32);
+      border-color: rgba(255, 255, 255, 0.16);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
     }
 
     .enemy-top {
@@ -395,17 +329,17 @@
 
     .enemy-bar {
       position: relative;
-      background: linear-gradient(125deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+      background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
       height: 18px;
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .enemy-bar .fill {
       position: absolute;
       inset: 0;
-      background: linear-gradient(90deg, #ef4444, #fb7185);
+      background: linear-gradient(90deg, #ef4444, #f87171);
       width: 50%;
       border-radius: 999px;
     }
@@ -430,7 +364,6 @@
       place-items: center;
       background: rgba(0, 0, 0, 0.6);
       z-index: 50;
-      backdrop-filter: blur(10px);
     }
 
     .modal.hidden {
@@ -439,14 +372,13 @@
 
     .modal-content {
       width: min(420px, 94%);
-      background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 16px;
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
       padding: 14px;
-      box-shadow: 0 20px 46px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
       max-height: 90vh;
       overflow-y: auto;
-      backdrop-filter: blur(var(--blur));
     }
 
     .modal-actions {
@@ -474,25 +406,21 @@
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: linear-gradient(140deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text);
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
-      backdrop-filter: blur(calc(var(--blur) * 0.4));
     }
 
     .help-panel {
       margin-top: 8px;
       padding: 10px;
       border-radius: 10px;
-      background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       font-size: 12px;
       line-height: 1.5;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(calc(var(--blur) * 0.45));
     }
 
     .modal-body-title {
@@ -507,7 +435,7 @@
 
     .modal-close {
       border: none;
-      background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+      background: rgba(255, 255, 255, 0.06);
       color: var(--text);
       border-radius: 999px;
       width: 30px;
@@ -557,135 +485,164 @@
     </section>
 
     <section class="card">
-      <div class="subtle" style="margin-bottom: 8px;">
-        <div class="menu">
-          <span class="pill">HP: <span id="hp-inline"></span></span>
-          <span class="pill">MP: <span id="mp-inline"></span></span>
-          <span class="pill">EXP: <span id="exp-inline"></span></span>
-        </div>
-      </div>
       <div id="actions"></div>
     </section>
 
-    <section class="card">
-      <div class="subtle">
-        <span>ステータス</span>
-        <span class="tag" id="stat-points"></span>
-      </div>
-      <div class="stats">
-        <div>
-          <div class="inline-buttons">
-            <button id="str-up" style="flex:1;">STR+</button>
-            <button id="int-up" style="flex:1;">INT+</button>
-          </div>
-          <div class="inline-buttons">
-            <button id="vit-up" style="flex:1;">VIT+</button>
-            <button id="agi-up" style="flex:1;">AGI+</button>
-          </div>
-          <div class="inline-buttons">
-            <button id="luck-up" style="flex:1;">LUC+</button>
-          </div>
-        </div>
-        <div class="stat-grid" id="primary-stats"></div>
-      </div>
-      <details style="margin-top: 8px;">
-        <summary>詳細ステータス</summary>
-        <div class="stat-grid" id="secondary-stats"></div>
-        <div class="inline-buttons">
-          <button id="reset-stats">リセット</button>
-        </div>
-      </details>
-    </section>
-
-    <section class="card">
-      <div class="subtle" style="margin-bottom: 6px;">
-        <span>スキル</span>
-        <span class="tag" id="skill-points"></span>
-      </div>
-      <div class="stat-grid" id="skills"></div>
-    </section>
+    <nav class="menu">
+      <button id="btn-player-modal">プレイヤー詳細</button>
+      <button id="btn-skill-tree">スキル</button>
+    </nav>
   </div>
 
-  <div id="modal" class="modal hidden">
+  <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="section-title">ヘルプ</div>
-        <button class="modal-close" id="close-modal">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-body-title">遊び方</div>
-        <div class="help-panel">
-          <ul>
-            <li>左上の敵カードをタップして攻撃を開始します。</li>
-            <li>スキルとステータスを強化して階層を進みましょう。</li>
-            <li>HPとMPは時間で回復します。</li>
-          </ul>
+        <div>
+          <div class="section-title" style="margin: 0;">敵の詳細</div>
+          <div id="modal-name" style="font-weight: 700;"></div>
         </div>
+        <button id="modal-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div>HP <span id="modal-hp"></span></div>
+        <div>ATK <span id="modal-atk"></span></div>
+        <div>DEF <span id="modal-def"></span></div>
+        <div>SPD <span id="modal-spd"></span></div>
+      </div>
+      <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
+    </div>
+  </div>
+
+  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">プレイヤー詳細</div>
+          <div style="font-weight: 700;">一次ステータスと二次ステータス</div>
+        </div>
+        <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+        <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
+      </div>
+      <div id="secondary-stats" class="stat-grid"></div>
+      <div class="inline-buttons" style="margin-top: 8px;">
+        <div class="pill">能力P: <span id="stat-points"></span></div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div class="section-title" style="margin: 10px 0 6px;">一次ステータス / ステ振り</div>
+        <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
+      </div>
+      <div id="primary-stats" class="stat-grid" style="grid-template-columns: 1fr;"></div>
+    </div>
+  </div>
+
+  <div id="memo-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="section-title" style="margin: 0;">計算メモ</div>
+        <button id="memo-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="modal-body-title">攻撃・防御</div>
+      <div class="help-panel">
+        <ul>
+          <li>物理攻撃力 = 武器 + 力 × 1.2</li>
+          <li>魔法攻撃力 = 魔器 + 知識 × 1.3</li>
+          <li>物理防御力 = 体力×0.6 + 力×0.2</li>
+          <li>魔法防御力 = 体力×0.5 + 知識×0.3</li>
+          <li>物理貫通 = 力による軽減無視 (上限30%)</li>
+          <li>魔法貫通 = 知識による軽減無視 (上限30%)</li>
+          <li>被ダメージ軽減 = 体力由来の軽減 (上限40%)</li>
+          <li>ブロック率 = 体力ベース (上限25%)</li>
+        </ul>
+      </div>
+      <div class="modal-body-title">行動・会心</div>
+      <div class="help-panel">
+        <ul>
+          <li>行動速度 = 基礎速度 + 敏捷</li>
+          <li>命中率 = 70% + 敏捷×0.1%</li>
+          <li>クリティカル率 / 回避率 = (敏捷+運) 減衰式</li>
+          <li>クリティカルダメージ = 150% + クリダメ%</li>
+          <li>クールタイム短縮 = 敏捷/知識由来 (上限20%)</li>
+        </ul>
+      </div>
+      <div class="modal-body-title">抵抗・補助・ハクスラ</div>
+      <div class="help-panel">
+        <ul>
+          <li>異常抵抗 / 低下抵抗 / 呪い抵抗 = 体力＋各種ステ由来 (上限60%)</li>
+          <li>HP再生 = 体力 × 0.2 / ターン</li>
+          <li>HP吸収 = 与ダメ × 吸収%</li>
+          <li>バリア = 体力×2 + 知識×1</li>
+          <li>ドロップ率UP / レアリティUP = 運による減衰式 (上限あり)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="section-title" style="margin: 0;">ステータスをリセット</div>
+        <button id="reset-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div>振り分けたポイント(<span id="reset-spent"></span>P)を戻します。よろしいですか？</div>
       <div class="modal-actions">
-        <button id="close-modal-button">閉じる</button>
+        <button id="reset-cancel">キャンセル</button>
+        <button id="reset-confirm">リセットする</button>
       </div>
+    </div>
+  </div>
+
+  <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">スキル / パーク</div>
+          <div style="font-weight: 700;">スキルポイントを消費して強化</div>
+        </div>
+        <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="pill" style="margin-bottom: 6px;">スキルP: <span id="skill-points"></span></div>
+      <div id="skills" style="margin-top: 6px;"></div>
     </div>
   </div>
 
   <script>
     const player = {
+      name: "プレイヤー",
+      level: 1,
+      exp: 0,
+      expToLevel: 20,
+      hp: 0,
+      mp: 0,
+      maxHp: 0,
+      maxMp: 0,
+      atk: 0,
+      def: 0,
+      spd: 0,
       base: {
-        hp: 30,
-        mp: 10,
-        physAtk: 5,
-        magAtk: 5,
-        physDef: 3,
-        magDef: 3,
-        speed: 3,
-        critRate: 5,
-        critDamage: 150,
-        evade: 3,
-        physPen: 0,
-        magPen: 0,
-        damageReduction: 0,
-        block: 0,
-        statusResist: 0,
-        debuffResist: 0,
-        curseResist: 0,
-        cooldown: 0,
-        hpRegen: 1,
-        lifeSteal: 0,
-        barrier: 0,
-        dropRate: 0,
-        rarity: 0,
+        hp: 80,
+        mp: 30,
+        physAtk: 10,
+        magAtk: 8,
+        physDef: 4,
+        magDef: 4,
+        speed: 4,
       },
       primary: {
-        str: { base: 3, bonus: 0 },
-        int: { base: 3, bonus: 0 },
-        vit: { base: 3, bonus: 0 },
-        agi: { base: 3, bonus: 0 },
-        luck: { base: 3, bonus: 0 },
+        str: { label: "力", base: 1, bonus: 0 },
+        int: { label: "知識", base: 1, bonus: 0 },
+        vit: { label: "体力", base: 1, bonus: 0 },
+        agi: { label: "敏捷", base: 1, bonus: 0 },
+        luck: { label: "運", base: 1, bonus: 0 },
       },
-      secondary: {
-        hp: { base: 0, bonus: 0, total: 0 },
-        mp: { base: 0, bonus: 0, total: 0 },
-        physAtk: { base: 0, bonus: 0, total: 0 },
-        magAtk: { base: 0, bonus: 0, total: 0 },
-        physDef: { base: 0, bonus: 0, total: 0 },
-        magDef: { base: 0, bonus: 0, total: 0 },
-        speed: { base: 0, bonus: 0, total: 0 },
-        critRate: { base: 0, bonus: 0, total: 0 },
-        critDamage: { base: 0, bonus: 0, total: 0 },
-        evade: { base: 0, bonus: 0, total: 0 },
-        physPen: { base: 0, bonus: 0, total: 0 },
-        magPen: { base: 0, bonus: 0, total: 0 },
-        damageReduction: { base: 0, bonus: 0, total: 0 },
-        block: { base: 0, bonus: 0, total: 0 },
-        statusResist: { base: 0, bonus: 0, total: 0 },
-        debuffResist: { base: 0, bonus: 0, total: 0 },
-        curseResist: { base: 0, bonus: 0, total: 0 },
-        cooldown: { base: 0, bonus: 0, total: 0 },
-        hpRegen: { base: 0, bonus: 0, total: 0 },
-        lifeSteal: { base: 0, bonus: 0, total: 0 },
-        barrier: { base: 0, bonus: 0, total: 0 },
-        dropRate: { base: 0, bonus: 0, total: 0 },
-        rarity: { base: 0, bonus: 0, total: 0 },
+      allocations: {
+        str: 0,
+        int: 0,
+        vit: 0,
+        agi: 0,
+        luck: 0,
       },
       bonus: {
         hp: 0,
@@ -804,452 +761,648 @@
       const maxHpBase = player.base.hp + vit * 10;
       const maxMpBase = player.base.mp + int * 2 + vit * 0.5;
       const physAtkBase = player.base.physAtk + str * 1.2;
-      const magAtkBase = player.base.magAtk + int * 1.2;
-      const physDefBase = player.base.physDef + vit * 0.8;
-      const magDefBase = player.base.magDef + int * 0.8;
-      const speedBase = player.base.speed + agi * 0.9;
-      const critRateBase = player.base.critRate + luck * 0.6;
-      const critDamageBase = player.base.critDamage + luck * 1.5;
-      const evadeBase = player.base.evade + agi * 0.5;
-      const physPenBase = player.base.physPen + str * 0.3;
-      const magPenBase = player.base.magPen + int * 0.3;
-      const damageReductionBase = player.base.damageReduction + vit * 0.2;
-      const blockBase = player.base.block + vit * 0.4;
-      const statusResistBase = player.base.statusResist + luck * 0.25 + vit * 0.15;
-      const debuffResistBase = player.base.debuffResist + luck * 0.25;
-      const curseResistBase = player.base.curseResist + luck * 0.25;
-      const cooldownBase = player.base.cooldown - agi * 0.3;
-      const hpRegenBase = player.base.hpRegen + vit * 0.3;
-      const lifeStealBase = player.base.lifeSteal + str * 0.2;
-      const barrierBase = player.base.barrier + int * 0.4 + vit * 0.6;
-      const dropRateBase = player.base.dropRate + luck * 0.8;
-      const rarityBase = player.base.rarity + luck * 0.3;
+      const magAtkBase = player.base.magAtk + int * 1.3;
+      const physDefBase = player.base.physDef + vit * 0.6 + str * 0.2;
+      const magDefBase = player.base.magDef + vit * 0.5 + int * 0.3;
+      const speedBase = player.base.speed + agi;
+      const critBase = Math.min(40, 5 + (agi + luck) * 0.35);
+      const evadeBase = Math.min(30, 5 + (agi + luck) * 0.25);
+      const accuracyBase = Math.min(95, 70 + agi * 0.1);
+      const physPenBase = Math.min(30, str * 0.2);
+      const magPenBase = Math.min(30, int * 0.2);
+      const critDmgBase = Math.min(50, luck * 0.6);
+      const damageReductionBase = Math.min(40, vit * 0.4);
+      const blockBase = Math.min(25, 5 + vit * 0.3);
+      const statusResistBase = Math.min(60, (vit + luck) * 0.4);
+      const debuffResistBase = Math.min(60, (vit + int) * 0.35);
+      const curseResistBase = Math.min(60, vit * 0.4);
+      const cooldownBase = Math.min(20, (agi + int) * 0.15);
+      const hpRegenBase = vit * 0.2;
+      const lifeStealBase = Math.min(10, Math.max(str, luck) * 0.1);
+      const barrierBase = vit * 2 + int;
+      const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
+      const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
 
-      const bonus = player.bonus;
-
-      player.secondary.hp = {
-        base: maxHpBase,
-        bonus: bonus.hp,
-        total: maxHpBase + bonus.hp,
+      return {
+        maxHp: { base: maxHpBase, bonus: player.bonus.hp, total: maxHpBase + player.bonus.hp },
+        maxMp: { base: maxMpBase, bonus: player.bonus.mp, total: maxMpBase + player.bonus.mp },
+        physAtk: { base: physAtkBase, bonus: player.bonus.physAtk, total: physAtkBase + player.bonus.physAtk },
+        magAtk: { base: magAtkBase, bonus: player.bonus.magAtk, total: magAtkBase + player.bonus.magAtk },
+        physDef: { base: physDefBase, bonus: player.bonus.physDef, total: physDefBase + player.bonus.physDef },
+        magDef: { base: magDefBase, bonus: player.bonus.magDef, total: magDefBase + player.bonus.magDef },
+        speed: { base: speedBase, bonus: player.bonus.speed, total: speedBase + player.bonus.speed },
+        critRate: { base: critBase, bonus: player.bonus.critRate, total: Math.min(70, critBase + player.bonus.critRate) },
+        evade: { base: evadeBase, bonus: player.bonus.evade, total: Math.min(60, evadeBase + player.bonus.evade) },
+        accuracy: { base: accuracyBase, bonus: 0, total: accuracyBase },
+        physPen: { base: physPenBase, bonus: player.bonus.physPen, total: Math.min(30, physPenBase + player.bonus.physPen) },
+        magPen: { base: magPenBase, bonus: player.bonus.magPen, total: Math.min(30, magPenBase + player.bonus.magPen) },
+        critDamage: { base: critDmgBase, bonus: player.bonus.critDamage, total: Math.min(50, critDmgBase + player.bonus.critDamage) },
+        damageReduction: { base: damageReductionBase, bonus: player.bonus.damageReduction, total: Math.min(40, damageReductionBase + player.bonus.damageReduction) },
+        block: { base: blockBase, bonus: player.bonus.block, total: Math.min(25, blockBase + player.bonus.block) },
+        statusResist: { base: statusResistBase, bonus: player.bonus.statusResist, total: Math.min(60, statusResistBase + player.bonus.statusResist) },
+        debuffResist: { base: debuffResistBase, bonus: player.bonus.debuffResist, total: Math.min(60, debuffResistBase + player.bonus.debuffResist) },
+        curseResist: { base: curseResistBase, bonus: player.bonus.curseResist, total: Math.min(60, curseResistBase + player.bonus.curseResist) },
+        cooldown: { base: cooldownBase, bonus: player.bonus.cooldown, total: Math.min(20, cooldownBase + player.bonus.cooldown) },
+        hpRegen: { base: hpRegenBase, bonus: player.bonus.hpRegen, total: hpRegenBase + player.bonus.hpRegen },
+        lifeSteal: { base: lifeStealBase, bonus: player.bonus.lifeSteal, total: Math.min(10, lifeStealBase + player.bonus.lifeSteal) },
+        barrier: { base: barrierBase, bonus: player.bonus.barrier, total: barrierBase + player.bonus.barrier },
+        dropRate: { base: dropRateBase, bonus: player.bonus.dropRate, total: Math.min(50, dropRateBase + player.bonus.dropRate) },
+        rarity: { base: rarityBase, bonus: player.bonus.rarity, total: Math.min(30, rarityBase + player.bonus.rarity) },
       };
-      player.secondary.mp = {
-        base: maxMpBase,
-        bonus: bonus.mp,
-        total: maxMpBase + bonus.mp,
-      };
-      player.secondary.physAtk = {
-        base: physAtkBase,
-        bonus: bonus.physAtk,
-        total: physAtkBase + bonus.physAtk,
-      };
-      player.secondary.magAtk = {
-        base: magAtkBase,
-        bonus: bonus.magAtk,
-        total: magAtkBase + bonus.magAtk,
-      };
-      player.secondary.physDef = {
-        base: physDefBase,
-        bonus: bonus.physDef,
-        total: physDefBase + bonus.physDef,
-      };
-      player.secondary.magDef = {
-        base: magDefBase,
-        bonus: bonus.magDef,
-        total: magDefBase + bonus.magDef,
-      };
-      player.secondary.speed = {
-        base: speedBase,
-        bonus: bonus.speed,
-        total: speedBase + bonus.speed,
-      };
-      player.secondary.critRate = {
-        base: critRateBase,
-        bonus: bonus.critRate,
-        total: critRateBase + bonus.critRate,
-      };
-      player.secondary.critDamage = {
-        base: critDamageBase,
-        bonus: bonus.critDamage,
-        total: critDamageBase + bonus.critDamage,
-      };
-      player.secondary.evade = {
-        base: evadeBase,
-        bonus: bonus.evade,
-        total: evadeBase + bonus.evade,
-      };
-      player.secondary.physPen = {
-        base: physPenBase,
-        bonus: bonus.physPen,
-        total: physPenBase + bonus.physPen,
-      };
-      player.secondary.magPen = {
-        base: magPenBase,
-        bonus: bonus.magPen,
-        total: magPenBase + bonus.magPen,
-      };
-      player.secondary.damageReduction = {
-        base: damageReductionBase,
-        bonus: bonus.damageReduction,
-        total: damageReductionBase + bonus.damageReduction,
-      };
-      player.secondary.block = {
-        base: blockBase,
-        bonus: bonus.block,
-        total: blockBase + bonus.block,
-      };
-      player.secondary.statusResist = {
-        base: statusResistBase,
-        bonus: bonus.statusResist,
-        total: statusResistBase + bonus.statusResist,
-      };
-      player.secondary.debuffResist = {
-        base: debuffResistBase,
-        bonus: bonus.debuffResist,
-        total: debuffResistBase + bonus.debuffResist,
-      };
-      player.secondary.curseResist = {
-        base: curseResistBase,
-        bonus: bonus.curseResist,
-        total: curseResistBase + bonus.curseResist,
-      };
-      player.secondary.cooldown = {
-        base: cooldownBase,
-        bonus: bonus.cooldown,
-        total: cooldownBase + bonus.cooldown,
-      };
-      player.secondary.hpRegen = {
-        base: hpRegenBase,
-        bonus: bonus.hpRegen,
-        total: hpRegenBase + bonus.hpRegen,
-      };
-      player.secondary.lifeSteal = {
-        base: lifeStealBase,
-        bonus: bonus.lifeSteal,
-        total: lifeStealBase + bonus.lifeSteal,
-      };
-      player.secondary.barrier = {
-        base: barrierBase,
-        bonus: bonus.barrier,
-        total: barrierBase + bonus.barrier,
-      };
-      player.secondary.dropRate = {
-        base: dropRateBase,
-        bonus: bonus.dropRate,
-        total: dropRateBase + bonus.dropRate,
-      };
-      player.secondary.rarity = {
-        base: rarityBase,
-        bonus: bonus.rarity,
-        total: rarityBase + bonus.rarity,
-      };
-
-      player.secondary.hp.total = Math.max(1, player.secondary.hp.total);
-      player.secondary.mp.total = Math.max(0, player.secondary.mp.total);
-      player.secondary.critRate.total = Math.min(100, player.secondary.critRate.total);
     }
 
-    function renderPrimaryStats() {
-      const container = document.getElementById("primary-stats");
-      container.innerHTML = "";
+    function recalcDerivedStats() {
+      const derived = calcSecondaryStats();
+      const prevMaxHp = player.maxHp || derived.maxHp.total;
+      const prevMaxMp = player.maxMp || derived.maxMp.total;
 
-      primaryOrder.forEach((key) => {
-        const stat = player.primary[key];
-        const row = document.createElement("div");
-        row.className = "stat-row";
-
-        const label = document.createElement("div");
-        label.className = "stat-label";
-        label.innerHTML = `<strong>${key.toUpperCase()}</strong>`;
-
-        const value = document.createElement("div");
-        value.className = "stat-value";
-        value.innerHTML = formatPrimaryValue(stat);
-
-        row.appendChild(label);
-        row.appendChild(value);
-        container.appendChild(row);
-      });
-    }
-
-    function renderSecondaryStats() {
-      if (cachedSecondaries) {
-        document.getElementById("secondary-stats").innerHTML = cachedSecondaries;
-        return;
+      if (player.maxHp === 0) {
+        player.hp = derived.maxHp.total;
+      } else {
+        const hpDelta = derived.maxHp.total - prevMaxHp;
+        if (hpDelta > 0) player.hp += hpDelta;
+        if (player.hp > derived.maxHp.total) player.hp = derived.maxHp.total;
       }
 
-      calcSecondaryStats();
-      const stats = player.secondary;
+      if (player.maxMp === 0) {
+        player.mp = derived.maxMp.total;
+      } else {
+        const mpDelta = derived.maxMp.total - prevMaxMp;
+        if (mpDelta > 0) player.mp += mpDelta;
+        if (player.mp > derived.maxMp.total) player.mp = derived.maxMp.total;
+      }
 
-      const rows = [
-        ["HP", stats.hp, ""],
-        ["MP", stats.mp, ""],
-        ["物理攻撃", stats.physAtk, ""],
-        ["魔法攻撃", stats.magAtk, ""],
-        ["物理防御", stats.physDef, ""],
-        ["魔法防御", stats.magDef, ""],
-        ["速度", stats.speed, ""],
-        ["クリ率", stats.critRate, "%"],
-        ["クリダメ", stats.critDamage, "%"],
-        ["回避", stats.evade, "%"],
-        ["物理貫通", stats.physPen, "%"],
-        ["魔法貫通", stats.magPen, "%"],
-        ["被ダメ減少", stats.damageReduction, "%"],
-        ["ブロック", stats.block, "%"],
-        ["状態異常耐性", stats.statusResist, "%"],
-        ["弱体耐性", stats.debuffResist, "%"],
-        ["呪い耐性", stats.curseResist, "%"],
-        ["CD短縮", { ...stats.cooldown, bonus: -stats.cooldown.bonus }, "%"],
-        ["HP再生", stats.hpRegen, ""],
-        ["ライフスティール", stats.lifeSteal, "%"],
-        ["バリア", stats.barrier, ""],
-        ["ドロップ率", stats.dropRate, "%"],
-        ["レア度UP", stats.rarity, "%"],
-      ];
+      player.maxHp = Math.round(derived.maxHp.total);
+      player.maxMp = Math.round(derived.maxMp.total);
+      player.atk = Math.round(derived.physAtk.total);
+      player.def = Math.round(derived.physDef.total);
+      player.spd = Math.round(derived.speed.total);
 
-      const grid = document.getElementById("secondary-stats");
-      grid.innerHTML = "";
-
-      rows.forEach(([label, stat, unit]) => {
-        const row = document.createElement("div");
-        row.className = "stat-row";
-
-        const labelEl = document.createElement("div");
-        labelEl.className = "stat-label";
-        labelEl.innerHTML = `<strong>${label}</strong>`;
-
-        const value = document.createElement("div");
-        value.className = "stat-value";
-        value.innerHTML = formatStatValue(stat, unit);
-
-        row.appendChild(labelEl);
-        row.appendChild(value);
-        grid.appendChild(row);
-      });
-
-      cachedSecondaries = grid.innerHTML;
+      cachedSecondaries = derived;
+      return derived;
     }
 
-    const enemiesData = [
-      { name: "スライム", maxHp: 15, hp: 15, exp: 4, loot: "ゼリー" },
-      { name: "コウモリ", maxHp: 18, hp: 18, exp: 5, loot: "牙" },
-      { name: "スケルトン", maxHp: 22, hp: 22, exp: 6, loot: "骨片" },
-    ];
+    function createEnemy(isBoss = false) {
+      const base = game.floor * 5 + (isBoss ? 20 : 0);
+      const enemy = {
+        id: crypto.randomUUID(),
+        name: isBoss ? `階層ボス ${game.floor}F` : `雑魚 ${game.floor}-${Math.ceil(Math.random() * 3)}`,
+        hp: base + (isBoss ? 30 : 0),
+        maxHp: base + (isBoss ? 30 : 0),
+        atk: 5 + game.floor * 1.5 + (isBoss ? 4 : 0),
+        def: 2 + game.floor * 0.5 + (isBoss ? 2 : 0),
+        spd: 4 + Math.random() * 2 + (isBoss ? 1.5 : 0),
+        isBoss,
+        status: {},
+      };
+      return enemy;
+    }
+
+    function spawnEnemies() {
+      const isBossFloor = game.floor % 5 === 0;
+      const count = isBossFloor ? 1 : 2 + Math.floor(Math.random() * 2);
+      game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
+      log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
+      buildTurnQueue();
+      updateUI();
+      if (game.turnQueue[0]?.type === "player") {
+        promptPlayerTurn();
+      } else {
+        nextTurn();
+      }
+    }
+
+    function buildTurnQueue() {
+      const queue = [];
+      if (player.hp > 0) {
+        queue.push({ type: "player", speed: player.spd + (player.buffs.haste ? 2 : 0) + Math.random() * 2 });
+      }
+      game.enemies.filter(e => e.hp > 0).forEach(e => {
+        queue.push({ type: "enemy", id: e.id, speed: e.spd + Math.random() * 2 });
+      });
+      queue.sort((a, b) => b.speed - a.speed);
+      game.turnQueue = queue;
+    }
+
+    function updateBars(id, current, max, cls) {
+      const bar = document.getElementById(id);
+      const percent = Math.max(0, Math.min(100, (current / max) * 100));
+      bar.style.width = `${percent}%`;
+      bar.className = cls;
+    }
+
+    function updateUI() {
+      const derived = recalcDerivedStats();
+      document.getElementById("floor-inline").textContent = game.floor;
+      document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
+      document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
+      document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
+      document.getElementById("level").textContent = player.level;
+      document.getElementById("stat-points").textContent = player.statPoints;
+      document.getElementById("skill-points").textContent = player.skillPoints;
+      updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
+      updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
+      updateBars("exp-bar", player.exp, player.expToLevel, "exp");
+
+      renderEnemies();
+      renderActions();
+      renderSecondaryStats(derived);
+      renderPrimaryStats();
+      renderSkills();
+    }
 
     function renderEnemies() {
-      const container = document.getElementById("enemies");
-      container.innerHTML = "";
-
-      enemiesData.forEach((enemy, index) => {
+      const wrapper = document.getElementById("enemies");
+      wrapper.innerHTML = "";
+      game.enemies.forEach((enemy, index) => {
         const card = document.createElement("div");
         card.className = "enemy-card";
-        card.onclick = () => attackEnemy(index);
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `${enemy.name} の詳細`);
+        card.onclick = () => openEnemyModal(enemy);
 
         const top = document.createElement("div");
         top.className = "enemy-top";
-        top.innerHTML = `<div class="enemy-name">${enemy.name}<span class="tag">EXP ${enemy.exp}</span></div><span class="pill">${enemy.loot}</span>`;
+
+        const name = document.createElement("div");
+        name.className = "enemy-name";
+        name.innerHTML = `<span>${enemy.isBoss ? "👑" : "👾"} ${enemy.name}</span><span class="subtle" style="gap: 4px;">#${index + 1}</span>`;
+
+        top.appendChild(name);
 
         const bar = document.createElement("div");
         bar.className = "enemy-bar";
-        const fill = document.createElement("div");
+        const fill = document.createElement("span");
         fill.className = "fill";
-        fill.style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
-
-        const label = document.createElement("div");
+        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+        fill.style.width = `${hpPct}%`;
+        const label = document.createElement("span");
         label.className = "label";
-        label.textContent = `${enemy.hp}/${enemy.maxHp}`;
-
+        label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
         bar.appendChild(fill);
         bar.appendChild(label);
 
         card.appendChild(top);
         card.appendChild(bar);
-        container.appendChild(card);
+        wrapper.appendChild(card);
       });
     }
 
-    function renderSkillButtons() {
-      const container = document.getElementById("skills");
+    function renderActions() {
+      const container = document.getElementById("actions");
       container.innerHTML = "";
+      const btn = document.createElement("button");
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      if (player.hp <= 0) {
+        btn.textContent = "戦闘不能";
+        btn.disabled = true;
+      } else if (!enemiesAlive) {
+        btn.textContent = "次の階層へ";
+        btn.onclick = nextFloor;
+      } else {
+        btn.textContent = "⚔️ こうげき";
+        btn.disabled = !game.awaitingInput;
+        btn.onclick = playerAttack;
+      }
+      container.appendChild(btn);
+    }
 
-      Object.entries(skills).forEach(([key, skill]) => {
-        const row = document.createElement("div");
-        row.className = "stat-row";
+    function renderSecondaryStats(derived) {
+      const container = document.getElementById("secondary-stats");
+      container.innerHTML = "";
+      const rows = [
+        { label: "物理攻撃力", value: derived.physAtk },
+        { label: "魔法攻撃力", value: derived.magAtk },
+        { label: "物理貫通", value: derived.physPen, unit: "%" },
+        { label: "魔法貫通", value: derived.magPen, unit: "%" },
+        { label: "クリティカル率", value: derived.critRate, unit: "%" },
+        { label: "クリティカルダメージ", value: derived.critDamage, unit: "%" },
+        { label: "命中率", value: derived.accuracy, unit: "%" },
+        { label: "回避率", value: derived.evade, unit: "%" },
+        { label: "最大HP", value: derived.maxHp },
+        { label: "最大MP", value: derived.maxMp },
+        { label: "物理防御力", value: derived.physDef },
+        { label: "魔法防御力", value: derived.magDef },
+        { label: "被ダメージ軽減", value: derived.damageReduction, unit: "%" },
+        { label: "ブロック率", value: derived.block, unit: "%" },
+        { label: "行動速度", value: derived.speed },
+        { label: "クールタイム短縮", value: derived.cooldown, unit: "%" },
+        { label: "異常抵抗", value: derived.statusResist, unit: "%" },
+        { label: "低下抵抗", value: derived.debuffResist, unit: "%" },
+        { label: "呪い抵抗", value: derived.curseResist, unit: "%" },
+        { label: "HP再生", value: derived.hpRegen },
+        { label: "HP吸収", value: derived.lifeSteal, unit: "%" },
+        { label: "バリア", value: derived.barrier },
+        { label: "ドロップ率UP", value: derived.dropRate, unit: "%" },
+        { label: "レアリティUP", value: derived.rarity, unit: "%" },
+      ];
 
-        const label = document.createElement("div");
-        label.className = "stat-label";
-        label.innerHTML = `<strong>${skill.name}</strong><span class="muted">${skill.desc}</span>`;
+      rows.forEach((row) => {
+        const el = document.createElement("div");
+        el.className = "stat-row";
+        const left = document.createElement("div");
+        left.className = "stat-label";
+        left.innerHTML = `<span>${row.label}</span>`;
+        const right = document.createElement("div");
+        right.className = "stat-value";
+        const rendered = formatStatValue(row.value, row.unit || "");
+        right.innerHTML = rendered;
+        el.appendChild(left);
+        el.appendChild(right);
+        container.appendChild(el);
+      });
+    }
+
+    function renderPrimaryStats() {
+      const container = document.getElementById("primary-stats");
+      container.innerHTML = "";
+      primaryOrder.forEach((key) => {
+        const stat = player.primary[key];
+        const el = document.createElement("div");
+        el.className = "stat-row";
+
+        const left = document.createElement("div");
+        left.className = "stat-label";
+        left.innerHTML = `<span>${stat.label}</span>`;
 
         const actions = document.createElement("div");
         actions.className = "stat-actions";
+        const value = document.createElement("div");
+        value.className = "stat-value";
+        value.innerHTML = formatPrimaryValue(stat);
 
-        const level = document.createElement("span");
-        level.className = "tag";
-        level.textContent = `Lv ${skill.level}/${skill.max}`;
+        const add1 = document.createElement("button");
+        add1.textContent = "+1";
+        add1.disabled = player.statPoints <= 0;
+        add1.onclick = () => adjustPrimary(key, 1);
 
-        const button = document.createElement("button");
-        button.textContent = "強化";
-        button.disabled = skill.level >= skill.max || player.skillPoints <= 0;
-        button.onclick = () => levelUpSkill(key);
+        const sub1 = document.createElement("button");
+        sub1.textContent = "-1";
+        sub1.disabled = player.allocations[key] <= 0;
+        sub1.onclick = () => adjustPrimary(key, -1);
 
-        actions.appendChild(level);
-        actions.appendChild(button);
+        const add10 = document.createElement("button");
+        add10.textContent = "+10";
+        add10.disabled = player.statPoints <= 0;
+        add10.onclick = () => adjustPrimary(key, 10);
 
-        row.appendChild(label);
-        row.appendChild(actions);
+        const sub10 = document.createElement("button");
+        sub10.textContent = "-10";
+        sub10.disabled = player.allocations[key] < 10;
+        sub10.onclick = () => adjustPrimary(key, -10);
+
+        actions.appendChild(value);
+        actions.appendChild(add1);
+        actions.appendChild(sub1);
+        actions.appendChild(add10);
+        actions.appendChild(sub10);
+
+        el.appendChild(left);
+        el.appendChild(actions);
+        container.appendChild(el);
+      });
+    }
+
+    function adjustPrimary(key, delta) {
+      if (delta > 0) {
+        const use = Math.min(delta, player.statPoints);
+        if (use <= 0) return;
+        player.statPoints -= use;
+        player.primary[key].base += use;
+        player.allocations[key] += use;
+        log(`能力Pを使用: ${player.primary[key].label} +${use}`, "good");
+      } else {
+        const take = Math.min(Math.abs(delta), player.allocations[key]);
+        if (take <= 0) return;
+        player.statPoints += take;
+        player.primary[key].base -= take;
+        player.allocations[key] -= take;
+        log(`能力Pを戻す: ${player.primary[key].label} -${take}`, "info");
+      }
+      updateUI();
+    }
+
+    function renderSkills() {
+      const container = document.getElementById("skills");
+      container.innerHTML = "";
+      Object.entries(skills).forEach(([key, skill]) => {
+        const row = document.createElement("div");
+        row.style.marginBottom = "6px";
+        const btn = document.createElement("button");
+        btn.textContent = `${skill.name} (${skill.level}/${skill.max})`;
+        btn.disabled = player.skillPoints <= 0 || skill.level >= skill.max;
+        btn.onclick = () => {
+          if (player.skillPoints <= 0 || skill.level >= skill.max) return;
+          player.skillPoints -= 1;
+          skill.level += 1;
+          skill.apply();
+          log(`スキル『${skill.name}』を強化 (${skill.level}/${skill.max})`, "good");
+          updateUI();
+        };
+        const desc = document.createElement("div");
+        desc.className = "subtle";
+        desc.textContent = skill.desc;
+        row.appendChild(btn);
+        row.appendChild(desc);
         container.appendChild(row);
       });
     }
 
-    function updateBars() {
-      const hpFill = document.getElementById("hp-bar");
-      const hpLabel = document.getElementById("hp-label");
-      const mpFill = document.getElementById("mp-bar");
-      const mpLabel = document.getElementById("mp-label");
-      const expFill = document.getElementById("exp-bar");
-      const expLabel = document.getElementById("exp-label");
+    const enemyModal = document.getElementById("enemy-modal");
+    const playerModal = document.getElementById("player-modal");
+    const skillsModal = document.getElementById("skills-modal");
+    const closeModalButton = document.getElementById("modal-close");
+    const playerModalCloseButton = document.getElementById("player-close");
+    const skillsModalCloseButton = document.getElementById("skills-close");
+    const statHelpButton = document.getElementById("stat-help");
+    const memoModal = document.getElementById("memo-modal");
+    const memoCloseButton = document.getElementById("memo-close");
+    const resetModal = document.getElementById("reset-modal");
+    const resetCloseButton = document.getElementById("reset-close");
+    const resetCancelButton = document.getElementById("reset-cancel");
+    const resetConfirmButton = document.getElementById("reset-confirm");
+    const resetSpentLabel = document.getElementById("reset-spent");
+    const resetButton = document.getElementById("reset-stats");
 
-      hpFill.style.width = `${Math.max(0, Math.min(100, (player.base.hp / player.secondary.hp.total) * 100))}%`;
-      hpLabel.textContent = `${Math.round(player.base.hp)}/${Math.round(player.secondary.hp.total)}`;
-
-      mpFill.style.width = `${Math.max(0, Math.min(100, (player.base.mp / player.secondary.mp.total) * 100))}%`;
-      mpLabel.textContent = `${Math.round(player.base.mp)}/${Math.round(player.secondary.mp.total)}`;
-
-      const expPercent = ((game.floor - 1) % 10) * 10;
-      expFill.style.width = `${expPercent}%`;
-      expLabel.textContent = `EXP ${expPercent}%`;
-
-      document.getElementById("hp-inline").textContent = `${Math.round(player.base.hp)}/${Math.round(player.secondary.hp.total)}`;
-      document.getElementById("mp-inline").textContent = `${Math.round(player.base.mp)}/${Math.round(player.secondary.mp.total)}`;
-      document.getElementById("exp-inline").textContent = `${expPercent}%`;
+    function openEnemyModal(enemy) {
+      document.getElementById("modal-name").textContent = enemy.name;
+      document.getElementById("modal-hp").textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+      document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
+      document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
+      document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
+      document.getElementById("modal-tag").style.display = enemy.isBoss ? "inline-flex" : "none";
+      enemyModal.classList.remove("hidden");
     }
 
-    function updatePoints() {
-      document.getElementById("stat-points").textContent = `残りSP ${player.statPoints}`;
-      document.getElementById("skill-points").textContent = `残りKP ${player.skillPoints}`;
-
-      ["str", "int", "vit", "agi", "luck"].forEach((key) => {
-        const btn = document.getElementById(`${key}-up`);
-        btn.disabled = player.statPoints <= 0;
-      });
-
-      renderSkillButtons();
+    function closeEnemyModal() {
+      enemyModal.classList.add("hidden");
     }
 
-    function attackEnemy(index) {
-      if (game.awaitingInput) return;
-      const enemy = enemiesData[index];
+    function openPlayerModal() {
+      updateUI();
+      playerModal.classList.remove("hidden");
+    }
+
+    function closePlayerModal() {
+      playerModal.classList.add("hidden");
+    }
+
+    function openSkillsModal() {
+      updateUI();
+      skillsModal.classList.remove("hidden");
+    }
+
+    function closeSkillsModal() {
+      skillsModal.classList.add("hidden");
+    }
+
+    function promptPlayerTurn() {
+      game.awaitingInput = true;
+      renderActions();
+    }
+
+    function endPlayerTurn() {
+      game.awaitingInput = false;
+      renderActions();
+      setTimeout(() => nextTurn(), 350);
+    }
+
+    function selectTarget() {
+      return game.enemies.find(e => e.hp > 0);
+    }
+
+    function calcDamage(attacker, defender) {
+      const variance = 0.85 + Math.random() * 0.3;
+      const raw = Math.max(1, attacker.atk * variance - defender.def);
+      return Math.max(1, Math.round(raw));
+    }
+
+    function playerAttack() {
+      if (!game.awaitingInput) return;
+      const target = selectTarget();
+      if (!target) return;
+      const dmg = calcDamage(player, target);
+      target.hp = Math.max(0, target.hp - dmg);
+      log(`⚔️ あなたの攻撃！ ${target.name} に ${dmg} ダメージ`, "player");
+      updateUI();
+      if (target.hp <= 0) {
+        log(`${target.name} を倒した！`, "good");
+        checkVictory();
+      }
+      endPlayerTurn();
+    }
+
+    function powerStrike() {
+      if (!game.awaitingInput) return;
+      if (player.mp < 5) {
+        log("MPが足りない！", "warning");
+        return;
+      }
+      player.mp -= 5;
+      const target = selectTarget();
+      if (!target) return;
+      const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
+      target.hp = Math.max(0, target.hp - dmg);
+      log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`, "player");
+      updateUI();
+      if (target.hp <= 0) {
+        log(`${target.name} を粉砕！`, "good");
+        checkVictory();
+      }
+      endPlayerTurn();
+    }
+
+    function heal() {
+      if (!game.awaitingInput) return;
+      if (player.mp < 4) {
+        log("MPが足りない！", "warning");
+        return;
+      }
+      player.mp -= 4;
+      const amount = Math.min(player.maxHp - player.hp, 12 + player.level * 1.5);
+      player.hp += amount;
+      log(`✨ ヒールで ${Math.round(amount)} 回復`, "good");
+      endPlayerTurn();
+    }
+
+    function guard() {
+      if (!game.awaitingInput) return;
+      player.buffs.guard = 1;
+      log("🛡️ 防御体勢！ 1ターン被ダメ軽減", "info");
+      endPlayerTurn();
+    }
+
+    function enemyAction(enemy) {
       if (enemy.hp <= 0) return;
-
-      const dmg = Math.max(1, Math.round(player.secondary.physAtk.total + Math.random() * 3));
-      enemy.hp = Math.max(0, enemy.hp - dmg);
-
-      log(`あなたの攻撃！${enemy.name}に${dmg}ダメージ`, "player");
-
-      if (enemy.hp <= 0) {
-        log(`${enemy.name}を倒した！ ${enemy.exp}EXP獲得`, "good");
-        game.floor += 1;
-        player.skillPoints += 1;
-        player.statPoints += 1;
-      }
-
-      renderEnemies();
-      updateBars();
-
-      const hit = Math.max(1, Math.round(Math.random() * 4));
-      player.base.hp = Math.max(0, player.base.hp - hit);
-      log(`${enemy.name}の反撃！${hit}ダメージ`, "enemy");
-
-      if (player.base.hp <= 0) {
-        log("倒れてしまった…ステータスがリセットされます", "danger");
-        resetStats(true);
+      let action = "attack";
+      if (enemy.isBoss && Math.random() < 0.35) action = "heavy";
+      if (enemy.isBoss && Math.random() < 0.15) action = "debuff";
+      let dmg = 0;
+      if (action === "attack") {
+        dmg = calcDamage(enemy, player);
+        if (player.buffs.guard) dmg = Math.round(dmg * 0.5);
+        player.hp = Math.max(0, player.hp - dmg);
+        log(`👾 ${enemy.name} の攻撃。${dmg} ダメージ`, "enemy");
+      } else if (action === "heavy") {
+        dmg = Math.round(calcDamage(enemy, player) * 1.4);
+        player.hp = Math.max(0, player.hp - dmg);
+        log(`💥 ${enemy.name} の強撃！ ${dmg} ダメージ`, "enemy");
       } else {
-        updateBars();
+        player.def = Math.max(0, player.def - 1);
+        log(`🌀 ${enemy.name} が弱体呪い。防御が下がった`, "warning");
+      }
+      if (player.hp <= 0) {
+        handleDefeat();
       }
     }
 
-    function levelUpStat(key) {
-      if (player.statPoints <= 0) return;
-      player.primary[key].base += 1;
-      player.statPoints -= 1;
-      cachedSecondaries = null;
-      pendingResetSpent += 1;
-      refreshUI();
+    function handleDefeat() {
+      const previousFloor = game.floor;
+      game.floor = Math.max(1, game.floor - 20);
+      player.hp = 0;
+      game.awaitingInput = false;
+      player.exp = Math.max(0, Math.floor(player.exp * 0.95));
+      player.buffs.guard = 0;
+      game.turnQueue = [];
+      log(`あなたは倒れた… ${previousFloor}F → ${game.floor}F に後退。EXP -5%`, "danger");
+      updateUI();
+      setTimeout(() => {
+        player.hp = player.maxHp;
+        player.mp = player.maxMp;
+        spawnEnemies();
+        updateUI();
+      }, 400);
     }
 
-    function levelUpSkill(key) {
-      const skill = skills[key];
-      if (player.skillPoints <= 0 || skill.level >= skill.max) return;
-      skill.level += 1;
-      player.skillPoints -= 1;
-      skill.apply();
-      cachedSecondaries = null;
-      refreshUI();
-      log(`${skill.name}をLv${skill.level}に強化！`, "good");
+    function nextTurn() {
+      if (player.hp <= 0) {
+        game.awaitingInput = false;
+        return;
+      }
+      if (game.enemies.every(e => e.hp <= 0)) return;
+      if (game.turnQueue.length === 0) {
+        player.buffs.guard = 0;
+        buildTurnQueue();
+      }
+      const actor = game.turnQueue.shift();
+      if (!actor) return;
+      if (actor.type === "player") {
+        promptPlayerTurn();
+        return;
+      }
+      const enemy = game.enemies.find(e => e.id === actor.id);
+      if (!enemy) {
+        nextTurn();
+        return;
+      }
+      enemyAction(enemy);
+      updateUI();
+      if (player.hp <= 0) return;
+      setTimeout(() => nextTurn(), 380);
     }
 
-    function resetStats(force = false) {
-      if (!force && !window.confirm("ステータスをリセットしますか？")) return;
+    function checkVictory() {
+      if (game.enemies.some(e => e.hp > 0)) return;
+      const gained = 10 + game.floor * 3 + (game.floor % 5 === 0 ? 10 : 0);
+      player.exp += gained;
+      log(`🎁 ${gained} EXP と少量のMPを得た`, "good");
+      player.mp = Math.min(player.maxMp, player.mp + 3 + skills.arcaneFlow.level * 2);
+      while (player.exp >= player.expToLevel) {
+        player.exp -= player.expToLevel;
+        levelUp();
+      }
+      game.awaitingInput = false;
+      game.turnQueue = [];
+      updateUI();
+    }
 
-      Object.values(player.primary).forEach((stat) => {
-        player.statPoints += stat.base - 3;
-        stat.base = 3;
-        stat.bonus = 0;
+    function levelUp() {
+      player.level += 1;
+      player.expToLevel = Math.round(player.expToLevel * 1.18);
+      const growth = { str: 2, int: 2, vit: 3, agi: 2, luck: 1 };
+      Object.entries(growth).forEach(([key, amount]) => {
+        player.primary[key].base += amount;
       });
+      recalcDerivedStats();
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      player.statPoints += 2;
+      player.skillPoints += 1;
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
+    }
 
-      Object.values(skills).forEach((skill) => {
-        player.skillPoints += skill.level;
-        skill.level = 0;
+    function resetAllocations() {
+      const spent = pendingResetSpent;
+      Object.entries(player.allocations).forEach(([key, amount]) => {
+        if (amount > 0) {
+          player.primary[key].base -= amount;
+          player.allocations[key] = 0;
+        }
       });
-
-      Object.keys(player.bonus).forEach((key) => (player.bonus[key] = 0));
-      player.base.hp = 30;
-      player.base.mp = 10;
-      cachedSecondaries = null;
+      player.statPoints += spent;
+      recalcDerivedStats();
+      updateUI();
+      log("ステータスをリセットしました", "info");
       pendingResetSpent = 0;
-      refreshUI();
-      log("ステータスをリセットしました", "warning");
     }
 
-    function refreshUI() {
-      calcSecondaryStats();
-      renderPrimaryStats();
-      renderSecondaryStats();
-      renderEnemies();
-      renderSkillButtons();
-      updateBars();
-      updatePoints();
-      document.getElementById("level").textContent = game.floor;
-      document.getElementById("floor-inline").textContent = game.floor;
-    }
-
-    document.getElementById("str-up").onclick = () => levelUpStat("str");
-    document.getElementById("int-up").onclick = () => levelUpStat("int");
-    document.getElementById("vit-up").onclick = () => levelUpStat("vit");
-    document.getElementById("agi-up").onclick = () => levelUpStat("agi");
-    document.getElementById("luck-up").onclick = () => levelUpStat("luck");
-    document.getElementById("reset-stats").onclick = () => resetStats();
-    document.getElementById("close-modal").onclick = () => document.getElementById("modal").classList.add("hidden");
-    document.getElementById("close-modal-button").onclick = () => document.getElementById("modal").classList.add("hidden");
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") {
-        document.getElementById("modal").classList.toggle("hidden");
+    function nextFloor() {
+      if (game.enemies.some(e => e.hp > 0) && player.hp > 0) {
+        log("敵が残っている！", "warning");
+        return;
       }
+      game.floor += 1;
+      player.buffs.guard = 0;
+      game.turnQueue = [];
+      spawnEnemies();
+      updateUI();
+    }
+
+    document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
+    document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
+    closeModalButton.addEventListener("click", closeEnemyModal);
+    playerModalCloseButton.addEventListener("click", closePlayerModal);
+    skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    statHelpButton.addEventListener("click", () => {
+      memoModal.classList.remove("hidden");
+    });
+    memoCloseButton.addEventListener("click", () => memoModal.classList.add("hidden"));
+    memoModal.addEventListener("click", (e) => {
+      if (e.target === memoModal) memoModal.classList.add("hidden");
     });
 
-    function autoRegen() {
-      if (player.base.hp < player.secondary.hp.total) {
-        player.base.hp = Math.min(player.secondary.hp.total, player.base.hp + player.secondary.hpRegen.total * 0.2);
+    resetButton.addEventListener("click", () => {
+      pendingResetSpent = Object.values(player.allocations).reduce((a, b) => a + b, 0);
+      if (pendingResetSpent === 0) {
+        log("リセットするポイントがありません", "info");
+        return;
       }
-      if (player.base.mp < player.secondary.mp.total) {
-        player.base.mp = Math.min(player.secondary.mp.total, player.base.mp + player.secondary.mp.total * 0.04);
-      }
-      updateBars();
-    }
+      resetSpentLabel.textContent = pendingResetSpent;
+      resetModal.classList.remove("hidden");
+    });
+    resetCloseButton.addEventListener("click", () => resetModal.classList.add("hidden"));
+    resetCancelButton.addEventListener("click", () => resetModal.classList.add("hidden"));
+    resetConfirmButton.addEventListener("click", () => {
+      resetModal.classList.add("hidden");
+      resetAllocations();
+    });
+    resetModal.addEventListener("click", (e) => {
+      if (e.target === resetModal) resetModal.classList.add("hidden");
+    });
+    enemyModal.addEventListener("click", (e) => {
+      if (e.target === enemyModal) closeEnemyModal();
+    });
+    playerModal.addEventListener("click", (e) => {
+      if (e.target === playerModal) closePlayerModal();
+    });
+    skillsModal.addEventListener("click", (e) => {
+      if (e.target === skillsModal) closeSkillsModal();
+    });
 
-    setInterval(autoRegen, 1000);
-
-    refreshUI();
+    recalcDerivedStats();
+    log("=== 挑戦開始 ===", "info");
+    spawnEnemies();
+    updateUI();
   </script>
 </body>
 </html>
