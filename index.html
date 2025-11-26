@@ -38,7 +38,7 @@
       width: min(460px, 100%);
       height: calc(90vh - 12px);
       display: grid;
-      grid-template-rows: auto auto 1fr auto auto 1fr;
+      grid-template-rows: auto auto 1fr auto auto auto;
       gap: 6px;
       padding: 8px;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
@@ -1375,4 +1375,131 @@
       if (game.turnQueue.length === 0) {
         buildTurnQueue();
       }
-      const actor = game
+      const actor = game.turnQueue.shift();
+      if (!actor) return;
+      if (actor.type === "player") {
+        promptPlayerTurn();
+        return;
+      }
+      const enemy = game.enemies.find(e => e.id === actor.id);
+      if (!enemy) {
+        nextTurn();
+        return;
+      }
+      enemyAction(enemy);
+      updateUI();
+      if (player.hp <= 0) return;
+      setTimeout(() => nextTurn(), 380);
+    }
+
+    function checkVictory() {
+      if (game.enemies.some(e => e.hp > 0)) return;
+      const gained = 10 + game.floor * 3 + (game.floor % 5 === 0 ? 10 : 0);
+      player.exp += gained;
+      log(`🎁 ${gained} EXP と少量のMPを得た`, "good");
+      player.mp = Math.min(player.maxMp, player.mp + 3 + skills.arcaneFlow.level * 2);
+      while (player.exp >= player.expToLevel) {
+        player.exp -= player.expToLevel;
+        levelUp();
+      }
+      game.awaitingInput = false;
+      game.turnQueue = [];
+      updateUI();
+    }
+
+    function levelUp() {
+      player.level += 1;
+      player.expToLevel = Math.round(player.expToLevel * 1.18);
+      const growth = { str: 2, int: 2, vit: 3, agi: 2, luck: 1 };
+      Object.entries(growth).forEach(([key, amount]) => {
+        player.primary[key].base += amount;
+      });
+      recalcDerivedStats();
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      player.statPoints += 2;
+      player.skillPoints += 1;
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
+    }
+
+    function resetAllocations() {
+      const spent = pendingResetSpent;
+      Object.entries(player.allocations).forEach(([key, amount]) => {
+        if (amount > 0) {
+          player.primary[key].base -= amount;
+          player.allocations[key] = 0;
+        }
+      });
+      player.statPoints += spent;
+      recalcDerivedStats();
+      updateUI();
+      log("ステータスをリセットしました", "info");
+      pendingResetSpent = 0;
+    }
+
+    function nextFloor() {
+      if (game.enemies.some(e => e.hp > 0) && player.hp > 0) {
+        log("敵が残っている！", "warning");
+        return;
+      }
+      game.floor += 1;
+      player.buffs.guard = 0;
+      game.turnQueue = [];
+      spawnEnemies();
+      updateUI();
+    }
+
+    document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
+    document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
+    closeModalButton.addEventListener("click", closeEnemyModal);
+    playerModalCloseButton.addEventListener("click", closePlayerModal);
+    skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    statHelpButton.addEventListener("click", () => {
+      memoModal.classList.remove("hidden");
+    });
+    memoCloseButton.addEventListener("click", () => memoModal.classList.add("hidden"));
+    memoModal.addEventListener("click", (e) => {
+      if (e.target === memoModal) memoModal.classList.add("hidden");
+    });
+
+    statStepButton.addEventListener("click", () => {
+      currentStepIndex = (currentStepIndex + 1) % stepOptions.length;
+      updateStepButton();
+      renderPrimaryStats();
+    });
+
+    resetButton.addEventListener("click", () => {
+      pendingResetSpent = Object.values(player.allocations).reduce((a, b) => a + b, 0);
+      if (pendingResetSpent === 0) {
+        log("リセットするポイントがありません", "info");
+        return;
+      }
+      resetSpentLabel.textContent = pendingResetSpent;
+      resetModal.classList.remove("hidden");
+    });
+    resetCloseButton.addEventListener("click", () => resetModal.classList.add("hidden"));
+    resetCancelButton.addEventListener("click", () => resetModal.classList.add("hidden"));
+    resetConfirmButton.addEventListener("click", () => {
+      resetModal.classList.add("hidden");
+      resetAllocations();
+    });
+    resetModal.addEventListener("click", (e) => {
+      if (e.target === resetModal) resetModal.classList.add("hidden");
+    });
+    enemyModal.addEventListener("click", (e) => {
+      if (e.target === enemyModal) closeEnemyModal();
+    });
+    playerModal.addEventListener("click", (e) => {
+      if (e.target === playerModal) closePlayerModal();
+    });
+    skillsModal.addEventListener("click", (e) => {
+      if (e.target === skillsModal) closeSkillsModal();
+    });
+
+    recalcDerivedStats();
+    log("=== 挑戦開始 ===", "info");
+    spawnEnemies();
+    updateUI();
+  </script>
+</body>
+</html>
