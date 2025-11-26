@@ -1437,8 +1437,8 @@
 
         const name = document.createElement("div");
         name.className = "enemy-name";
-        const label = document.createElement("span");
-        label.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
+        const titleLabel = document.createElement("span");
+        titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
 
         const meta = document.createElement("div");
         meta.className = "enemy-meta";
@@ -1450,7 +1450,7 @@
         meta.appendChild(order);
         meta.appendChild(statusList);
 
-        name.appendChild(label);
+        name.appendChild(titleLabel);
         name.appendChild(meta);
         top.appendChild(name);
 
@@ -1466,11 +1466,11 @@
         fill.className = "fill";
         const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
         fill.style.width = `${hpPct}%`;
-        const label = document.createElement("span");
-        label.className = "label";
-        label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+        const hpLabel = document.createElement("span");
+        hpLabel.className = "label";
+        hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
         bar.appendChild(fill);
-        bar.appendChild(label);
+        bar.appendChild(hpLabel);
 
         card.appendChild(top);
         card.appendChild(bar);
