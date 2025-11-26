@@ -586,6 +586,44 @@
       line-height: 1.5;
     }
 
+    .debug-selects {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 6px 0 4px;
+    }
+
+    .debug-selects label {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .debug-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .debug-section {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .debug-section h4 {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
   </style>
 </head>
 <body>
@@ -627,6 +665,7 @@
     <nav class="menu">
       <button id="btn-player-modal">プレイヤー詳細</button>
       <button id="btn-skill-tree">スキル</button>
+      <button id="btn-debug">デバッグ</button>
     </nav>
   </div>
 
@@ -748,7 +787,33 @@
       <div class="inline-buttons" style="margin-bottom: 6px;">
         <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
       </div>
-      <div id="skills" style="margin-top: 6px;"></div>
+    <div id="skills" style="margin-top: 6px;"></div>
+    </div>
+  </div>
+
+  <div id="debug-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="section-title" style="margin: 0;">デバッグ</div>
+        <button id="debug-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="debug-selects">
+        <label>
+          対象:
+          <select id="debug-target">
+            <option value="enemy">敵</option>
+            <option value="player">プレイヤー</option>
+          </select>
+        </label>
+        <label>
+          敵選択:
+          <select id="debug-enemy"></select>
+        </label>
+      </div>
+      <div id="debug-status-buttons"></div>
+      <div class="modal-actions">
+        <button id="debug-clear-status">選択対象の状態異常を全解除</button>
+      </div>
     </div>
   </div>
 
@@ -1138,10 +1203,11 @@
       game.turnQueue = queue;
     }
 
-    function applyStatus(target, key, { duration = 2, chance = 100, potency, payload } = {}) {
+    function applyStatus(target, key, { duration = 2, chance = 100, potency, payload, ignoreResist = false } = {}) {
       const def = STATUS_DEFINITIONS[key];
       if (!def) return false;
-      const effectiveChance = Math.max(0, Math.min(100, chance - getResist(target, def.category)));
+      const resist = ignoreResist ? 0 : getResist(target, def.category);
+      const effectiveChance = Math.max(0, Math.min(100, chance - resist));
       if (effectiveChance <= 0) return false;
       const roll = Math.random() * 100;
       if (roll > effectiveChance) return false;
@@ -1249,6 +1315,111 @@
         };
         container.appendChild(pill);
       });
+    }
+
+    function renderDebugStatusButtons() {
+      const container = document.getElementById("debug-status-buttons");
+      if (!container) return;
+      container.innerHTML = "";
+      const groups = { control: [], dot: [], debuff: [] };
+      Object.entries(STATUS_DEFINITIONS).forEach(([key, def]) => {
+        if (!groups[def.category]) return;
+        groups[def.category].push({ key, def });
+      });
+
+      Object.entries(groups).forEach(([category, items]) => {
+        const section = document.createElement("div");
+        section.className = "debug-section";
+        const title = document.createElement("h4");
+        const label =
+          category === STATUS_CATEGORIES.control
+            ? "行動阻害"
+            : category === STATUS_CATEGORIES.dot
+              ? "DoT"
+              : "弱体化";
+        title.textContent = `${label} (${items.length})`;
+        section.appendChild(title);
+
+        const row = document.createElement("div");
+        row.className = "debug-buttons";
+        items.forEach(({ key, def }) => {
+          const btn = document.createElement("button");
+          btn.textContent = `${def.short} ${def.name}`;
+          btn.onclick = () => {
+            const target = getDebugTarget();
+            if (!target) {
+              log("対象が存在しません", "warning");
+              return;
+            }
+            const applied = applyStatus(target, key, { duration: 3, chance: 100, potency: def.potency, ignoreResist: true });
+            if (applied) {
+              log(`🐞 デバッグ: ${target.name} に${def.name}を付与`, "info");
+              updateUI();
+            } else {
+              log("付与に失敗しました", "warning");
+            }
+          };
+          row.appendChild(btn);
+        });
+        section.appendChild(row);
+        container.appendChild(section);
+      });
+    }
+
+    function populateDebugEnemySelect() {
+      const select = document.getElementById("debug-enemy");
+      if (!select) return;
+      select.innerHTML = "";
+      if (!game.enemies.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "敵なし";
+        select.appendChild(opt);
+        return;
+      }
+      game.enemies.forEach((enemy, index) => {
+        const opt = document.createElement("option");
+        opt.value = String(enemy.id);
+        opt.textContent = `#${index + 1} ${enemy.name}${enemy.hp <= 0 ? " (撃破)" : ""}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function updateDebugTargetState() {
+      const targetSelect = document.getElementById("debug-target");
+      const enemySelect = document.getElementById("debug-enemy");
+      if (!targetSelect || !enemySelect) return;
+      const isPlayer = targetSelect.value === "player";
+      enemySelect.disabled = isPlayer;
+      if (!isPlayer && enemySelect.options.length > 0 && !enemySelect.value) {
+        enemySelect.value = enemySelect.options[0].value;
+      }
+    }
+
+    function getDebugTarget() {
+      const targetSelect = document.getElementById("debug-target");
+      const enemySelect = document.getElementById("debug-enemy");
+      if (!targetSelect) return null;
+      if (targetSelect.value === "player") return player;
+      const enemyId = enemySelect?.value;
+      if (!enemyId) return game.enemies[0] || null;
+      return (
+        game.enemies.find((e) => String(e.id) === enemyId && e.hp > 0) ||
+        game.enemies.find((e) => String(e.id) === enemyId) ||
+        game.enemies[0] ||
+        null
+      );
+    }
+
+    function openDebugModal() {
+      populateDebugEnemySelect();
+      renderDebugStatusButtons();
+      updateDebugTargetState();
+      debugModal?.classList.remove("hidden");
+    }
+
+    function closeDebugModal() {
+      debugModal?.classList.add("hidden");
     }
 
     function renderEnemies() {
@@ -1496,6 +1667,12 @@
     const resetSpentLabel = document.getElementById("reset-spent");
     const resetButton = document.getElementById("reset-stats");
     const statStepButton = document.getElementById("stat-step");
+    const debugModal = document.getElementById("debug-modal");
+    const debugOpenButton = document.getElementById("btn-debug");
+    const debugCloseButton = document.getElementById("debug-close");
+    const debugTargetSelect = document.getElementById("debug-target");
+    const debugEnemySelect = document.getElementById("debug-enemy");
+    const debugClearButton = document.getElementById("debug-clear-status");
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
@@ -1880,9 +2057,22 @@
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
     document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
+    debugOpenButton?.addEventListener("click", openDebugModal);
+    debugCloseButton?.addEventListener("click", closeDebugModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    debugTargetSelect?.addEventListener("change", updateDebugTargetState);
+    debugClearButton?.addEventListener("click", () => {
+      const target = getDebugTarget();
+      if (!target) {
+        log("対象が存在しません", "warning");
+        return;
+      }
+      target.statuses = [];
+      log(`🐞 デバッグ: ${target.name} の状態異常を全解除`, "info");
+      updateUI();
+    });
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
     });
@@ -1923,6 +2113,9 @@
     });
     skillsModal.addEventListener("click", (e) => {
       if (e.target === skillsModal) closeSkillsModal();
+    });
+    debugModal?.addEventListener("click", (e) => {
+      if (e.target === debugModal) closeDebugModal();
     });
 
     recalcDerivedStats();
