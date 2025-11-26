@@ -373,6 +373,45 @@
       gap: 2px;
       font-weight: 600;
     }
+    .status-icons {
+      display: inline-flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .status-icon {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 10px;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .status-icon:hover {
+      background: rgba(96, 165, 250, 0.16);
+      border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    .status-popup {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 60;
+    }
+
+    .status-popup.active {
+      display: grid;
+    }
+
+    .status-popup .modal-content {
+      width: min(420px, 94%);
+    }
 
     .enemy-bar {
       position: relative;
@@ -399,102 +438,7 @@
       justify-content: center;
       font-size: 11px;
       line-height: 1;
-      color: #f8fafc;
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-      pointer-events: none;
-    }
-
-    .modal {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 50;
-    }
-
-    .modal.hidden {
-      display: none;
-    }
-
-    .modal-content {
-      width: min(420px, 94%);
-      background: rgba(17, 24, 39, 0.95);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      padding: 8px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
-      max-height: 88vh;
-      overflow-y: auto;
-    }
-
-    .player-modal-content {
-      display: flex;
-      flex-direction: column;
-      max-height: 88vh;
-      overflow: hidden;
-      gap: 6px;
-    }
-
-    .secondary-scroll {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding-right: 4px;
-      margin-bottom: 4px;
-    }
-
-    .primary-fixed {
-      flex-shrink: 0;
-      display: grid;
-      gap: 8px;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .section-title {
-      font-size: 14px;
-      font-weight: 800;
-      letter-spacing: 0.03em;
-    }
-
-    .help-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text);
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .help-panel {
-      margin-top: 8px;
-      padding: 10px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .modal-body-title {
-      font-weight: 700;
-      margin-bottom: 6px;
+@@ -498,59 +538,60 @@
     }
 
     .help-panel ul {
@@ -520,15 +464,16 @@
       <div id="enemies" class="enemy-list"></div>
     </section>
 
-    <section class="card">
-      <div class="subtle" style="justify-content: flex-start; gap: 10px; margin-bottom: 4px;">
-        <span>LV <span id="level"></span></span>
-        <span class="pill">階層 <span id="floor-inline"></span>F</span>
-      </div>
-      <div class="bars">
-        <div class="bar">
-          <span id="hp-bar" class="hp"></span>
-          <span id="hp-label" class="label"></span>
+      <section class="card">
+        <div class="subtle" style="justify-content: flex-start; gap: 10px; margin-bottom: 4px;">
+          <span>LV <span id="level"></span></span>
+          <span class="pill">階層 <span id="floor-inline"></span>F</span>
+          <div id="player-status-icons" class="status-icons" aria-label="プレイヤーの状態異常"></div>
+        </div>
+        <div class="bars">
+          <div class="bar">
+            <span id="hp-bar" class="hp"></span>
+            <span id="hp-label" class="label"></span>
         </div>
         <div class="bar">
           <span id="mp-bar" class="mp"></span>
@@ -554,94 +499,7 @@
       <button id="btn-skill-tree">スキル</button>
     </nav>
   </div>
-
-  <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div>
-          <div class="section-title" style="margin: 0;">敵の詳細</div>
-          <div id="modal-name" style="font-weight: 700;"></div>
-        </div>
-        <button id="modal-close" class="modal-close" aria-label="閉じる">×</button>
-      </div>
-      <div class="stats" style="margin-top: 10px;">
-        <div>HP <span id="modal-hp"></span></div>
-        <div>ATK <span id="modal-atk"></span></div>
-        <div>DEF <span id="modal-def"></span></div>
-        <div>SPD <span id="modal-spd"></span></div>
-      </div>
-      <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
-    </div>
-  </div>
-
-  <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content player-modal-content">
-      <div class="modal-header">
-        <div>
-          <div class="section-title" style="margin: 0;">プレイヤー詳細</div>
-        </div>
-        <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
-      </div>
-      <div class="secondary-scroll">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
-          <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
-        </div>
-        <div id="secondary-stats" class="stat-grid"></div>
-      </div>
-      <div class="primary-fixed">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div class="section-title" style="margin: 2px 0 4px;">一次ステータス</div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-
-          
-            <div class="inline-buttons">
-              <div class="pill">能力P: <span id="stat-points"></span></div>
-            </div>
-            <button id="stat-step" class="step-button" aria-label="増減幅を切り替え">±1</button>
-            
-            
-            <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
-          </div>
-        </div>
-        <div id="primary-stats" class="primary-grid">
-  
-        </div>        
-      </div>
-    </div>
-  </div>
-
-  <div id="memo-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div class="section-title" style="margin: 0;">計算メモ</div>
-        <button id="memo-close" class="modal-close" aria-label="閉じる">×</button>
-      </div>
-      <div class="modal-body-title">攻撃・防御</div>
-      <div class="help-panel">
-        <ul>
-          <li>物理攻撃力 = 武器 + 力 × 1.2</li>
-          <li>魔法攻撃力 = 魔器 + 知識 × 1.3</li>
-          <li>物理防御力 = 体力×0.6 + 力×0.2</li>
-          <li>魔法防御力 = 体力×0.5 + 知識×0.3</li>
-          <li>物理貫通 = 力による軽減無視 (上限30%)</li>
-          <li>魔法貫通 = 知識による軽減無視 (上限30%)</li>
-          <li>被ダメージ軽減 = 体力由来の軽減 (上限40%)</li>
-          <li>ブロック率 = 体力ベース (上限25%)</li>
-        </ul>
-      </div>
-      <div class="modal-body-title">行動・会心</div>
-      <div class="help-panel">
-        <ul>
-          <li>行動速度 = 基礎速度 + 敏捷</li>
-          <li>命中率 = 70% + 敏捷×0.1%</li>
-          <li>クリティカル率 / 回避率 = (敏捷+運) 減衰式</li>
-          <li>クリティカルダメージ = 150% + クリダメ%</li>
-          <li>クールタイム短縮 = 敏捷/知識由来 (上限20%)</li>
-        </ul>
-      </div>
-      <div class="modal-body-title">抵抗・補助・ハクスラ</div>
-      <div class="help-panel">
+@@ -645,173 +686,418 @@
         <ul>
           <li>異常抵抗 / 低下抵抗 / 呪い抵抗 = 体力＋各種ステ由来 (上限60%)</li>
           <li>HP再生 = 体力 × 0.2 / ターン</li>
@@ -667,23 +525,36 @@
     </div>
   </div>
 
-  <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div>
-          <div class="section-title" style="margin: 0;">スキル / パーク</div>
+    <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="section-title" style="margin: 0;">スキル / パーク</div>
           <div style="font-weight: 700;">スキルポイントを消費して強化</div>
         </div>
         <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="inline-buttons" style="margin-bottom: 6px;">
-        <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
+        <div class="inline-buttons" style="margin-bottom: 6px;">
+          <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
+        </div>
+        <div id="skills" style="margin-top: 6px;"></div>
       </div>
-      <div id="skills" style="margin-top: 6px;"></div>
     </div>
-  </div>
 
-  <script>
+    <div id="status-popup" class="status-popup" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="section-title" style="margin: 0;">状態異常</div>
+            <div id="status-popup-target" style="font-weight: 700;"></div>
+          </div>
+          <button id="status-popup-close" class="modal-close" aria-label="閉じる">×</button>
+        </div>
+        <div id="status-popup-body" class="help-panel"></div>
+      </div>
+    </div>
+
+    <script>
     const player = {
       name: "プレイヤー",
       level: 1,
@@ -717,11 +588,11 @@
         int: 0,
         vit: 0,
         agi: 0,
-        luck: 0,
-      },
-      bonus: {
-        hp: 0,
-        mp: 0,
+      luck: 0,
+    },
+    bonus: {
+      hp: 0,
+      mp: 0,
         physAtk: 0,
         magAtk: 0,
         physDef: 0,
@@ -741,12 +612,130 @@
         hpRegen: 0,
         lifeSteal: 0,
         barrier: 0,
-        dropRate: 0,
-        rarity: 0,
+      dropRate: 0,
+      rarity: 0,
+    },
+    statPoints: 3,
+    skillPoints: 0,
+    buffs: { guard: 0, haste: 0, focus: 0 },
+    statuses: [],
+    resistances: { control: 0, dot: 0, debuff: 0 },
+  };
+
+    const statusLibrary = {
+      stun: {
+        name: "スタン",
+        short: "St",
+        category: "control",
+        description: "行動完全不能（通常攻撃・スキル不可）",
       },
-      statPoints: 3,
-      skillPoints: 0,
-      buffs: { guard: 0, haste: 0, focus: 0 },
+      sleep: {
+        name: "睡眠",
+        short: "Sl",
+        category: "control",
+        description: "行動不能。被ダメージで解除（DoTでは解除されない）",
+        breakOnHit: true,
+      },
+      confusion: {
+        name: "混乱",
+        short: "Cn",
+        category: "control",
+        description: "攻撃対象がランダム化。味方を攻撃する可能性も",
+      },
+      silence: {
+        name: "沈黙",
+        short: "Si",
+        category: "control",
+        description: "スキル使用不可（通常攻撃のみ可能）",
+      },
+      knockdown: {
+        name: "転倒",
+        short: "Kd",
+        category: "control",
+        description: "次ターンの行動順が最後になる（行動遅延）",
+      },
+      seal: {
+        name: "封印",
+        short: "Se",
+        category: "control",
+        description: "パッシブや常時効果を無効化",
+      },
+      bleed: {
+        name: "出血",
+        short: "Bl",
+        category: "dot",
+        description: "物理DoT（防御無視ダメージ）",
+        tick: (target) => Math.max(2, Math.round(target.maxHp * 0.05)),
+      },
+      poison: {
+        name: "毒",
+        short: "Po",
+        category: "dot",
+        description: "最大HP割合の持続ダメージ",
+        tick: (target) => Math.max(2, Math.round(target.maxHp * 0.04)),
+      },
+      curse: {
+        name: "呪い",
+        short: "Cu",
+        category: "dot",
+        description: "与ダメ低下＋小DoT",
+        tick: () => 3,
+        damagePenalty: 0.85,
+      },
+      burn: {
+        name: "火傷",
+        short: "Bu",
+        category: "dot",
+        description: "魔法系DoTとして扱う",
+        tick: (target) => Math.max(2, Math.round(target.maxHp * 0.03)),
+      },
+      physAtkDown: {
+        name: "物理攻撃ダウン",
+        short: "P-",
+        category: "debuff",
+        description: "物理ダメージ係数ダウン",
+        damagePenalty: 0.8,
+      },
+      magAtkDown: {
+        name: "魔法攻撃ダウン",
+        short: "M-",
+        category: "debuff",
+        description: "魔法ダメージ係数ダウン",
+        damagePenalty: 0.8,
+      },
+      physDefDown: {
+        name: "物理防御ダウン",
+        short: "PD",
+        category: "debuff",
+        description: "受ける物理ダメージ増加",
+        defensePenalty: 0.85,
+      },
+      magDefDown: {
+        name: "魔法防御ダウン",
+        short: "MD",
+        category: "debuff",
+        description: "受ける魔法ダメージ増加",
+        defensePenalty: 0.85,
+      },
+      accuracyDown: {
+        name: "命中率ダウン",
+        short: "Ac",
+        category: "debuff",
+        description: "攻撃が当たりにくくなる",
+      },
+      evasionDown: {
+        name: "回避率ダウン",
+        short: "Ev",
+        category: "debuff",
+        description: "攻撃が当たりやすくなる",
+      },
+      speedDown: {
+        name: "速度ダウン",
+        short: "Sp",
+        category: "debuff",
+        description: "行動順が遅くなる／行動頻度減少",
+        speedPenalty: -1,
+      },
     };
 
     const game = {
@@ -790,6 +779,120 @@
       logBox.scrollTop = logBox.scrollHeight;
     }
 
+    function getResistance(entity, category) {
+      const value = entity.resistances?.[category] || 0;
+      return Math.min(0.8, Math.max(0, value));
+    }
+
+    function applyStatus(target, key, duration = 2, baseChance = 1) {
+      const def = statusLibrary[key];
+      if (!def) return false;
+      const resist = getResistance(target, def.category);
+      const success = Math.random() < baseChance * (1 - resist);
+      if (!success) {
+        log(`${target.name} は${def.name}を抵抗した`, "info");
+        return false;
+      }
+      const existing = target.statuses.find((s) => s.key === key);
+      if (existing) {
+        existing.duration = Math.max(existing.duration, duration);
+        return true;
+      }
+      target.statuses.push({ key, duration });
+      return true;
+    }
+
+    function removeStatus(target, key) {
+      target.statuses = target.statuses.filter((s) => s.key !== key);
+    }
+
+    function hasStatus(target, key) {
+      return target.statuses.some((s) => s.key === key);
+    }
+
+    function summarizeStatuses(entity) {
+      return entity.statuses.map((s) => {
+        const def = statusLibrary[s.key];
+        return {
+          key: s.key,
+          duration: s.duration,
+          label: def?.short || s.key,
+          name: def?.name || s.key,
+          description: def?.description || "",
+        };
+      });
+    }
+
+    function createStatusIconsElement(owner, ownerName) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "status-icons";
+      const statuses = summarizeStatuses(owner);
+      if (!statuses.length) {
+        const empty = document.createElement("span");
+        empty.className = "subtle";
+        empty.textContent = "-";
+        wrapper.appendChild(empty);
+        return wrapper;
+      }
+      statuses.forEach((status) => {
+        const badge = document.createElement("span");
+        badge.className = "status-icon";
+        badge.textContent = status.label;
+        badge.title = `${status.name} (${status.duration}T)`;
+        badge.onclick = (e) => {
+          e.stopPropagation();
+          handleStatusPopup(ownerName, status);
+        };
+        wrapper.appendChild(badge);
+      });
+      return wrapper;
+    }
+
+    function tickStatuses(entity, { atTurnEnd = false } = {}) {
+      if (!entity.statuses.length) return;
+      entity.statuses = entity.statuses
+        .map((s) => ({ ...s, duration: atTurnEnd ? s.duration - 1 : s.duration }))
+        .filter((s) => s.duration > 0);
+    }
+
+    function processDots(entity, actorLabel) {
+      const dots = entity.statuses.filter((s) => statusLibrary[s.key]?.category === "dot");
+      dots.forEach((s) => {
+        const def = statusLibrary[s.key];
+        if (!def?.tick) return;
+        const damage = def.tick(entity);
+        entity.hp = Math.max(0, entity.hp - damage);
+        log(`☠️ ${actorLabel}は${def.name}で ${damage} ダメージを受けた (残り${s.duration}T)`, "warning");
+      });
+    }
+
+    function getDamagePenalty(attacker) {
+      const modifiers = attacker.statuses
+        .map((s) => statusLibrary[s.key])
+        .filter((def) => def?.damagePenalty)
+        .map((def) => def.damagePenalty);
+      if (!modifiers.length) return 1;
+      return modifiers.reduce((acc, cur) => acc * cur, 1);
+    }
+
+    function getDefensePenalty(defender) {
+      const modifiers = defender.statuses
+        .map((s) => statusLibrary[s.key])
+        .filter((def) => def?.defensePenalty)
+        .map((def) => def.defensePenalty);
+      if (!modifiers.length) return 1;
+      return modifiers.reduce((acc, cur) => acc * cur, 1);
+    }
+
+    function handleStatusPopup(ownerName, status) {
+      const popup = document.getElementById("status-popup");
+      const body = document.getElementById("status-popup-body");
+      const target = document.getElementById("status-popup-target");
+      target.textContent = ownerName;
+      body.innerHTML = `<div style="font-weight:700;">${status.name} (${status.duration}ターン)</div><div style="margin-top:4px;">${status.description}</div>`;
+      popup.classList.add("active");
+    }
+
     const primaryOrder = ["str", "int", "vit", "agi", "luck"];
     const stepOptions = [1, 10, 100];
     let currentStepIndex = 0;
@@ -815,75 +918,7 @@
       const total = stat.base + stat.bonus;
       if (!stat.bonus) return `<span class="total">${total}</span>`;
       const bonusSign = stat.bonus > 0 ? "+" : "";
-      return `<span class="total">${total}</span> (<span class="base">${stat.base}</span> <span class="bonus">${bonusSign}${stat.bonus}</span>)`;
-    };
-
-    const statTotal = (key) => {
-      const stat = player.primary[key];
-      return stat.base + stat.bonus;
-    };
-
-    function calcSecondaryStats() {
-      const str = statTotal("str");
-      const int = statTotal("int");
-      const vit = statTotal("vit");
-      const agi = statTotal("agi");
-      const luck = statTotal("luck");
-
-      const maxHpBase = player.base.hp + vit * 8;
-      const maxMpBase = player.base.mp + int * 3;
-      const physAtkBase = player.base.physAtk + str * 1.2;
-      const magAtkBase = player.base.magAtk + int * 1.3;
-      const physDefBase = player.base.physDef + vit * 0.6 + str * 0.2;
-      const magDefBase = player.base.magDef + vit * 0.5 + int * 0.3;
-      const speedBase = player.base.speed + agi;
-      const critBase = Math.min(70, (agi + luck) * 0.6);
-      const evadeBase = Math.min(60, (agi + luck) * 0.4);
-      const accuracyBase = Math.min(100, 70 + agi * 0.1);
-      const physPenBase = Math.min(30, str * 0.2);
-      const magPenBase = Math.min(30, int * 0.2);
-      const critDmgBase = Math.min(50, luck * 0.6);
-      const damageReductionBase = Math.min(40, vit * 0.4);
-      const blockBase = Math.min(25, 5 + vit * 0.3);
-      const statusResistBase = Math.min(60, (vit + luck) * 0.4);
-      const debuffResistBase = Math.min(60, (vit + int) * 0.35);
-      const curseResistBase = Math.min(60, vit * 0.4);
-      const cooldownBase = Math.min(20, (agi + int) * 0.15);
-      const hpRegenBase = vit * 0.2;
-      const lifeStealBase = Math.min(10, Math.max(str, luck) * 0.1);
-      const barrierBase = vit * 2 + int;
-      const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
-      const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
-
-      return {
-        maxHp: { base: maxHpBase, bonus: player.bonus.hp, total: maxHpBase + player.bonus.hp },
-        maxMp: { base: maxMpBase, bonus: player.bonus.mp, total: maxMpBase + player.bonus.mp },
-        physAtk: { base: physAtkBase, bonus: player.bonus.physAtk, total: physAtkBase + player.bonus.physAtk },
-        magAtk: { base: magAtkBase, bonus: player.bonus.magAtk, total: magAtkBase + player.bonus.magAtk },
-        physDef: { base: physDefBase, bonus: player.bonus.physDef, total: physDefBase + player.bonus.physDef },
-        magDef: { base: magDefBase, bonus: player.bonus.magDef, total: magDefBase + player.bonus.magDef },
-        speed: { base: speedBase, bonus: player.bonus.speed, total: speedBase + player.bonus.speed },
-        critRate: { base: critBase, bonus: player.bonus.critRate, total: Math.min(70, critBase + player.bonus.critRate) },
-        evade: { base: evadeBase, bonus: player.bonus.evade, total: Math.min(60, evadeBase + player.bonus.evade) },
-        accuracy: { base: accuracyBase, bonus: 0, total: accuracyBase },
-        physPen: { base: physPenBase, bonus: player.bonus.physPen, total: Math.min(30, physPenBase + player.bonus.physPen) },
-        magPen: { base: magPenBase, bonus: player.bonus.magPen, total: Math.min(30, magPenBase + player.bonus.magPen) },
-        critDamage: { base: critDmgBase, bonus: player.bonus.critDamage, total: Math.min(50, critDmgBase + player.bonus.critDamage) },
-        damageReduction: { base: damageReductionBase, bonus: player.bonus.damageReduction, total: Math.min(40, damageReductionBase + player.bonus.damageReduction) },
-        block: { base: blockBase, bonus: player.bonus.block, total: Math.min(25, blockBase + player.bonus.block) },
-        statusResist: { base: statusResistBase, bonus: player.bonus.statusResist, total: Math.min(60, statusResistBase + player.bonus.statusResist) },
-        debuffResist: { base: debuffResistBase, bonus: player.bonus.debuffResist, total: Math.min(60, debuffResistBase + player.bonus.debuffResist) },
-        curseResist: { base: curseResistBase, bonus: player.bonus.curseResist, total: Math.min(60, curseResistBase + player.bonus.curseResist) },
-        cooldown: { base: cooldownBase, bonus: player.bonus.cooldown, total: Math.min(20, cooldownBase + player.bonus.cooldown) },
-        hpRegen: { base: hpRegenBase, bonus: player.bonus.hpRegen, total: hpRegenBase + player.bonus.hpRegen },
-        lifeSteal: { base: lifeStealBase, bonus: player.bonus.lifeSteal, total: Math.min(10, lifeStealBase + player.bonus.lifeSteal) },
-        barrier: { base: barrierBase, bonus: player.bonus.barrier, total: barrierBase + player.bonus.barrier },
-        dropRate: { base: dropRateBase, bonus: player.bonus.dropRate, total: Math.min(50, dropRateBase + player.bonus.dropRate) },
-        rarity: { base: rarityBase, bonus: player.bonus.rarity, total: Math.min(30, rarityBase + player.bonus.rarity) },
-      };
-    }
-
-    function recalcDerivedStats() {
+@@ -887,148 +1173,184 @@
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
       const prevMaxMp = player.maxMp || derived.maxMp.total;
@@ -909,51 +944,70 @@
       player.atk = Math.round(derived.physAtk.total);
       player.def = Math.round(derived.physDef.total);
       player.spd = Math.round(derived.speed.total);
+      player.resistances = {
+        control: derived.statusResist.total / 100,
+        dot: derived.curseResist.total / 100,
+        debuff: derived.debuffResist.total / 100,
+      };
 
       return derived;
     }
 
     function createEnemy(isBoss = false) {
       const base = game.floor * 5 + (isBoss ? 20 : 0);
-      const enemy = {
-        id: crypto.randomUUID(),
-        name: isBoss ? `階層ボス ${game.floor}F` : `雑魚 ${game.floor}-${Math.ceil(Math.random() * 3)}`,
-        hp: base + (isBoss ? 30 : 0),
-        maxHp: base + (isBoss ? 30 : 0),
-        atk: 5 + game.floor * 1.5 + (isBoss ? 4 : 0),
-        def: 2 + game.floor * 0.5 + (isBoss ? 2 : 0),
-        spd: 4 + Math.random() * 2 + (isBoss ? 1.5 : 0),
-        isBoss,
-        status: {},
-      };
-      return enemy;
-    }
-
-    function spawnEnemies() {
-      const isBossFloor = game.floor % 5 === 0;
-      const count = isBossFloor ? 1 : 2 + Math.floor(Math.random() * 2);
-      game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
-      log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
-      buildTurnQueue();
-      updateUI();
-      if (game.turnQueue[0]?.type === "player") {
-        promptPlayerTurn();
-      } else {
-        nextTurn();
+        const enemy = {
+          id: crypto.randomUUID(),
+          name: isBoss ? `階層ボス ${game.floor}F` : `雑魚 ${game.floor}-${Math.ceil(Math.random() * 3)}`,
+          hp: base + (isBoss ? 30 : 0),
+          maxHp: base + (isBoss ? 30 : 0),
+          atk: 5 + game.floor * 1.5 + (isBoss ? 4 : 0),
+          def: 2 + game.floor * 0.5 + (isBoss ? 2 : 0),
+          spd: 4 + Math.random() * 2 + (isBoss ? 1.5 : 0),
+          isBoss,
+          statuses: [],
+          resistances: {
+            control: Math.min(0.35, 0.08 + game.floor * 0.01 + (isBoss ? 0.1 : 0)),
+            dot: Math.min(0.35, 0.06 + game.floor * 0.01),
+            debuff: Math.min(0.35, 0.05 + game.floor * 0.01),
+          },
+        };
+        return enemy;
       }
-    }
 
-    function buildTurnQueue() {
-      const queue = [];
-      if (player.hp > 0) {
-        queue.push({ type: "player", speed: player.spd + (player.buffs.haste ? 2 : 0) + Math.random() * 2 });
+      function spawnEnemies() {
+        const isBossFloor = game.floor % 5 === 0;
+        const count = isBossFloor ? 1 : 2 + Math.floor(Math.random() * 2);
+        game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
+        log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
+        buildTurnQueue();
+        updateUI();
+        if (game.turnQueue[0]?.type === "player") {
+          promptPlayerTurn();
+        } else {
+          nextTurn();
+        }
       }
-      game.enemies.filter(e => e.hp > 0).forEach(e => {
-        queue.push({ type: "enemy", id: e.id, speed: e.spd + Math.random() * 2 });
-      });
-      queue.sort((a, b) => b.speed - a.speed);
-      game.turnQueue = queue;
-    }
+
+      function calcTurnSpeed(entity, isPlayer = false) {
+        const speedDebuff = entity.statuses
+          .map((s) => statusLibrary[s.key]?.speedPenalty || 0)
+          .reduce((a, b) => a + b, 0);
+        const knockdownPenalty = hasStatus(entity, "knockdown") ? -2 : 0;
+        const hasteBonus = isPlayer && player.buffs.haste ? 2 : 0;
+        return Math.max(1, entity.spd + hasteBonus + speedDebuff + knockdownPenalty + Math.random() * 2);
+      }
+
+      function buildTurnQueue() {
+        const queue = [];
+        if (player.hp > 0) {
+          queue.push({ type: "player", speed: calcTurnSpeed(player, true) });
+        }
+        game.enemies.filter(e => e.hp > 0).forEach(e => {
+          queue.push({ type: "enemy", id: e.id, speed: calcTurnSpeed(e) });
+        });
+        queue.sort((a, b) => b.speed - a.speed);
+        game.turnQueue = queue;
+      }
 
     function updateBars(id, current, max, cls) {
       const bar = document.getElementById(id);
@@ -967,21 +1021,28 @@
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
-      document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
-      document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
-      document.getElementById("level").textContent = player.level;
-      document.getElementById("stat-points").textContent = player.statPoints;
-      document.getElementById("skill-points-skill").textContent = player.skillPoints;
-      updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
-      updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
-      updateBars("exp-bar", player.exp, player.expToLevel, "exp");
+        document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
+        document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
+        document.getElementById("level").textContent = player.level;
+        document.getElementById("stat-points").textContent = player.statPoints;
+        document.getElementById("skill-points-skill").textContent = player.skillPoints;
+        updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
+        updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
+        updateBars("exp-bar", player.exp, player.expToLevel, "exp");
 
-      renderEnemies();
-      renderActions();
-      renderSecondaryStats(derived);
-      renderPrimaryStats();
-      renderSkills();
-    }
+        renderEnemies();
+        renderPlayerStatuses();
+        renderActions();
+        renderSecondaryStats(derived);
+        renderPrimaryStats();
+        renderSkills();
+      }
+
+      function renderPlayerStatuses() {
+        const container = document.getElementById("player-status-icons");
+        container.innerHTML = "";
+        container.appendChild(createStatusIconsElement(player, "プレイヤー"));
+      }
 
     function renderEnemies() {
       const wrapper = document.getElementById("enemies");
@@ -996,17 +1057,27 @@
         const top = document.createElement("div");
         top.className = "enemy-top";
 
-        const name = document.createElement("div");
-        name.className = "enemy-name";
-        name.innerHTML = `<span>${enemy.isBoss ? "👑" : "👾"} ${enemy.name}</span><span class="subtle" style="gap: 4px;">#${index + 1}</span>`;
+          const name = document.createElement("div");
+          name.className = "enemy-name";
+          name.innerHTML = `<span>${enemy.isBoss ? "👑" : "👾"} ${enemy.name}</span><span class="subtle" style="gap: 4px;">#${index + 1}</span>`;
 
-        top.appendChild(name);
+          top.appendChild(name);
 
-        const tag = document.createElement("div");
-        tag.className = "pill";
-        tag.style.display = enemy.isBoss ? "inline-flex" : "none";
-        tag.textContent = "BOSS";
-        top.appendChild(tag);
+          const right = document.createElement("div");
+          right.style.display = "grid";
+          right.style.gap = "4px";
+          right.style.justifyItems = "end";
+
+          const tag = document.createElement("div");
+          tag.className = "pill";
+          tag.style.display = enemy.isBoss ? "inline-flex" : "none";
+          tag.textContent = "BOSS";
+          right.appendChild(tag);
+
+          const statusRow = createStatusIconsElement(enemy, `${enemy.name} #${index + 1}`);
+          right.appendChild(statusRow);
+
+          top.appendChild(right);
 
         const bar = document.createElement("div");
         bar.className = "enemy-bar";
@@ -1032,197 +1103,7 @@
       const btn = document.createElement("button");
       const enemiesAlive = game.enemies.some(e => e.hp > 0);
       if (player.hp <= 0) {
-        btn.textContent = "戦闘不能";
-        btn.disabled = true;
-      } else if (!enemiesAlive) {
-        btn.textContent = "次の階層へ";
-        btn.onclick = nextFloor;
-      } else {
-        btn.textContent = "⚔️ こうげき";
-        btn.disabled = !game.awaitingInput;
-        btn.onclick = playerAttack;
-      }
-      container.appendChild(btn);
-    }
-
-    function renderSecondaryStats(derived) {
-      const container = document.getElementById("secondary-stats");
-      container.innerHTML = "";
-      const rows = [
-        { label: "物理攻撃力", value: derived.physAtk.total },
-        { label: "魔法攻撃力", value: derived.magAtk.total },
-        { label: "物理貫通", value: derived.physPen.total, unit: "%" },
-        { label: "魔法貫通", value: derived.magPen.total, unit: "%" },
-        { label: "クリティカル率", value: derived.critRate.total, unit: "%" },
-        { label: "クリティカルダメージ", value: derived.critDamage.total, unit: "%" },
-        { label: "命中率", value: derived.accuracy.total, unit: "%" },
-        { label: "回避率", value: derived.evade.total, unit: "%" },
-        { label: "最大HP", value: derived.maxHp.total },
-        { label: "最大MP", value: derived.maxMp.total },
-        { label: "物理防御力", value: derived.physDef.total },
-        { label: "魔法防御力", value: derived.magDef.total },
-        { label: "被ダメージ軽減", value: derived.damageReduction.total, unit: "%" },
-        { label: "ブロック率", value: derived.block.total, unit: "%" },
-        { label: "行動速度", value: derived.speed.total },
-        { label: "クールタイム短縮", value: derived.cooldown.total, unit: "%" },
-        { label: "異常抵抗", value: derived.statusResist.total, unit: "%" },
-        { label: "低下抵抗", value: derived.debuffResist.total, unit: "%" },
-        { label: "呪い抵抗", value: derived.curseResist.total, unit: "%" },
-        { label: "HP再生", value: derived.hpRegen.total },
-        { label: "HP吸収", value: derived.lifeSteal.total, unit: "%" },
-        { label: "バリア", value: derived.barrier.total },
-        { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
-        { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
-      ];
-
-      rows.forEach((row) => {
-        const el = document.createElement("div");
-        el.className = "stat-row";
-        const left = document.createElement("div");
-        left.className = "stat-label secondary";
-        left.innerHTML = `<span>${row.label}</span>`;
-        const right = document.createElement("div");
-        right.className = "stat-value";
-        const rendered = formatStatValue(row.value, row.unit || "");
-        right.innerHTML = rendered;
-        el.appendChild(left);
-        el.appendChild(right);
-        container.appendChild(el);
-      });
-    }
-
-    function adjustPrimary(key, delta) {
-      if (delta === 0) return;
-      if (delta > 0) {
-        const use = Math.min(delta, player.statPoints);
-        if (use <= 0) return;
-        player.statPoints -= use;
-        player.primary[key].base += use;
-        player.allocations[key] += use;
-        log(`能力Pを使用: ${player.primary[key].label} +${use}`, "good");
-      } else {
-        const refundable = player.allocations[key];
-        const giveBack = Math.min(refundable, Math.abs(delta));
-        if (giveBack <= 0) return;
-        player.primary[key].base -= giveBack;
-        player.allocations[key] -= giveBack;
-        player.statPoints += giveBack;
-        log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
-      }
-      updateUI();
-    }
-
-    function getAdjustStep() {
-      return stepOptions[currentStepIndex];
-    }
-
-    function updateStepButton() {
-      if (!statStepButton) return;
-      const step = getAdjustStep();
-      statStepButton.textContent = `±${step}`;
-      statStepButton.title = `増減幅 ${step}`;
-    }
-
-    function renderPrimaryStats() {
-      const container = document.getElementById("primary-stats");
-      container.innerHTML = "";
-      const step = getAdjustStep();
-
-      primaryOrder.forEach((key) => {
-        const stat = player.primary[key];
-        const row = document.createElement("div");
-        row.className = "stat-row primary-row";
-
-        const info = document.createElement("div");
-        info.className = "primary-info";
-
-        const label = document.createElement("div");
-        label.className = "stat-label inline";
-        label.textContent = stat.label;
-
-        const value = document.createElement("div");
-        value.className = "stat-value";
-        value.innerHTML = formatPrimaryValue(stat);
-
-        info.appendChild(label);
-        info.appendChild(value);
-
-        const actions = document.createElement("div");
-        actions.className = "primary-actions";
-
-        const inc = document.createElement("button");
-        inc.textContent = `+${step}`;
-        inc.classList.add("mini-btn");
-        inc.disabled = player.statPoints <= 0;
-        inc.title = `${step}ポイント増加`;
-        inc.onclick = () => adjustPrimary(key, step);
-
-        const dec = document.createElement("button");
-        dec.textContent = `-${step}`;
-        dec.classList.add("mini-btn");
-        dec.disabled = player.allocations[key] <= 0;
-        dec.title = `${step}ポイント減少`;
-        dec.onclick = () => adjustPrimary(key, -step);
-
-        actions.appendChild(inc);
-        actions.appendChild(dec);
-
-        row.appendChild(info);
-        row.appendChild(actions);
-        container.appendChild(row);
-      });
-    }
-
-    function renderSkills() {
-      const container = document.getElementById("skills");
-      container.innerHTML = "";
-      Object.entries(skills).forEach(([key, skill]) => {
-        const row = document.createElement("div");
-        row.style.marginBottom = "6px";
-        const btn = document.createElement("button");
-        btn.textContent = `${skill.name} (${skill.level}/${skill.max})`;
-        btn.disabled = player.skillPoints <= 0 || skill.level >= skill.max;
-        btn.onclick = () => {
-          if (player.skillPoints <= 0 || skill.level >= skill.max) return;
-          player.skillPoints -= 1;
-          skill.level += 1;
-          skill.apply();
-          log(`スキル『${skill.name}』を強化 (${skill.level}/${skill.max})`, "good");
-          updateUI();
-        };
-        const desc = document.createElement("div");
-        desc.className = "subtle";
-        desc.textContent = skill.desc;
-        row.appendChild(btn);
-        row.appendChild(desc);
-        container.appendChild(row);
-      });
-    }
-
-    const enemyModal = document.getElementById("enemy-modal");
-    const playerModal = document.getElementById("player-modal");
-    const skillsModal = document.getElementById("skills-modal");
-    const closeModalButton = document.getElementById("modal-close");
-    const playerModalCloseButton = document.getElementById("player-close");
-    const skillsModalCloseButton = document.getElementById("skills-close");
-    const statHelpButton = document.getElementById("stat-help");
-    const memoModal = document.getElementById("memo-modal");
-    const memoCloseButton = document.getElementById("memo-close");
-    const resetModal = document.getElementById("reset-modal");
-    const resetCloseButton = document.getElementById("reset-close");
-    const resetCancelButton = document.getElementById("reset-cancel");
-    const resetConfirmButton = document.getElementById("reset-confirm");
-    const resetSpentLabel = document.getElementById("reset-spent");
-    const resetButton = document.getElementById("reset-stats");
-    const statStepButton = document.getElementById("stat-step");
-
-    function openEnemyModal(enemy) {
-      document.getElementById("modal-name").textContent = enemy.name;
-      document.getElementById("modal-hp").textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
-      document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
-      document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
-      document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
-      document.getElementById("modal-tag").style.display = enemy.isBoss ? "inline-flex" : "none";
+@@ -1226,103 +1548,150 @@
       enemyModal.classList.remove("hidden");
     }
 
@@ -1248,39 +1129,80 @@
       skillsModal.classList.add("hidden");
     }
 
-    function promptPlayerTurn() {
-      game.awaitingInput = true;
-      renderActions();
-    }
-
-    function endPlayerTurn() {
-      game.awaitingInput = false;
-      renderActions();
-      setTimeout(() => nextTurn(), 350);
-    }
-
-    function selectTarget() {
-      return game.enemies.find(e => e.hp > 0);
-    }
-
-    function calcDamage(attacker, defender) {
-      const variance = 0.85 + Math.random() * 0.3;
-      const raw = Math.max(1, attacker.atk * variance - defender.def);
-      return Math.max(1, Math.round(raw));
-    }
-
-    function playerAttack() {
-      if (!game.awaitingInput) return;
-      const target = selectTarget();
-      if (!target) return;
-      const dmg = calcDamage(player, target);
-      target.hp = Math.max(0, target.hp - dmg);
-      log(`⚔️ あなたの攻撃！ ${target.name} に ${dmg} ダメージ`, "player");
-      updateUI();
-      if (target.hp <= 0) {
-        log(`${target.name} を倒した！`, "good");
-        checkVictory();
+      function promptPlayerTurn() {
+        game.awaitingInput = true;
+        renderActions();
       }
+
+      function endPlayerTurn() {
+        tickStatuses(player, { atTurnEnd: true });
+        game.awaitingInput = false;
+        renderActions();
+        setTimeout(() => nextTurn(), 350);
+      }
+
+      function selectTarget(attacker) {
+        const aliveEnemies = game.enemies.filter(e => e.hp > 0);
+        if (!aliveEnemies.length) return null;
+        if (attacker && hasStatus(attacker, "confusion")) {
+          const attackSelf = Math.random() < 0.35;
+          if (attackSelf) return attacker;
+          return aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+        }
+        return aliveEnemies[0];
+      }
+
+      function calcDamage(attacker, defender) {
+        const variance = 0.85 + Math.random() * 0.3;
+        const damagePenalty = getDamagePenalty(attacker);
+        const defensePenalty = getDefensePenalty(defender);
+        const raw = Math.max(1, attacker.atk * variance * damagePenalty - defender.def * defensePenalty);
+        return Math.max(1, Math.round(raw));
+      }
+
+      function handleDamageTaken(target, amount) {
+        if (amount <= 0) return;
+        const sleepStatus = target.statuses.find((s) => statusLibrary[s.key]?.breakOnHit);
+        if (sleepStatus) {
+          removeStatus(target, sleepStatus.key);
+          log(`${target.name} の${statusLibrary[sleepStatus.key].name}が解除された`, "info");
+        }
+      }
+
+      function startTurn(entity) {
+        processDots(entity, entity.name);
+        if (entity.hp <= 0) return false;
+        if (hasStatus(entity, "stun")) {
+          log(`${entity.name} はスタンしている！`, "warning");
+          tickStatuses(entity, { atTurnEnd: true });
+          return false;
+        }
+        if (hasStatus(entity, "sleep")) {
+          log(`${entity.name} は眠っている…`, "warning");
+          tickStatuses(entity, { atTurnEnd: true });
+          return false;
+        }
+        return true;
+      }
+
+      function playerAttack() {
+        if (!game.awaitingInput) return;
+        const target = selectTarget(player);
+        if (!target) return;
+        const dmg = calcDamage(player, target);
+        target.hp = Math.max(0, target.hp - dmg);
+        handleDamageTaken(target, dmg);
+        log(`⚔️ あなたの攻撃！ ${target.name} に ${dmg} ダメージ`, "player");
+        if (target !== player && Math.random() < 0.25) {
+          if (applyStatus(target, "bleed", 3, 1)) {
+            log(`${target.name} に出血を付与`, "good");
+          }
+        }
+        updateUI();
+        if (target.hp <= 0) {
+          log(`${target.name} を倒した！`, "good");
+          checkVictory();
+        }
       endPlayerTurn();
     }
 
@@ -1290,17 +1212,23 @@
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 5;
-      const target = selectTarget();
-      if (!target) return;
-      const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
-      target.hp = Math.max(0, target.hp - dmg);
-      log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`, "player");
-      updateUI();
-      if (target.hp <= 0) {
-        log(`${target.name} を粉砕！`, "good");
-        checkVictory();
-      }
+        player.mp -= 5;
+        const target = selectTarget(player);
+        if (!target) return;
+        const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
+        target.hp = Math.max(0, target.hp - dmg);
+        handleDamageTaken(target, dmg);
+        log(`🌌 パワーストライク！ ${target.name} に ${dmg} ダメージ`, "player");
+        if (target !== player && Math.random() < 0.35) {
+          if (applyStatus(target, "stun", 1, 1)) {
+            log(`${target.name} をスタンさせた！`, "good");
+          }
+        }
+        updateUI();
+        if (target.hp <= 0) {
+          log(`${target.name} を粉砕！`, "good");
+          checkVictory();
+        }
       endPlayerTurn();
     }
 
@@ -1326,12 +1254,7 @@
       }
       player.mp -= 2;
       player.buffs.guard = 2;
-      log("🛡️ 守りを固めた！ 次の2ターン被ダメ軽減", "good");
-      updateUI();
-      endPlayerTurn();
-    }
-
-    function boost() {
+@@ -1335,90 +1704,106 @@
       if (!game.awaitingInput) return;
       if (player.mp < 2) {
         log("MPが足りない！", "warning");
@@ -1357,15 +1280,21 @@
       endPlayerTurn();
     }
 
-    function enemyAction(enemy) {
-      if (enemy.hp <= 0) return;
-      const dmg = calcDamage(enemy, player);
-      const isCrit = Math.random() < 0.12;
-      const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
-      player.hp = Math.max(0, player.hp - finalDmg);
-      const critText = isCrit ? " (会心！)" : "";
-      log(`☠️ ${enemy.name} の攻撃${critText}！ ${finalDmg} ダメージ`, "enemy");
-    }
+      function enemyAction(enemy) {
+        if (enemy.hp <= 0) return;
+        const dmg = calcDamage(enemy, player);
+        const isCrit = Math.random() < 0.12;
+        const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
+        player.hp = Math.max(0, player.hp - finalDmg);
+        const critText = isCrit ? " (会心！)" : "";
+        log(`☠️ ${enemy.name} の攻撃${critText}！ ${finalDmg} ダメージ`, "enemy");
+        handleDamageTaken(player, finalDmg);
+        if (Math.random() < 0.2) {
+          if (applyStatus(player, "poison", 2, 1)) {
+            log(`☠️ ${enemy.name} は毒をばらまいた`, "danger");
+          }
+        }
+      }
 
     function updateUIAfterEnemy() {
       updateUI();
@@ -1373,30 +1302,40 @@
       setTimeout(() => nextTurn(), 380);
     }
 
-    function nextTurn() {
-      if (player.hp <= 0) {
-        log("💀 ゲームオーバー！", "danger");
-        return;
+      function nextTurn() {
+        if (player.hp <= 0) {
+          log("💀 ゲームオーバー！", "danger");
+          return;
+        }
+        if (game.turnQueue.length === 0) {
+          buildTurnQueue();
+        }
+        const actor = game.turnQueue.shift();
+        if (!actor) return;
+        if (actor.type === "player") {
+          if (!startTurn(player)) {
+            updateUI();
+            setTimeout(() => nextTurn(), 350);
+            return;
+          }
+          promptPlayerTurn();
+          return;
+        }
+        const enemy = game.enemies.find(e => e.id === actor.id);
+        if (!enemy) {
+          nextTurn();
+          return;
+        }
+        if (!startTurn(enemy)) {
+          updateUIAfterEnemy();
+          return;
+        }
+        enemyAction(enemy);
+        tickStatuses(enemy, { atTurnEnd: true });
+        updateUI();
+        if (player.hp <= 0) return;
+        setTimeout(() => nextTurn(), 380);
       }
-      if (game.turnQueue.length === 0) {
-        buildTurnQueue();
-      }
-      const actor = game.turnQueue.shift();
-      if (!actor) return;
-      if (actor.type === "player") {
-        promptPlayerTurn();
-        return;
-      }
-      const enemy = game.enemies.find(e => e.id === actor.id);
-      if (!enemy) {
-        nextTurn();
-        return;
-      }
-      enemyAction(enemy);
-      updateUI();
-      if (player.hp <= 0) return;
-      setTimeout(() => nextTurn(), 380);
-    }
 
     function checkVictory() {
       if (game.enemies.some(e => e.hp > 0)) return;
@@ -1422,61 +1361,7 @@
       });
       recalcDerivedStats();
       player.hp = player.maxHp;
-      player.mp = player.maxMp;
-      player.statPoints += 2;
-      player.skillPoints += 1;
-      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
-    }
-
-    function resetAllocations() {
-      const spent = pendingResetSpent;
-      Object.entries(player.allocations).forEach(([key, amount]) => {
-        if (amount > 0) {
-          player.primary[key].base -= amount;
-          player.allocations[key] = 0;
-        }
-      });
-      player.statPoints += spent;
-      recalcDerivedStats();
-      updateUI();
-      log("ステータスをリセットしました", "info");
-      pendingResetSpent = 0;
-    }
-
-    function nextFloor() {
-      if (game.enemies.some(e => e.hp > 0) && player.hp > 0) {
-        log("敵が残っている！", "warning");
-        return;
-      }
-      game.floor += 1;
-      player.buffs.guard = 0;
-      game.turnQueue = [];
-      spawnEnemies();
-      updateUI();
-    }
-
-    document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
-    document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
-    closeModalButton.addEventListener("click", closeEnemyModal);
-    playerModalCloseButton.addEventListener("click", closePlayerModal);
-    skillsModalCloseButton.addEventListener("click", closeSkillsModal);
-    statHelpButton.addEventListener("click", () => {
-      memoModal.classList.remove("hidden");
-    });
-    memoCloseButton.addEventListener("click", () => memoModal.classList.add("hidden"));
-    memoModal.addEventListener("click", (e) => {
-      if (e.target === memoModal) memoModal.classList.add("hidden");
-    });
-
-    statStepButton.addEventListener("click", () => {
-      currentStepIndex = (currentStepIndex + 1) % stepOptions.length;
-      updateStepButton();
-      renderPrimaryStats();
-    });
-
-    resetButton.addEventListener("click", () => {
-      pendingResetSpent = Object.values(player.allocations).reduce((a, b) => a + b, 0);
-      if (pendingResetSpent === 0) {
+@@ -1480,32 +1865,38 @@
         log("リセットするポイントがありません", "info");
         return;
       }
@@ -1500,6 +1385,12 @@
     });
     skillsModal.addEventListener("click", (e) => {
       if (e.target === skillsModal) closeSkillsModal();
+    });
+
+    const statusPopup = document.getElementById("status-popup");
+    document.getElementById("status-popup-close").addEventListener("click", () => statusPopup.classList.remove("active"));
+    statusPopup.addEventListener("click", (e) => {
+      if (e.target === statusPopup) statusPopup.classList.remove("active");
     });
 
     recalcDerivedStats();
