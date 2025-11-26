@@ -118,8 +118,8 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      height: clamp(320px, 26vh, 480px);
-      max-height: clamp(320px, 26vh, 480px);
+      height: clamp(320px, 26vh, 400px);
+      max-height: clamp(320px, 26vh, 400px);
       min-height: 160px;
       resize: none;
     }
@@ -595,12 +595,12 @@
           <div class="section-title" style="margin: 2px 0 4px;">一次ステータス</div>
           <div style="display: flex; align-items: center; gap: 6px;">
 
-          <div class="stat-row primary-row">
+          
             <div class="inline-buttons">
               <div class="pill">能力P: <span id="stat-points"></span></div>
             </div>
             <button id="stat-step" class="step-button" aria-label="増減幅を切り替え">±1</button>
-          </div>  
+            
             
             <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
           </div>
