@@ -438,7 +438,6 @@
       justify-content: center;
       font-size: 11px;
       line-height: 1;
-@@ -498,59 +538,60 @@
     }
 
     .help-panel ul {
@@ -499,7 +498,6 @@
       <button id="btn-skill-tree">スキル</button>
     </nav>
   </div>
-@@ -645,173 +686,418 @@
         <ul>
           <li>異常抵抗 / 低下抵抗 / 呪い抵抗 = 体力＋各種ステ由来 (上限60%)</li>
           <li>HP再生 = 体力 × 0.2 / ターン</li>
@@ -918,7 +916,6 @@
       const total = stat.base + stat.bonus;
       if (!stat.bonus) return `<span class="total">${total}</span>`;
       const bonusSign = stat.bonus > 0 ? "+" : "";
-@@ -887,148 +1173,184 @@
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
       const prevMaxMp = player.maxMp || derived.maxMp.total;
@@ -1103,7 +1100,6 @@
       const btn = document.createElement("button");
       const enemiesAlive = game.enemies.some(e => e.hp > 0);
       if (player.hp <= 0) {
-@@ -1226,103 +1548,150 @@
       enemyModal.classList.remove("hidden");
     }
 
@@ -1254,7 +1250,6 @@
       }
       player.mp -= 2;
       player.buffs.guard = 2;
-@@ -1335,90 +1704,106 @@
       if (!game.awaitingInput) return;
       if (player.mp < 2) {
         log("MPが足りない！", "warning");
@@ -1361,7 +1356,6 @@
       });
       recalcDerivedStats();
       player.hp = player.maxHp;
-@@ -1480,32 +1865,38 @@
         log("リセットするポイントがありません", "info");
         return;
       }
