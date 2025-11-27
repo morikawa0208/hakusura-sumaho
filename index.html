@@ -800,6 +800,20 @@
     </div>
   </div>
 
+  <div id="skill-reset-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="section-title" style="margin: 0;">スキルをリセット</div>
+        <button id="skill-reset-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div>習得したポイント(<span id="skill-reset-spent"></span>P)を戻します。よろしいですか？</div>
+      <div class="modal-actions">
+        <button id="skill-reset-cancel">キャンセル</button>
+        <button id="skill-reset-confirm">リセットする</button>
+      </div>
+    </div>
+  </div>
+
   <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -809,8 +823,9 @@
         </div>
         <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="inline-buttons" style="margin-bottom: 6px;">
+      <div class="inline-buttons" style="margin-bottom: 6px; align-items: center;">
         <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
+        <button id="reset-skills" class="help-icon" aria-label="スキルをリセット">↺</button>
       </div>
     <div id="skills" style="margin-top: 6px;"></div>
     </div>
@@ -1714,6 +1729,12 @@
     const resetSpentLabel = document.getElementById("reset-spent");
     const resetButton = document.getElementById("reset-stats");
     const statStepButton = document.getElementById("stat-step");
+    const resetSkillsButton = document.getElementById("reset-skills");
+    const skillResetModal = document.getElementById("skill-reset-modal");
+    const skillResetCloseButton = document.getElementById("skill-reset-close");
+    const skillResetCancelButton = document.getElementById("skill-reset-cancel");
+    const skillResetConfirmButton = document.getElementById("skill-reset-confirm");
+    const skillResetSpentLabel = document.getElementById("skill-reset-spent");
     const debugModal = document.getElementById("debug-modal");
     const debugOpenButton = document.getElementById("btn-debug");
     const debugCloseButton = document.getElementById("debug-close");
@@ -1733,6 +1754,32 @@
 
     function closeEnemyModal() {
       enemyModal.classList.add("hidden");
+    }
+
+    function resetSkillBonuses() {
+      Object.keys(player.bonus).forEach((key) => {
+        player.bonus[key] = 0;
+      });
+      Object.values(skills).forEach((skill) => {
+        for (let i = 0; i < skill.level; i += 1) {
+          skill.apply();
+        }
+      });
+    }
+
+    function resetSkills() {
+      const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
+      if (spent === 0) {
+        log("リセットするスキルがありません", "info");
+        return;
+      }
+      Object.values(skills).forEach((skill) => {
+        skill.level = 0;
+      });
+      resetSkillBonuses();
+      player.skillPoints += spent;
+      updateUI();
+      log("スキルをリセットしました", "info");
     }
 
     function openPlayerModal() {
@@ -2070,9 +2117,9 @@
       recalcDerivedStats();
       player.hp = player.maxHp;
       player.mp = player.maxMp;
-      player.statPoints += 2;
+      player.statPoints += 5;
       player.skillPoints += 1;
-      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
     }
 
     function resetAllocations() {
@@ -2151,6 +2198,24 @@
     });
     resetModal.addEventListener("click", (e) => {
       if (e.target === resetModal) resetModal.classList.add("hidden");
+    });
+    resetSkillsButton.addEventListener("click", () => {
+      const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
+      if (spent === 0) {
+        log("リセットするスキルがありません", "info");
+        return;
+      }
+      skillResetSpentLabel.textContent = spent;
+      skillResetModal.classList.remove("hidden");
+    });
+    skillResetCloseButton.addEventListener("click", () => skillResetModal.classList.add("hidden"));
+    skillResetCancelButton.addEventListener("click", () => skillResetModal.classList.add("hidden"));
+    skillResetConfirmButton.addEventListener("click", () => {
+      skillResetModal.classList.add("hidden");
+      resetSkills();
+    });
+    skillResetModal.addEventListener("click", (e) => {
+      if (e.target === skillResetModal) skillResetModal.classList.add("hidden");
     });
     enemyModal.addEventListener("click", (e) => {
       if (e.target === enemyModal) closeEnemyModal();
