@@ -333,7 +333,7 @@
 
     .enemy-list {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(var(--enemy-columns, 3), minmax(0, 1fr));
       gap: 6px;
       font-size: 13px;
       padding-bottom: 2px;
@@ -1452,6 +1452,8 @@
     function renderEnemies() {
       const wrapper = document.getElementById("enemies");
       wrapper.innerHTML = "";
+      const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
+      wrapper.style.setProperty("--enemy-columns", enemyColumns);
       game.enemies.forEach((enemy, index) => {
         const card = document.createElement("div");
         card.className = "enemy-card";
