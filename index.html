@@ -349,6 +349,7 @@
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       min-width: 0;
+      position: relative;
     }
 
     .enemy-card:active {
@@ -358,6 +359,30 @@
     .enemy-card:hover {
       border-color: rgba(255, 255, 255, 0.16);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    .attack-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(52, 211, 153, 0.18);
+      border: 1px solid rgba(52, 211, 153, 0.5);
+      color: #ecfdf3;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      line-height: 1.2;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .attack-badge.enemy {
+      background: rgba(248, 113, 113, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: #fee2e2;
+    }
+
+    .action-button-wrapper {
+      position: relative;
     }
 
     .enemy-top {
@@ -866,6 +891,7 @@
       spd: 0,
       accuracy: 0,
       evade: 0,
+      attackCount: 1,
       base: {
         hp: 80,
         mp: 30,
@@ -1138,6 +1164,7 @@
         spd: 4 + Math.random() * 2 + (isBoss ? 1.5 : 0),
         accuracy: 82 + game.floor * 0.6,
         evade: Math.min(25, 8 + game.floor * 0.4 + (isBoss ? 5 : 0)),
+        attackCount: 1,
         resist: {
           control: Math.min(50, 10 + game.floor * 0.8 + (isBoss ? 8 : 0)),
           dot: Math.min(50, 8 + game.floor * 0.7 + (isBoss ? 6 : 0)),
@@ -1158,34 +1185,6 @@
       game.awaitingInput = true;
       updateUI();
       promptPlayerTurn();
-    }
-
-    function getEffectiveSpeed(entity, type) {
-      let speed = entity.spd || 0;
-      if (type === "player" && player.buffs.haste > 0 && !hasStatus(entity, "seal")) {
-        speed += 2;
-      }
-      const speedDown = getStatus(entity, "speedDown");
-      if (speedDown) {
-        speed *= 1 - (speedDown.potency ?? STATUS_DEFINITIONS.speedDown.potency ?? 0.25);
-      }
-      if (hasStatus(entity, "knockdown")) {
-        speed = Math.max(0.2, speed * 0.1);
-      }
-      return speed + Math.random() * 2;
-    }
-
-    function decayStatuses(entity) {
-      entity.statuses = (entity.statuses || [])
-        .map((s) => ({ ...s, remaining: s.remaining - 1 }))
-        .filter((s) => s.remaining > 0);
-    }
-
-    function tickBuffs(entity) {
-      if (!entity.buffs) return;
-      Object.keys(entity.buffs).forEach((key) => {
-        if (entity.buffs[key] > 0) entity.buffs[key] -= 1;
-      });
     }
 
     function getEffectiveSpeed(entity, type) {
@@ -1497,8 +1496,14 @@
         bar.appendChild(fill);
         bar.appendChild(hpLabel);
 
+        const attackBadge = document.createElement("div");
+        attackBadge.className = "attack-badge enemy";
+        attackBadge.textContent = `x${enemy.attackCount ?? 1}`;
+        attackBadge.title = "1ターンあたりの攻撃回数";
+
         card.appendChild(top);
         card.appendChild(bar);
+        card.appendChild(attackBadge);
         wrapper.appendChild(card);
       });
     }
@@ -1506,6 +1511,8 @@
     function renderActions() {
       const container = document.getElementById("actions");
       container.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
       const enemiesAlive = game.enemies.some(e => e.hp > 0);
       if (player.hp <= 0) {
@@ -1519,7 +1526,15 @@
         btn.disabled = !game.awaitingInput;
         btn.onclick = playerAttack;
       }
-      container.appendChild(btn);
+      wrapper.appendChild(btn);
+      if (player.hp > 0 && enemiesAlive) {
+        const attackBadge = document.createElement("div");
+        attackBadge.className = "attack-badge";
+        attackBadge.textContent = `x${player.attackCount ?? 1}`;
+        attackBadge.title = "1ターンあたりの攻撃回数";
+        wrapper.appendChild(attackBadge);
+      }
+      container.appendChild(wrapper);
     }
 
     function renderSecondaryStats(derived) {
@@ -1820,23 +1835,28 @@
 
     function playerAttack() {
       if (!game.awaitingInput) return;
-      const target = chooseTargetForPlayer();
-      if (!target) return;
-      const hit = attemptHit(player, target);
-      if (!hit) {
-        log("⚔️ あなたの攻撃は外れた…", "warning");
-        updateUI();
-        endPlayerTurn();
-        return;
+      const attacks = Math.max(1, Math.floor(player.attackCount || 1));
+      let acted = false;
+      for (let i = 0; i < attacks; i += 1) {
+        const target = chooseTargetForPlayer();
+        if (!target) break;
+        acted = true;
+        const hit = attemptHit(player, target);
+        if (!hit) {
+          log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}は外れた…`, "warning");
+          continue;
+        }
+        const dmg = calcDamage(player, target);
+        const dealt = applyDamage(target, dmg, { source: "player" });
+        const targetName = target === player ? "自分" : target.name;
+        log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
+        if (target !== player && target.hp <= 0) {
+          log(`${target.name} を倒した！`, "good");
+          checkVictory();
+          if (!game.enemies.some(e => e.hp > 0)) break;
+        }
       }
-      const dmg = calcDamage(player, target);
-      const dealt = applyDamage(target, dmg, { source: "player" });
-      const targetName = target === player ? "自分" : target.name;
-      log(`⚔️ あなたの攻撃！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
-      if (target !== player && target.hp <= 0) {
-        log(`${target.name} を倒した！`, "good");
-        checkVictory();
-      }
+      if (!acted) return;
       updateUI();
       endPlayerTurn();
     }
@@ -1946,20 +1966,24 @@
 
     function enemyAction(enemy) {
       if (enemy.hp <= 0) return;
-      const target = chooseTargetForEnemy(enemy);
-      const hit = attemptHit(enemy, target);
-      if (!hit) {
+      const attacks = Math.max(1, Math.floor(enemy.attackCount || 1));
+      for (let i = 0; i < attacks; i += 1) {
+        const target = chooseTargetForEnemy(enemy);
+        if (!target) return;
+        const hit = attemptHit(enemy, target);
         const targetLabel = target === player ? "あなた" : target.name;
-        log(`☠️ ${enemy.name} の攻撃は ${targetLabel} に当たらなかった`, "info");
-        return;
+        if (!hit) {
+          log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}は ${targetLabel} に当たらなかった`, "info");
+          continue;
+        }
+        const dmg = calcDamage(enemy, target);
+        const isCrit = Math.random() < 0.12;
+        const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
+        const dealt = applyDamage(target, finalDmg, { source: enemy.name });
+        const critText = isCrit ? " (会心！)" : "";
+        log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
+        if (player.hp <= 0) return;
       }
-      const dmg = calcDamage(enemy, target);
-      const isCrit = Math.random() < 0.12;
-      const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
-      const dealt = applyDamage(target, finalDmg, { source: enemy.name });
-      const critText = isCrit ? " (会心！)" : "";
-      const targetLabel = target === player ? "あなた" : target.name;
-      log(`☠️ ${enemy.name} の攻撃${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
     }
 
     function nextTurn() {
