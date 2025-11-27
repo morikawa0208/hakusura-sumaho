@@ -892,6 +892,7 @@
       accuracy: 0,
       evade: 0,
       attackCount: 1,
+      attacksRemaining: 1,
       base: {
         hp: 80,
         mp: 30,
@@ -1165,6 +1166,7 @@
         accuracy: 82 + game.floor * 0.6,
         evade: Math.min(25, 8 + game.floor * 0.4 + (isBoss ? 5 : 0)),
         attackCount: 1,
+        attacksRemaining: 1,
         resist: {
           control: Math.min(50, 10 + game.floor * 0.8 + (isBoss ? 8 : 0)),
           dot: Math.min(50, 8 + game.floor * 0.7 + (isBoss ? 6 : 0)),
@@ -1279,6 +1281,8 @@
     }
 
     function processTurnStart(entity) {
+      const baseAttacks = Math.max(0, Math.floor(entity.attackCount || 0));
+      entity.attacksRemaining = baseAttacks;
       applyDotEffects(entity);
       if (entity.hp <= 0) return { defeated: true, skipTurn: true };
       const skipTurn = hasStatus(entity, "stun") || hasStatus(entity, "sleep");
@@ -1291,7 +1295,6 @@
     function finalizeTurn(entity) {
       decayStatuses(entity);
       tickBuffs(entity);
-      game.turnQueue = [];
     }
 
     function updateBars(id, current, max, cls) {
@@ -1498,7 +1501,8 @@
 
         const attackBadge = document.createElement("div");
         attackBadge.className = "attack-badge enemy";
-        attackBadge.textContent = `x${enemy.attackCount ?? 1}`;
+        const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
+        attackBadge.textContent = `x${enemyAttacks}`;
         attackBadge.title = "1ターンあたりの攻撃回数";
 
         card.appendChild(top);
@@ -1530,7 +1534,8 @@
       if (player.hp > 0 && enemiesAlive) {
         const attackBadge = document.createElement("div");
         attackBadge.className = "attack-badge";
-        attackBadge.textContent = `x${player.attackCount ?? 1}`;
+        const playerAttacks = Math.max(0, player.attacksRemaining ?? player.attackCount ?? 0);
+        attackBadge.textContent = `x${playerAttacks}`;
         attackBadge.title = "1ターンあたりの攻撃回数";
         wrapper.appendChild(attackBadge);
       }
@@ -1835,7 +1840,12 @@
 
     function playerAttack() {
       if (!game.awaitingInput) return;
-      const attacks = Math.max(1, Math.floor(player.attackCount || 1));
+      const attacks = Math.max(0, Math.floor(player.attacksRemaining ?? player.attackCount ?? 0));
+      if (attacks <= 0) {
+        log("攻撃回数が残っていない…", "warning");
+        return;
+      }
+      player.attacksRemaining = attacks;
       let acted = false;
       for (let i = 0; i < attacks; i += 1) {
         const target = chooseTargetForPlayer();
@@ -1855,6 +1865,7 @@
           checkVictory();
           if (!game.enemies.some(e => e.hp > 0)) break;
         }
+        player.attacksRemaining = Math.max(0, attacks - i - 1);
       }
       if (!acted) return;
       updateUI();
@@ -1966,7 +1977,9 @@
 
     function enemyAction(enemy) {
       if (enemy.hp <= 0) return;
-      const attacks = Math.max(1, Math.floor(enemy.attackCount || 1));
+      const attacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 0));
+      if (attacks <= 0) return;
+      enemy.attacksRemaining = attacks;
       for (let i = 0; i < attacks; i += 1) {
         const target = chooseTargetForEnemy(enemy);
         if (!target) return;
@@ -1983,6 +1996,7 @@
         const critText = isCrit ? " (会心！)" : "";
         log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
         if (player.hp <= 0) return;
+        enemy.attacksRemaining = Math.max(0, attacks - i - 1);
       }
     }
 
