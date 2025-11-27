@@ -1155,12 +1155,37 @@
       game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
+      game.awaitingInput = true;
       updateUI();
-      if (game.turnQueue[0]?.type === "player") {
-        promptPlayerTurn();
-      } else {
-        nextTurn();
+      promptPlayerTurn();
+    }
+
+    function getEffectiveSpeed(entity, type) {
+      let speed = entity.spd || 0;
+      if (type === "player" && player.buffs.haste > 0 && !hasStatus(entity, "seal")) {
+        speed += 2;
       }
+      const speedDown = getStatus(entity, "speedDown");
+      if (speedDown) {
+        speed *= 1 - (speedDown.potency ?? STATUS_DEFINITIONS.speedDown.potency ?? 0.25);
+      }
+      if (hasStatus(entity, "knockdown")) {
+        speed = Math.max(0.2, speed * 0.1);
+      }
+      return speed + Math.random() * 2;
+    }
+
+    function decayStatuses(entity) {
+      entity.statuses = (entity.statuses || [])
+        .map((s) => ({ ...s, remaining: s.remaining - 1 }))
+        .filter((s) => s.remaining > 0);
+    }
+
+    function tickBuffs(entity) {
+      if (!entity.buffs) return;
+      Object.keys(entity.buffs).forEach((key) => {
+        if (entity.buffs[key] > 0) entity.buffs[key] -= 1;
+      });
     }
 
     function getEffectiveSpeed(entity, type) {
@@ -1812,12 +1837,6 @@
         log(`${target.name} を倒した！`, "good");
         checkVictory();
       }
-      if (target !== player && dealt > 0) {
-        const applied = applyStatus(target, "bleed", { duration: 2, chance: 45, payload: { attack: player.atk } });
-        if (applied) {
-          log(`${target.name} に出血を付与！`, "good");
-        }
-      }
       updateUI();
       endPlayerTurn();
     }
@@ -1941,14 +1960,6 @@
       const critText = isCrit ? " (会心！)" : "";
       const targetLabel = target === player ? "あなた" : target.name;
       log(`☠️ ${enemy.name} の攻撃${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
-      if (target === player && dealt > 0) {
-        if (applyStatus(player, "poison", { duration: 2, chance: 30 })) {
-          log("🧪 毒を受けた！", "danger");
-        }
-        if (applyStatus(player, "physAttackDown", { duration: 2, chance: 25 })) {
-          log("📉 物理攻撃ダウン！", "warning");
-        }
-      }
     }
 
     function nextTurn() {
