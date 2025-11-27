@@ -1188,6 +1188,34 @@
       });
     }
 
+    function getEffectiveSpeed(entity, type) {
+      let speed = entity.spd || 0;
+      if (type === "player" && player.buffs.haste > 0 && !hasStatus(entity, "seal")) {
+        speed += 2;
+      }
+      const speedDown = getStatus(entity, "speedDown");
+      if (speedDown) {
+        speed *= 1 - (speedDown.potency ?? STATUS_DEFINITIONS.speedDown.potency ?? 0.25);
+      }
+      if (hasStatus(entity, "knockdown")) {
+        speed = Math.max(0.2, speed * 0.1);
+      }
+      return speed + Math.random() * 2;
+    }
+
+    function decayStatuses(entity) {
+      entity.statuses = (entity.statuses || [])
+        .map((s) => ({ ...s, remaining: s.remaining - 1 }))
+        .filter((s) => s.remaining > 0);
+    }
+
+    function tickBuffs(entity) {
+      if (!entity.buffs) return;
+      Object.keys(entity.buffs).forEach((key) => {
+        if (entity.buffs[key] > 0) entity.buffs[key] -= 1;
+      });
+    }
+
     function buildTurnQueue() {
       const queue = [];
       if (player.hp > 0) {
