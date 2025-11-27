@@ -2067,10 +2067,6 @@
     function levelUp() {
       player.level += 1;
       player.expToLevel = Math.round(player.expToLevel * 1.18);
-      const growth = { str: 2, int: 2, vit: 3, agi: 2, luck: 1 };
-      Object.entries(growth).forEach(([key, amount]) => {
-        player.primary[key].base += amount;
-      });
       recalcDerivedStats();
       player.hp = player.maxHp;
       player.mp = player.maxMp;
@@ -2169,7 +2165,8 @@
       if (e.target === debugModal) closeDebugModal();
     });
 
-    recalcDerivedStats();
+    const initialDerived = recalcDerivedStats();
+    renderSecondaryStats(initialDerived);
     log("=== 挑戦開始 ===", "info");
     spawnEnemies();
     updateUI();
