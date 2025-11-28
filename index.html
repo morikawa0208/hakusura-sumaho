@@ -27,7 +27,7 @@
       margin: 0;
       display: flex;
       justify-content: center;
-      min-height: 100vh;
+      min-height: 100dvh;
       padding: 6px;
       overscroll-behavior-y: contain;
       overflow: hidden;
@@ -38,8 +38,8 @@
       border: 1px solid rgba(148, 163, 184, 0.2);
       border-radius: 12px;
       width: min(460px, 100%);
-      height: calc(100vh - 12px);
-      height: calc(100dvh - 12px);
+      height: min(860px, calc(100dvh - 12px));
+      max-height: calc(100dvh - 12px);
       display: grid;
       grid-template-rows: auto auto 1fr auto auto auto;
       gap: 6px;
@@ -122,8 +122,8 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      height: 40vh;
-      max-height: 40vh;
+      height: clamp(180px, 40vh, 320px);
+      max-height: clamp(180px, 40vh, 320px);
       resize: none;
     }
 
@@ -194,12 +194,11 @@
       display: flex;
       justify-content: space-around;
       gap: 6px;
-      position: sticky;
-      bottom: 0;
-      padding: 6px;
+      padding: 8px;
       background: rgba(17, 24, 39, 0.94);
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 10px;
+      margin-top: 4px;
     }
 
     .pill {
