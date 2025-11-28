@@ -394,15 +394,13 @@
 
     .potion-panel {
       display: grid;
-      grid-template-rows: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
+      align-items: stretch;
     }
 
     .potion-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px;
-      align-items: center;
+      height: 100%;
     }
 
     .potion-button {
@@ -431,8 +429,15 @@
       align-items: center;
       justify-content: space-between;
       width: 100%;
-      gap: 6px;
+      gap: 8px;
       font-size: 12px;
+    }
+
+    .potion-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
     }
 
     .potion-short {
@@ -446,12 +451,13 @@
     }
 
     .potion-info-button {
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       padding: 0;
       font-weight: 700;
       background: rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
     }
 
     .enemy-top {
@@ -1673,32 +1679,44 @@
 
         const meta = document.createElement("div");
         meta.className = "potion-meta";
+        const textWrap = document.createElement("div");
+        textWrap.className = "potion-text";
         const shortLabel = document.createElement("div");
         shortLabel.className = "potion-short";
         shortLabel.textContent = potion.short || (potion.type === "hp" ? "HP" : "MP");
         const fill = document.createElement("div");
         fill.className = "potion-fill";
         fill.textContent = `${Math.round(potion.fullness)}%`;
-        meta.appendChild(shortLabel);
-        meta.appendChild(fill);
+        textWrap.appendChild(shortLabel);
+        textWrap.appendChild(fill);
+
+        const infoBtn = document.createElement("div");
+        infoBtn.className = "potion-info-button";
+        infoBtn.textContent = "i";
+        infoBtn.title = "ポーション詳細";
+        infoBtn.tabIndex = 0;
+        infoBtn.setAttribute("role", "button");
+        infoBtn.onclick = (event) => {
+          event.stopPropagation();
+          openPotionModal(potion);
+        };
+        infoBtn.onkeydown = (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            openPotionModal(potion);
+          }
+        };
+
+        meta.appendChild(textWrap);
+        meta.appendChild(infoBtn);
 
         potionBtn.appendChild(icon);
         potionBtn.appendChild(meta);
 
         potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
         potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
-
-        const infoBtn = document.createElement("button");
-        infoBtn.className = "potion-info-button";
-        infoBtn.textContent = "i";
-        infoBtn.title = "ポーション詳細";
-        infoBtn.onclick = (event) => {
-          event.stopPropagation();
-          openPotionModal(potion);
-        };
-
         potionRow.appendChild(potionBtn);
-        potionRow.appendChild(infoBtn);
         potionPanel.appendChild(potionRow);
       });
 
