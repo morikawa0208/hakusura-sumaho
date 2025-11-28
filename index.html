@@ -131,7 +131,7 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      order: 5;
+      order: -1;
     }
 
     #log .entry {
@@ -1131,8 +1131,8 @@
       const entry = document.createElement("div");
       entry.className = `entry ${type}`;
       entry.textContent = message;
-      logBox.prepend(entry);
-      logBox.scrollTop = 0;
+      logBox.append(entry);
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
     const statusPopover = document.getElementById("status-popover");
