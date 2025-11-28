@@ -42,7 +42,7 @@
       gap: 6px;
       padding: 8px;
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     .card {
@@ -189,6 +189,12 @@
       display: flex;
       justify-content: space-around;
       gap: 6px;
+      position: sticky;
+      bottom: 0;
+      padding: 6px;
+      background: rgba(17, 24, 39, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
     }
 
     .pill {
@@ -383,6 +389,79 @@
 
     .action-button-wrapper {
       position: relative;
+    }
+
+    .action-button-wrapper button {
+      width: 100%;
+      height: 100%;
+    }
+
+    .actions-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .potion-row {
+      height: 100%;
+    }
+
+    .potion-button {
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(96, 165, 250, 0.15));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px;
+      height: 100%;
+    }
+
+    .potion-icon {
+      font-size: 16px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .potion-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .potion-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .potion-short {
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .potion-fill {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .potion-info-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      padding: 0;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
     }
 
     .enemy-top {
@@ -713,6 +792,27 @@
     </div>
   </div>
 
+  <div id="potion-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">ポーション詳細</div>
+          <div id="potion-modal-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="potion-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div>種類 <span id="potion-modal-type"></span></div>
+        <div>効果 <span id="potion-modal-effect"></span></div>
+        <div>消費 <span id="potion-modal-cost"></span></div>
+        <div>残量 <span id="potion-modal-fill"></span></div>
+      </div>
+      <div class="help-panel" style="margin-top: 10px;">
+        敵を倒すと少しずつ補充されます。
+      </div>
+    </div>
+  </div>
+
   <div id="player-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content player-modal-content">
       <div class="modal-header">
@@ -800,6 +900,20 @@
     </div>
   </div>
 
+  <div id="skill-reset-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="section-title" style="margin: 0;">スキルをリセット</div>
+        <button id="skill-reset-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div>習得したポイント(<span id="skill-reset-spent"></span>P)を戻します。よろしいですか？</div>
+      <div class="modal-actions">
+        <button id="skill-reset-cancel">キャンセル</button>
+        <button id="skill-reset-confirm">リセットする</button>
+      </div>
+    </div>
+  </div>
+
   <div id="skills-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -809,8 +923,9 @@
         </div>
         <button id="skills-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="inline-buttons" style="margin-bottom: 6px;">
+      <div class="inline-buttons" style="margin-bottom: 6px; align-items: center;">
         <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
+        <button id="reset-skills" class="help-icon" aria-label="スキルをリセット">↺</button>
       </div>
     <div id="skills" style="margin-top: 6px;"></div>
     </div>
@@ -877,6 +992,8 @@
       debuff: "debuff",
     };
 
+    const POTION_REFILL_ON_KILL = 12;
+
     const player = {
       name: "プレイヤー",
       level: 1,
@@ -941,11 +1058,35 @@
         dropRate: 0,
         rarity: 0,
       },
-      statPoints: 3,
+      statPoints: 0,
       skillPoints: 0,
       buffs: { guard: 0, haste: 0, focus: 0 },
       resist: { control: 0, dot: 0, debuff: 0 },
       statuses: [],
+      potions: [
+        {
+          id: "potion-hp-small",
+          name: "しょぼいHPポーション",
+          short: "HP",
+          type: "hp",
+          amount: 24,
+          useCost: 35,
+          fullness: 100,
+          maxFullness: 100,
+          icon: "🧪",
+        },
+        {
+          id: "potion-mp-small",
+          name: "しょぼいMPポーション",
+          short: "MP",
+          type: "mp",
+          amount: 12,
+          useCost: 30,
+          fullness: 100,
+          maxFullness: 100,
+          icon: "🔮",
+        },
+      ],
     };
 
     const game = {
@@ -1517,10 +1658,73 @@
     function renderActions() {
       const container = document.getElementById("actions");
       container.innerHTML = "";
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      const canAct = game.awaitingInput && enemiesAlive && player.hp > 0;
+
+      const row = document.createElement("div");
+      row.className = "actions-row";
+
+      (player.potions || []).forEach((potion, index) => {
+        const potionRow = document.createElement("div");
+        potionRow.className = "potion-row";
+
+        const potionBtn = document.createElement("button");
+        potionBtn.className = "potion-button";
+        potionBtn.onclick = () => usePotion(index);
+        const useCost = potion.useCost ?? 25;
+        const maxFullness = potion.maxFullness ?? 100;
+        potion.fullness = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
+        const resourceFull = potion.type === "hp" ? player.hp >= player.maxHp : player.mp >= player.maxMp;
+        const icon = document.createElement("div");
+        icon.className = "potion-icon";
+        icon.textContent = potion.icon || "🧪";
+
+        const meta = document.createElement("div");
+        meta.className = "potion-meta";
+        const textWrap = document.createElement("div");
+        textWrap.className = "potion-text";
+        const shortLabel = document.createElement("div");
+        shortLabel.className = "potion-short";
+        shortLabel.textContent = potion.short || (potion.type === "hp" ? "HP" : "MP");
+        const fill = document.createElement("div");
+        fill.className = "potion-fill";
+        fill.textContent = `${Math.round(potion.fullness)}%`;
+        textWrap.appendChild(shortLabel);
+        textWrap.appendChild(fill);
+
+        const infoBtn = document.createElement("div");
+        infoBtn.className = "potion-info-button";
+        infoBtn.textContent = "i";
+        infoBtn.title = "ポーション詳細";
+        infoBtn.tabIndex = 0;
+        infoBtn.setAttribute("role", "button");
+        infoBtn.onclick = (event) => {
+          event.stopPropagation();
+          openPotionModal(potion);
+        };
+        infoBtn.onkeydown = (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            openPotionModal(potion);
+          }
+        };
+
+        meta.appendChild(textWrap);
+        meta.appendChild(infoBtn);
+
+        potionBtn.appendChild(icon);
+        potionBtn.appendChild(meta);
+
+        potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
+        potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
+        potionRow.appendChild(potionBtn);
+        row.appendChild(potionRow);
+      });
+
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
-      const enemiesAlive = game.enemies.some(e => e.hp > 0);
       if (player.hp <= 0) {
         btn.textContent = "戦闘不能";
         btn.disabled = true;
@@ -1529,7 +1733,7 @@
         btn.onclick = nextFloor;
       } else {
         btn.textContent = "⚔️ こうげき";
-        btn.disabled = !game.awaitingInput;
+        btn.disabled = !canAct;
         btn.onclick = playerAttack;
       }
       wrapper.appendChild(btn);
@@ -1541,7 +1745,8 @@
         attackBadge.title = "1ターンあたりの攻撃回数";
         wrapper.appendChild(attackBadge);
       }
-      container.appendChild(wrapper);
+      row.appendChild(wrapper);
+      container.appendChild(row);
     }
 
     function renderSecondaryStats(derived) {
@@ -1699,12 +1904,19 @@
     }
 
     const enemyModal = document.getElementById("enemy-modal");
+    const potionModal = document.getElementById("potion-modal");
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
     const closeModalButton = document.getElementById("modal-close");
+    const potionModalCloseButton = document.getElementById("potion-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
     const statHelpButton = document.getElementById("stat-help");
+    const potionModalName = document.getElementById("potion-modal-name");
+    const potionModalType = document.getElementById("potion-modal-type");
+    const potionModalEffect = document.getElementById("potion-modal-effect");
+    const potionModalCost = document.getElementById("potion-modal-cost");
+    const potionModalFill = document.getElementById("potion-modal-fill");
     const memoModal = document.getElementById("memo-modal");
     const memoCloseButton = document.getElementById("memo-close");
     const resetModal = document.getElementById("reset-modal");
@@ -1714,6 +1926,12 @@
     const resetSpentLabel = document.getElementById("reset-spent");
     const resetButton = document.getElementById("reset-stats");
     const statStepButton = document.getElementById("stat-step");
+    const resetSkillsButton = document.getElementById("reset-skills");
+    const skillResetModal = document.getElementById("skill-reset-modal");
+    const skillResetCloseButton = document.getElementById("skill-reset-close");
+    const skillResetCancelButton = document.getElementById("skill-reset-cancel");
+    const skillResetConfirmButton = document.getElementById("skill-reset-confirm");
+    const skillResetSpentLabel = document.getElementById("skill-reset-spent");
     const debugModal = document.getElementById("debug-modal");
     const debugOpenButton = document.getElementById("btn-debug");
     const debugCloseButton = document.getElementById("debug-close");
@@ -1733,6 +1951,49 @@
 
     function closeEnemyModal() {
       enemyModal.classList.add("hidden");
+    }
+
+    function openPotionModal(potion) {
+      if (!potion) return;
+      const useCost = potion.useCost ?? 25;
+      const maxFullness = potion.maxFullness ?? 100;
+      const currentFill = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
+      potionModalName.textContent = potion.name;
+      potionModalType.textContent = potion.type === "hp" ? "HP回復" : "MP回復";
+      potionModalEffect.textContent = potion.type === "hp" ? `HPを${potion.amount}回復` : `MPを${potion.amount}回復`;
+      potionModalCost.textContent = `1回 ${useCost}% 消費`;
+      potionModalFill.textContent = `${Math.round(currentFill)}% / ${maxFullness}%`;
+      potionModal.classList.remove("hidden");
+    }
+
+    function closePotionModal() {
+      potionModal.classList.add("hidden");
+    }
+
+    function resetSkillBonuses() {
+      Object.keys(player.bonus).forEach((key) => {
+        player.bonus[key] = 0;
+      });
+      Object.values(skills).forEach((skill) => {
+        for (let i = 0; i < skill.level; i += 1) {
+          skill.apply();
+        }
+      });
+    }
+
+    function resetSkills() {
+      const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
+      if (spent === 0) {
+        log("リセットするスキルがありません", "info");
+        return;
+      }
+      Object.values(skills).forEach((skill) => {
+        skill.level = 0;
+      });
+      resetSkillBonuses();
+      player.skillPoints += spent;
+      updateUI();
+      log("スキルをリセットしました", "info");
     }
 
     function openPlayerModal() {
@@ -1840,6 +2101,67 @@
       return final;
     }
 
+    function usePotion(index) {
+      if (!game.awaitingInput) return;
+      if (!player.potions || !player.potions[index]) return;
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      if (!enemiesAlive) {
+        log("ポーションは戦闘中のみ使用できます", "warning");
+        return;
+      }
+      const potion = player.potions[index];
+      const useCost = potion.useCost ?? 25;
+      const maxFullness = potion.maxFullness ?? 100;
+      potion.fullness = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
+      if (potion.fullness < useCost) {
+        log("ポーションの残量が足りない…", "warning");
+        return;
+      }
+
+      const derived = recalcDerivedStats();
+      if (potion.type === "hp") {
+        if (player.hp >= derived.maxHp.total) {
+          log("HPは十分に残っている", "info");
+          return;
+        }
+        const heal = Math.min(potion.amount, derived.maxHp.total - player.hp);
+        player.hp = Math.min(derived.maxHp.total, player.hp + heal);
+        log(`${potion.icon || "🧪"} ${potion.name}を飲んでHPを${heal}回復`, "good");
+      } else if (potion.type === "mp") {
+        if (player.mp >= derived.maxMp.total) {
+          log("MPは十分に残っている", "info");
+          return;
+        }
+        const restored = Math.min(potion.amount, derived.maxMp.total - player.mp);
+        player.mp = Math.min(derived.maxMp.total, player.mp + restored);
+        log(`${potion.icon || "🔮"} ${potion.name}を飲んでMPを${restored}回復`, "good");
+      }
+
+      potion.fullness = Math.max(0, potion.fullness - useCost);
+      updateUI();
+      endPlayerTurn();
+    }
+
+    function refillPotionsOnKill() {
+      if (!player.potions?.length) return false;
+      let restored = false;
+      player.potions.forEach((potion) => {
+        const maxFullness = potion.maxFullness ?? 100;
+        const current = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
+        const next = Math.min(maxFullness, current + POTION_REFILL_ON_KILL);
+        if (next > current) {
+          potion.fullness = next;
+          restored = true;
+        } else {
+          potion.fullness = current;
+        }
+      });
+      if (restored) {
+        log("💧 ポーションの残量が少し回復した", "info");
+      }
+      return restored;
+    }
+
     function playerAttack() {
       if (!game.awaitingInput) return;
       const attacks = Math.max(0, Math.floor(player.attacksRemaining ?? player.attackCount ?? 0));
@@ -1864,6 +2186,7 @@
         log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
         if (target !== player && target.hp <= 0) {
           log(`${target.name} を倒した！`, "good");
+          refillPotionsOnKill();
           checkVictory();
           if (!game.enemies.some(e => e.hp > 0)) break;
         }
@@ -2067,16 +2390,12 @@
     function levelUp() {
       player.level += 1;
       player.expToLevel = Math.round(player.expToLevel * 1.18);
-      const growth = { str: 2, int: 2, vit: 3, agi: 2, luck: 1 };
-      Object.entries(growth).forEach(([key, amount]) => {
-        player.primary[key].base += amount;
-      });
       recalcDerivedStats();
       player.hp = player.maxHp;
       player.mp = player.maxMp;
-      player.statPoints += 2;
+      player.statPoints += 5;
       player.skillPoints += 1;
-      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+2 / スキルP+1`, "good");
+      log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
     }
 
     function resetAllocations() {
@@ -2111,6 +2430,7 @@
     debugOpenButton?.addEventListener("click", openDebugModal);
     debugCloseButton?.addEventListener("click", closeDebugModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
+    potionModalCloseButton.addEventListener("click", closePotionModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
     debugTargetSelect?.addEventListener("change", updateDebugTargetState);
@@ -2156,6 +2476,27 @@
     resetModal.addEventListener("click", (e) => {
       if (e.target === resetModal) resetModal.classList.add("hidden");
     });
+    potionModal.addEventListener("click", (e) => {
+      if (e.target === potionModal) closePotionModal();
+    });
+    resetSkillsButton.addEventListener("click", () => {
+      const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
+      if (spent === 0) {
+        log("リセットするスキルがありません", "info");
+        return;
+      }
+      skillResetSpentLabel.textContent = spent;
+      skillResetModal.classList.remove("hidden");
+    });
+    skillResetCloseButton.addEventListener("click", () => skillResetModal.classList.add("hidden"));
+    skillResetCancelButton.addEventListener("click", () => skillResetModal.classList.add("hidden"));
+    skillResetConfirmButton.addEventListener("click", () => {
+      skillResetModal.classList.add("hidden");
+      resetSkills();
+    });
+    skillResetModal.addEventListener("click", (e) => {
+      if (e.target === skillResetModal) skillResetModal.classList.add("hidden");
+    });
     enemyModal.addEventListener("click", (e) => {
       if (e.target === enemyModal) closeEnemyModal();
     });
@@ -2169,7 +2510,8 @@
       if (e.target === debugModal) closeDebugModal();
     });
 
-    recalcDerivedStats();
+    const initialDerived = recalcDerivedStats();
+    renderSecondaryStats(initialDerived);
     log("=== 挑戦開始 ===", "info");
     spawnEnemies();
     updateUI();
