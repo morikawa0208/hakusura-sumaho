@@ -385,17 +385,15 @@
       position: relative;
     }
 
-    .actions-row {
-      display: grid;
-      grid-template-columns: 1fr 1.2fr;
-      gap: 8px;
-      align-items: stretch;
+    .action-button-wrapper button {
+      width: 100%;
+      height: 100%;
     }
 
-    .potion-panel {
+    .actions-row {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      gap: 8px;
       align-items: stretch;
     }
 
@@ -1660,8 +1658,6 @@
       const row = document.createElement("div");
       row.className = "actions-row";
 
-      const potionPanel = document.createElement("div");
-      potionPanel.className = "potion-panel";
       (player.potions || []).forEach((potion, index) => {
         const potionRow = document.createElement("div");
         potionRow.className = "potion-row";
@@ -1717,7 +1713,7 @@
         potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
         potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
         potionRow.appendChild(potionBtn);
-        potionPanel.appendChild(potionRow);
+        row.appendChild(potionRow);
       });
 
       const wrapper = document.createElement("div");
@@ -1743,7 +1739,6 @@
         attackBadge.title = "1ターンあたりの攻撃回数";
         wrapper.appendChild(attackBadge);
       }
-      row.appendChild(potionPanel);
       row.appendChild(wrapper);
       container.appendChild(row);
     }
