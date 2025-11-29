@@ -236,6 +236,24 @@
       gap: 6px;
     }
 
+    .inventory-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .inventory-filter-button {
+      font-size: 12px;
+      padding: 8px 6px;
+      line-height: 1.1;
+    }
+
+    .inventory-filter-button.active {
+      border-color: rgba(52, 211, 153, 0.7);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35);
+    }
+
     .inventory-row {
       display: flex;
       align-items: center;
@@ -991,6 +1009,7 @@
         <button id="inventory-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
       <div id="inventory-list" class="stats"></div>
+      <div id="inventory-filters" class="inventory-filter-grid"></div>
     </div>
   </div>
 
@@ -1072,6 +1091,86 @@
     };
 
     const POTION_REFILL_ON_KILL = 12;
+    const INVENTORY_FILTER_OPTIONS = [
+      { key: "all", label: "すべて" },
+      { key: "weapon", label: "メイン(武器)" },
+      { key: "subWeapon", label: "サブ(武器)" },
+      { key: "head", label: "頭" },
+      { key: "body", label: "胴" },
+      { key: "hands", label: "手" },
+      { key: "feet", label: "足" },
+      { key: "accessory1", label: "装飾品1" },
+      { key: "accessory2", label: "装飾品2" },
+      { key: "sort", label: "並び替え" },
+    ];
+    const INVENTORY_SORT_LABEL = {
+      acquire: "入手順",
+      rarity: "レア度順",
+    };
+    let inventoryFilter = "all";
+    let inventorySortMode = "acquire";
+    let inventoryAcquireSequence = 0;
+
+    function createEmptyBonus() {
+      return {
+        hp: 0,
+        mp: 0,
+        physAtk: 0,
+        magAtk: 0,
+        physDef: 0,
+        magDef: 0,
+        speed: 0,
+        critRate: 0,
+        critDamage: 0,
+        evade: 0,
+        physPen: 0,
+        magPen: 0,
+        damageReduction: 0,
+        block: 0,
+        controlResist: 0,
+        dotResist: 0,
+        debuffResist: 0,
+        cooldown: 0,
+        hpRegen: 0,
+        lifeSteal: 0,
+        barrier: 0,
+        dropRate: 0,
+        rarity: 0,
+      };
+    }
+
+    function ensureAcquiredOrder(item) {
+      if (!item) return item;
+      if (typeof item.acquiredOrder !== "number") {
+        item.acquiredOrder = inventoryAcquireSequence++;
+      }
+      return item;
+    }
+
+    function getAcquiredOrder(item, fallback) {
+      if (typeof item?.acquiredOrder === "number") return item.acquiredOrder;
+      return fallback;
+    }
+
+    function getInventorySlotKey(item) {
+      if (!item) return null;
+      if (item.slot) return item.slot;
+      if (item.equipmentSlot) return item.equipmentSlot;
+      if (item.equipment?.slot) return item.equipment.slot;
+      return null;
+    }
+
+    function createPotionInventoryItem(potion, { description } = {}) {
+      const kind = potion.type === "mp" ? "MP" : "HP";
+      const desc = description || `${kind}を${potion.amount}回復 / 消費${potion.useCost ?? 25}%`;
+      return {
+        id: `inv-${potion.id}`,
+        name: potion.name,
+        desc,
+        type: "potion",
+        potion: { ...potion },
+      };
+    }
 
     function createEmptyBonus() {
       return {
@@ -1171,7 +1270,7 @@
       statuses: [],
       inventory: {
         items: [
-          createPotionInventoryItem({
+          ensureAcquiredOrder(createPotionInventoryItem({
             id: "potion-hp-small",
             name: "回復ポーション (小)",
             short: "HP小",
@@ -1181,8 +1280,8 @@
             fullness: 100,
             maxFullness: 100,
             icon: "🧪",
-          }),
-          createPotionInventoryItem({
+          })),
+          ensureAcquiredOrder(createPotionInventoryItem({
             id: "potion-hp-medium",
             name: "回復ポーション (中)",
             short: "HP中",
@@ -1192,18 +1291,23 @@
             fullness: 100,
             maxFullness: 100,
             icon: "🧪",
-          }),
-          createPotionInventoryItem({
-            id: "potion-hp-large",
-            name: "回復ポーション (大)",
-            short: "HP大",
-            type: "hp",
-            amount: 80,
-            useCost: 55,
-            fullness: 100,
-            maxFullness: 100,
-            icon: "🧪",
-          }, { description: "大きく回復する高級ポーション" }),
+          })),
+          ensureAcquiredOrder(
+            createPotionInventoryItem(
+              {
+                id: "potion-hp-large",
+                name: "回復ポーション (大)",
+                short: "HP大",
+                type: "hp",
+                amount: 80,
+                useCost: 55,
+                fullness: 100,
+                maxFullness: 100,
+                icon: "🧪",
+              },
+              { description: "大きく回復する高級ポーション" }
+            )
+          ),
         ],
       },
       potions: [
@@ -2090,19 +2194,73 @@
       return false;
     }
 
+    function toggleInventorySortMode() {
+      inventorySortMode = inventorySortMode === "acquire" ? "rarity" : "acquire";
+    }
+
+    function renderInventoryFilters() {
+      const container = document.getElementById("inventory-filters");
+      if (!container) return;
+      const sortLabel = INVENTORY_SORT_LABEL[inventorySortMode] || INVENTORY_SORT_LABEL.acquire;
+      container.innerHTML = "";
+
+      INVENTORY_FILTER_OPTIONS.forEach((option) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "inventory-filter-button";
+        const isSortButton = option.key === "sort";
+        const isActive = !isSortButton && option.key === inventoryFilter;
+        if (isActive) {
+          btn.classList.add("active");
+        }
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+        btn.textContent = isSortButton ? `${option.label}: ${sortLabel}` : option.label;
+        btn.onclick = () => {
+          if (isSortButton) {
+            toggleInventorySortMode();
+            renderInventoryFilters();
+          } else {
+            inventoryFilter = option.key;
+            renderInventoryFilters();
+          }
+          renderInventory();
+        };
+        container.appendChild(btn);
+      });
+    }
+
     function renderInventory() {
       const container = document.getElementById("inventory-list");
       container.innerHTML = "";
       const items = player.inventory?.items || [];
-      if (items.length === 0) {
+      items.forEach((item) => ensureAcquiredOrder(item));
+
+      const entries = items.map((item, index) => ({ item, index }));
+      const filtered =
+        inventoryFilter === "all"
+          ? entries
+          : entries.filter(({ item }) => getInventorySlotKey(item) === inventoryFilter);
+
+      const sorted = [...filtered].sort((a, b) => {
+        if (inventorySortMode === "rarity") {
+          const rarityA = typeof a.item?.rarity === "number" ? a.item.rarity : 0;
+          const rarityB = typeof b.item?.rarity === "number" ? b.item.rarity : 0;
+          if (rarityA !== rarityB) return rarityB - rarityA;
+        }
+        const orderA = getAcquiredOrder(a.item, a.index);
+        const orderB = getAcquiredOrder(b.item, b.index);
+        return orderA - orderB;
+      });
+
+      if (sorted.length === 0) {
         const empty = document.createElement("div");
         empty.className = "help-panel";
-        empty.textContent = "所持アイテムはありません。";
+        empty.textContent = "該当するアイテムがありません。";
         container.appendChild(empty);
         return;
       }
 
-      items.forEach((item, index) => {
+      sorted.forEach(({ item, index }) => {
         const row = document.createElement("button");
         row.type = "button";
         row.className = "inventory-row";
@@ -2139,7 +2297,9 @@
 
       if (previous) {
         items.push(
-          createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+          ensureAcquiredOrder(
+            createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+          )
         );
       }
 
@@ -2271,6 +2431,7 @@
     }
 
     function openInventoryModal() {
+      renderInventoryFilters();
       renderInventory();
       inventoryModal.classList.remove("hidden");
     }
