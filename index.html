@@ -1172,6 +1172,46 @@
       };
     }
 
+    function createEmptyBonus() {
+      return {
+        hp: 0,
+        mp: 0,
+        physAtk: 0,
+        magAtk: 0,
+        physDef: 0,
+        magDef: 0,
+        speed: 0,
+        critRate: 0,
+        critDamage: 0,
+        evade: 0,
+        physPen: 0,
+        magPen: 0,
+        damageReduction: 0,
+        block: 0,
+        controlResist: 0,
+        dotResist: 0,
+        debuffResist: 0,
+        cooldown: 0,
+        hpRegen: 0,
+        lifeSteal: 0,
+        barrier: 0,
+        dropRate: 0,
+        rarity: 0,
+      };
+    }
+
+    function createPotionInventoryItem(potion, { description } = {}) {
+      const kind = potion.type === "mp" ? "MP" : "HP";
+      const desc = description || `${kind}を${potion.amount}回復 / 消費${potion.useCost ?? 25}%`;
+      return {
+        id: `inv-${potion.id}`,
+        name: potion.name,
+        desc,
+        type: "potion",
+        potion: { ...potion },
+      };
+    }
+
     const player = {
       name: "プレイヤー",
       level: 1,
