@@ -1044,6 +1044,18 @@
       };
     }
 
+    function createPotionInventoryItem(potion, { description } = {}) {
+      const kind = potion.type === "mp" ? "MP" : "HP";
+      const desc = description || `${kind}を${potion.amount}回復 / 消費${potion.useCost ?? 25}%`;
+      return {
+        id: `inv-${potion.id}`,
+        name: potion.name,
+        desc,
+        type: "potion",
+        potion: { ...potion },
+      };
+    }
+
     const player = {
       name: "プレイヤー",
       level: 1,
@@ -1100,7 +1112,43 @@
       buffs: { guard: 0, haste: 0, focus: 0 },
       resist: { control: 0, dot: 0, debuff: 0 },
       statuses: [],
-      inventory: { items: [] },
+      inventory: {
+        items: [
+          createPotionInventoryItem({
+            id: "potion-hp-small",
+            name: "回復ポーション (小)",
+            short: "HP小",
+            type: "hp",
+            amount: 24,
+            useCost: 30,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }),
+          createPotionInventoryItem({
+            id: "potion-hp-medium",
+            name: "回復ポーション (中)",
+            short: "HP中",
+            type: "hp",
+            amount: 45,
+            useCost: 40,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }),
+          createPotionInventoryItem({
+            id: "potion-hp-large",
+            name: "回復ポーション (大)",
+            short: "HP大",
+            type: "hp",
+            amount: 80,
+            useCost: 55,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }, { description: "大きく回復する高級ポーション" }),
+        ],
+      },
       potions: [
         {
           id: "potion-hp-small",
@@ -1990,6 +2038,7 @@
       }
 
       items.forEach((item) => {
+        const itemIndex = items.indexOf(item);
         const row = document.createElement("div");
         row.className = "stat-row";
 
@@ -2006,14 +2055,50 @@
         info.appendChild(desc);
 
         const right = document.createElement("div");
-        right.className = "stat-value";
-        const qty = typeof item?.quantity === "number" ? item.quantity : 1;
-        right.textContent = qty > 1 ? `×${qty}` : "";
+        if (item?.type === "potion" && player.potions?.length) {
+          right.className = "stat-actions";
+          player.potions.forEach((p, slot) => {
+            const equipBtn = document.createElement("button");
+            equipBtn.classList.add("mini-btn");
+            const isSame = p?.id === item.potion?.id;
+            equipBtn.textContent = isSame ? `スロット${slot + 1}装備中` : `スロット${slot + 1}`;
+            equipBtn.disabled = isSame;
+            equipBtn.onclick = () => equipPotionFromInventory(itemIndex, slot);
+            right.appendChild(equipBtn);
+          });
+        } else {
+          right.className = "stat-value";
+          const qty = typeof item?.quantity === "number" ? item.quantity : 1;
+          right.textContent = qty > 1 ? `×${qty}` : "";
+        }
 
         row.appendChild(info);
         row.appendChild(right);
         container.appendChild(row);
       });
+    }
+
+    function equipPotionFromInventory(inventoryIndex, slotIndex) {
+      const items = player.inventory?.items || [];
+      if (!items[inventoryIndex]) return;
+      const entry = items[inventoryIndex];
+      if (entry.type !== "potion" || !entry.potion) return;
+      if (!player.potions?.length || !player.potions[slotIndex]) return;
+
+      const newPotion = { ...entry.potion };
+      const previous = player.potions[slotIndex];
+      player.potions[slotIndex] = newPotion;
+      items.splice(inventoryIndex, 1);
+
+      if (previous) {
+        items.push(
+          createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+        );
+      }
+
+      log(`💧 ${newPotion.name} をスロット${slotIndex + 1}に装備した`, "info");
+      updateUI();
+      renderInventory();
     }
 
     const enemyModal = document.getElementById("enemy-modal");
