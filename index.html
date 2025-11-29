@@ -230,6 +230,47 @@
       font-size: 13px;
     }
 
+    #inventory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .inventory-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: background 0.1s ease;
+      text-align: left;
+    }
+
+    .inventory-row:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .inventory-row:active {
+      transform: translateY(1px);
+    }
+
+    .inventory-row .name {
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .equip-badge {
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
     .inline-buttons {
       display: flex;
       gap: 6px;
@@ -950,6 +991,22 @@
         <button id="inventory-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
       <div id="inventory-list" class="stats"></div>
+    </div>
+  </div>
+
+  <div id="inventory-item-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">アイテム詳細</div>
+          <div id="inventory-item-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="inventory-item-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="inventory-item-desc" class="body" style="margin-top: 6px;"></div>
+      <div id="inventory-item-meta" class="subtle" style="margin: 8px 0 4px;"></div>
+      <div id="inventory-item-detail" class="stats" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px;"></div>
+      <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
     </div>
   </div>
 
@@ -2025,6 +2082,14 @@
       });
     }
 
+    function isItemEquipped(item) {
+      if (!item) return false;
+      if (item.type === "potion" && item.potion?.id) {
+        return (player.potions || []).some((p) => p?.id === item.potion.id);
+      }
+      return false;
+    }
+
     function renderInventory() {
       const container = document.getElementById("inventory-list");
       container.innerHTML = "";
@@ -2037,43 +2102,25 @@
         return;
       }
 
-      items.forEach((item) => {
-        const itemIndex = items.indexOf(item);
-        const row = document.createElement("div");
-        row.className = "stat-row";
+      items.forEach((item, index) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "inventory-row";
+        row.onclick = () => openInventoryItemModal(item, index);
 
-        const info = document.createElement("div");
-        info.style.display = "grid";
-        info.style.gap = "2px";
         const name = document.createElement("div");
-        name.style.fontWeight = "700";
-        name.textContent = item?.name || "不明なアイテム";
-        const desc = document.createElement("div");
-        desc.className = "subtle";
-        desc.textContent = item?.desc || "説明なし";
-        info.appendChild(name);
-        info.appendChild(desc);
-
-        const right = document.createElement("div");
-        if (item?.type === "potion" && player.potions?.length) {
-          right.className = "stat-actions";
-          player.potions.forEach((p, slot) => {
-            const equipBtn = document.createElement("button");
-            equipBtn.classList.add("mini-btn");
-            const isSame = p?.id === item.potion?.id;
-            equipBtn.textContent = isSame ? `スロット${slot + 1}装備中` : `スロット${slot + 1}`;
-            equipBtn.disabled = isSame;
-            equipBtn.onclick = () => equipPotionFromInventory(itemIndex, slot);
-            right.appendChild(equipBtn);
-          });
-        } else {
-          right.className = "stat-value";
-          const qty = typeof item?.quantity === "number" ? item.quantity : 1;
-          right.textContent = qty > 1 ? `×${qty}` : "";
+        name.className = "name";
+        if (isItemEquipped(item)) {
+          const badge = document.createElement("span");
+          badge.className = "equip-badge";
+          badge.textContent = "[E]";
+          name.appendChild(badge);
         }
+        const label = document.createElement("span");
+        label.textContent = item?.name || "不明なアイテム";
+        name.appendChild(label);
 
-        row.appendChild(info);
-        row.appendChild(right);
+        row.appendChild(name);
         container.appendChild(row);
       });
     }
@@ -2106,17 +2153,24 @@
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
     const inventoryModal = document.getElementById("inventory-modal");
+    const inventoryItemModal = document.getElementById("inventory-item-modal");
     const closeModalButton = document.getElementById("modal-close");
     const potionModalCloseButton = document.getElementById("potion-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
     const inventoryModalCloseButton = document.getElementById("inventory-close");
+    const inventoryItemCloseButton = document.getElementById("inventory-item-close");
     const statHelpButton = document.getElementById("stat-help");
     const potionModalName = document.getElementById("potion-modal-name");
     const potionModalType = document.getElementById("potion-modal-type");
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
     const potionModalFill = document.getElementById("potion-modal-fill");
+    const inventoryItemName = document.getElementById("inventory-item-name");
+    const inventoryItemDesc = document.getElementById("inventory-item-desc");
+    const inventoryItemMeta = document.getElementById("inventory-item-meta");
+    const inventoryItemDetail = document.getElementById("inventory-item-detail");
+    const inventoryItemActions = document.getElementById("inventory-item-actions");
     const memoModal = document.getElementById("memo-modal");
     const memoCloseButton = document.getElementById("memo-close");
     const resetModal = document.getElementById("reset-modal");
@@ -2222,7 +2276,71 @@
     }
 
     function closeInventoryModal() {
+      closeInventoryItemModal();
       inventoryModal.classList.add("hidden");
+    }
+
+    function openInventoryItemModal(item, index) {
+      if (!item) return;
+      inventoryItemName.textContent = item?.name || "不明なアイテム";
+      inventoryItemDesc.textContent = item?.desc || "説明なし";
+
+      const metaParts = [];
+      if (isItemEquipped(item)) metaParts.push("装備中");
+      const qty = typeof item?.quantity === "number" ? item.quantity : 1;
+      if (qty > 1) metaParts.push(`所持: ×${qty}`);
+      inventoryItemMeta.textContent = metaParts.join(" / ");
+      inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
+
+      inventoryItemDetail.innerHTML = "";
+      if (item.type === "potion" && item.potion) {
+        const useCost = item.potion.useCost ?? 25;
+        const maxFullness = item.potion.maxFullness ?? 100;
+        const currentFill = Math.max(0, Math.min(maxFullness, item.potion.fullness ?? maxFullness));
+        const fields = [
+          { label: "種類", value: item.potion.type === "hp" ? "HP回復" : "MP回復" },
+          { label: "効果", value: item.potion.type === "hp" ? `HPを${item.potion.amount}回復` : `MPを${item.potion.amount}回復` },
+          { label: "消費", value: `1回 ${useCost}% 消費` },
+          { label: "残量", value: `${Math.round(currentFill)}% / ${maxFullness}%` },
+        ];
+        fields.forEach((f) => {
+          const row = document.createElement("div");
+          row.textContent = `${f.label} ${f.value}`;
+          inventoryItemDetail.appendChild(row);
+        });
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "help-panel";
+        empty.textContent = "詳細情報はありません";
+        empty.style.gridColumn = "1 / -1";
+        inventoryItemDetail.appendChild(empty);
+      }
+
+      inventoryItemActions.innerHTML = "";
+      if (item.type === "potion" && item.potion && player.potions?.length) {
+        player.potions.forEach((p, slot) => {
+          const btn = document.createElement("button");
+          const isSame = p?.id === item.potion.id;
+          btn.textContent = isSame ? `スロット${slot + 1}（装備中）` : `スロット${slot + 1}に装備`;
+          btn.disabled = isSame;
+          btn.onclick = () => {
+            equipPotionFromInventory(index, slot);
+            closeInventoryItemModal();
+          };
+          inventoryItemActions.appendChild(btn);
+        });
+      } else {
+        const note = document.createElement("div");
+        note.className = "help-panel";
+        note.textContent = "装備可能なスロットがありません";
+        inventoryItemActions.appendChild(note);
+      }
+
+      inventoryItemModal?.classList.remove("hidden");
+    }
+
+    function closeInventoryItemModal() {
+      inventoryItemModal?.classList.add("hidden");
     }
 
     function promptPlayerTurn() {
@@ -2645,6 +2763,7 @@
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
     inventoryModalCloseButton?.addEventListener("click", closeInventoryModal);
+    inventoryItemCloseButton?.addEventListener("click", closeInventoryItemModal);
     debugTargetSelect?.addEventListener("change", updateDebugTargetState);
     debugClearButton?.addEventListener("click", () => {
       const target = getDebugTarget();
@@ -2720,6 +2839,9 @@
     });
     inventoryModal?.addEventListener("click", (e) => {
       if (e.target === inventoryModal) closeInventoryModal();
+    });
+    inventoryItemModal?.addEventListener("click", (e) => {
+      if (e.target === inventoryItemModal) closeInventoryItemModal();
     });
     debugModal?.addEventListener("click", (e) => {
       if (e.target === debugModal) closeDebugModal();
