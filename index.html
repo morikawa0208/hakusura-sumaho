@@ -777,6 +777,7 @@
     <nav class="menu">
       <button id="btn-player-modal">プレイヤー詳細</button>
       <button id="btn-skill-tree">スキル</button>
+      <button id="btn-inventory">アイテム</button>
       <button id="btn-debug">デバッグ</button>
     </nav>
   </div>
@@ -939,6 +940,19 @@
     </div>
   </div>
 
+  <div id="inventory-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">インベントリ</div>
+          <div style="font-weight: 700;">所持アイテムの確認</div>
+        </div>
+        <button id="inventory-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="inventory-list" class="stats"></div>
+    </div>
+  </div>
+
   <div id="debug-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -1002,6 +1016,46 @@
 
     const POTION_REFILL_ON_KILL = 12;
 
+    function createEmptyBonus() {
+      return {
+        hp: 0,
+        mp: 0,
+        physAtk: 0,
+        magAtk: 0,
+        physDef: 0,
+        magDef: 0,
+        speed: 0,
+        critRate: 0,
+        critDamage: 0,
+        evade: 0,
+        physPen: 0,
+        magPen: 0,
+        damageReduction: 0,
+        block: 0,
+        controlResist: 0,
+        dotResist: 0,
+        debuffResist: 0,
+        cooldown: 0,
+        hpRegen: 0,
+        lifeSteal: 0,
+        barrier: 0,
+        dropRate: 0,
+        rarity: 0,
+      };
+    }
+
+    function createPotionInventoryItem(potion, { description } = {}) {
+      const kind = potion.type === "mp" ? "MP" : "HP";
+      const desc = description || `${kind}を${potion.amount}回復 / 消費${potion.useCost ?? 25}%`;
+      return {
+        id: `inv-${potion.id}`,
+        name: potion.name,
+        desc,
+        type: "potion",
+        potion: { ...potion },
+      };
+    }
+
     const player = {
       name: "プレイヤー",
       level: 1,
@@ -1041,36 +1095,60 @@
         agi: 0,
         luck: 0,
       },
-      bonus: {
-        hp: 0,
-        mp: 0,
-        physAtk: 0,
-        magAtk: 0,
-        physDef: 0,
-        magDef: 0,
-        speed: 0,
-        critRate: 0,
-        critDamage: 0,
-        evade: 0,
-        physPen: 0,
-        magPen: 0,
-        damageReduction: 0,
-        block: 0,
-        controlResist: 0,
-        dotResist: 0,
-        debuffResist: 0,
-        cooldown: 0,
-        hpRegen: 0,
-        lifeSteal: 0,
-        barrier: 0,
-        dropRate: 0,
-        rarity: 0,
+      bonus: createEmptyBonus(),
+      baseBonus: createEmptyBonus(),
+      equipmentBonus: createEmptyBonus(),
+      equipment: {
+        head: null,
+        body: null,
+        hands: null,
+        feet: null,
+        weapon: null,
+        accessory1: null,
+        accessory2: null,
       },
       statPoints: 0,
       skillPoints: 0,
       buffs: { guard: 0, haste: 0, focus: 0 },
       resist: { control: 0, dot: 0, debuff: 0 },
       statuses: [],
+      inventory: {
+        items: [
+          createPotionInventoryItem({
+            id: "potion-hp-small",
+            name: "回復ポーション (小)",
+            short: "HP小",
+            type: "hp",
+            amount: 24,
+            useCost: 30,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }),
+          createPotionInventoryItem({
+            id: "potion-hp-medium",
+            name: "回復ポーション (中)",
+            short: "HP中",
+            type: "hp",
+            amount: 45,
+            useCost: 40,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }),
+          createPotionInventoryItem({
+            id: "potion-hp-large",
+            name: "回復ポーション (大)",
+            short: "HP大",
+            type: "hp",
+            amount: 80,
+            useCost: 55,
+            fullness: 100,
+            maxFullness: 100,
+            icon: "🧪",
+          }, { description: "大きく回復する高級ポーション" }),
+        ],
+      },
       potions: [
         {
           id: "potion-hp-small",
@@ -1111,21 +1189,21 @@
         desc: "物理攻撃+2 (最大3)",
         level: 0,
         max: 3,
-        apply: () => (player.bonus.physAtk += 2),
+        apply: () => (player.baseBonus.physAtk += 2),
       },
       quickStep: {
         name: "疾駆",
         desc: "速度+2 (最大2)",
         level: 0,
         max: 2,
-        apply: () => (player.bonus.speed += 2),
+        apply: () => (player.baseBonus.speed += 2),
       },
       arcaneFlow: {
         name: "魔力循環",
         desc: "最大MP+2 (最大2)",
         level: 0,
         max: 2,
-        apply: () => (player.bonus.mp += 2),
+        apply: () => (player.baseBonus.mp += 2),
       },
     };
 
@@ -1267,7 +1345,29 @@
       };
     }
 
+    function collectEquipmentBonus() {
+      const total = createEmptyBonus();
+      Object.values(player.equipment || {}).forEach((item) => {
+        if (!item || !item.bonus) return;
+        Object.entries(item.bonus).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          total[key] = (total[key] ?? 0) + value;
+        });
+      });
+      return total;
+    }
+
+    function mergeBonuses(baseBonus, extraBonus) {
+      const merged = createEmptyBonus();
+      Object.keys(merged).forEach((key) => {
+        merged[key] = (baseBonus?.[key] ?? 0) + (extraBonus?.[key] ?? 0);
+      });
+      return merged;
+    }
+
     function recalcDerivedStats() {
+      player.equipmentBonus = collectEquipmentBonus();
+      player.bonus = mergeBonuses(player.baseBonus, player.equipmentBonus);
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
       const prevMaxMp = player.maxMp || derived.maxMp.total;
@@ -1300,6 +1400,20 @@
       player.resist.debuff = derived.debuffResist.total;
 
       return derived;
+    }
+
+    function equipItem(slot, item) {
+      if (!player.equipment || !(slot in player.equipment)) return;
+      player.equipment[slot] = item ?? null;
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+    }
+
+    function unequipItem(slot) {
+      if (!player.equipment || !(slot in player.equipment)) return;
+      player.equipment[slot] = null;
+      const derived = recalcDerivedStats();
+      updateUI(derived);
     }
 
     function createEnemy(isBoss = false) {
@@ -1453,8 +1567,8 @@
       bar.className = cls;
     }
 
-    function updateUI() {
-      const derived = recalcDerivedStats();
+    function updateUI(derivedStats = null) {
+      const derived = derivedStats || recalcDerivedStats();
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
@@ -1911,14 +2025,92 @@
       });
     }
 
+    function renderInventory() {
+      const container = document.getElementById("inventory-list");
+      container.innerHTML = "";
+      const items = player.inventory?.items || [];
+      if (items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "help-panel";
+        empty.textContent = "所持アイテムはありません。";
+        container.appendChild(empty);
+        return;
+      }
+
+      items.forEach((item) => {
+        const itemIndex = items.indexOf(item);
+        const row = document.createElement("div");
+        row.className = "stat-row";
+
+        const info = document.createElement("div");
+        info.style.display = "grid";
+        info.style.gap = "2px";
+        const name = document.createElement("div");
+        name.style.fontWeight = "700";
+        name.textContent = item?.name || "不明なアイテム";
+        const desc = document.createElement("div");
+        desc.className = "subtle";
+        desc.textContent = item?.desc || "説明なし";
+        info.appendChild(name);
+        info.appendChild(desc);
+
+        const right = document.createElement("div");
+        if (item?.type === "potion" && player.potions?.length) {
+          right.className = "stat-actions";
+          player.potions.forEach((p, slot) => {
+            const equipBtn = document.createElement("button");
+            equipBtn.classList.add("mini-btn");
+            const isSame = p?.id === item.potion?.id;
+            equipBtn.textContent = isSame ? `スロット${slot + 1}装備中` : `スロット${slot + 1}`;
+            equipBtn.disabled = isSame;
+            equipBtn.onclick = () => equipPotionFromInventory(itemIndex, slot);
+            right.appendChild(equipBtn);
+          });
+        } else {
+          right.className = "stat-value";
+          const qty = typeof item?.quantity === "number" ? item.quantity : 1;
+          right.textContent = qty > 1 ? `×${qty}` : "";
+        }
+
+        row.appendChild(info);
+        row.appendChild(right);
+        container.appendChild(row);
+      });
+    }
+
+    function equipPotionFromInventory(inventoryIndex, slotIndex) {
+      const items = player.inventory?.items || [];
+      if (!items[inventoryIndex]) return;
+      const entry = items[inventoryIndex];
+      if (entry.type !== "potion" || !entry.potion) return;
+      if (!player.potions?.length || !player.potions[slotIndex]) return;
+
+      const newPotion = { ...entry.potion };
+      const previous = player.potions[slotIndex];
+      player.potions[slotIndex] = newPotion;
+      items.splice(inventoryIndex, 1);
+
+      if (previous) {
+        items.push(
+          createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+        );
+      }
+
+      log(`💧 ${newPotion.name} をスロット${slotIndex + 1}に装備した`, "info");
+      updateUI();
+      renderInventory();
+    }
+
     const enemyModal = document.getElementById("enemy-modal");
     const potionModal = document.getElementById("potion-modal");
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
+    const inventoryModal = document.getElementById("inventory-modal");
     const closeModalButton = document.getElementById("modal-close");
     const potionModalCloseButton = document.getElementById("potion-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
+    const inventoryModalCloseButton = document.getElementById("inventory-close");
     const statHelpButton = document.getElementById("stat-help");
     const potionModalName = document.getElementById("potion-modal-name");
     const potionModalType = document.getElementById("potion-modal-type");
@@ -1946,6 +2138,7 @@
     const debugTargetSelect = document.getElementById("debug-target");
     const debugEnemySelect = document.getElementById("debug-enemy");
     const debugClearButton = document.getElementById("debug-clear-status");
+    const inventoryOpenButton = document.getElementById("btn-inventory");
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
@@ -1979,14 +2172,15 @@
     }
 
     function resetSkillBonuses() {
-      Object.keys(player.bonus).forEach((key) => {
-        player.bonus[key] = 0;
+      Object.keys(player.baseBonus).forEach((key) => {
+        player.baseBonus[key] = 0;
       });
       Object.values(skills).forEach((skill) => {
         for (let i = 0; i < skill.level; i += 1) {
           skill.apply();
         }
       });
+      recalcDerivedStats();
     }
 
     function resetSkills() {
@@ -2020,6 +2214,15 @@
 
     function closeSkillsModal() {
       skillsModal.classList.add("hidden");
+    }
+
+    function openInventoryModal() {
+      renderInventory();
+      inventoryModal.classList.remove("hidden");
+    }
+
+    function closeInventoryModal() {
+      inventoryModal.classList.add("hidden");
     }
 
     function promptPlayerTurn() {
@@ -2434,12 +2637,14 @@
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
     document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
+    inventoryOpenButton?.addEventListener("click", openInventoryModal);
     debugOpenButton?.addEventListener("click", openDebugModal);
     debugCloseButton?.addEventListener("click", closeDebugModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
     potionModalCloseButton.addEventListener("click", closePotionModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    inventoryModalCloseButton?.addEventListener("click", closeInventoryModal);
     debugTargetSelect?.addEventListener("change", updateDebugTargetState);
     debugClearButton?.addEventListener("click", () => {
       const target = getDebugTarget();
@@ -2512,6 +2717,9 @@
     });
     skillsModal.addEventListener("click", (e) => {
       if (e.target === skillsModal) closeSkillsModal();
+    });
+    inventoryModal?.addEventListener("click", (e) => {
+      if (e.target === inventoryModal) closeInventoryModal();
     });
     debugModal?.addEventListener("click", (e) => {
       if (e.target === debugModal) closeDebugModal();
