@@ -84,6 +84,18 @@
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
+    .gold-pill {
+      margin-left: auto;
+      background: rgba(234, 179, 8, 0.14);
+      border: 1px solid rgba(234, 179, 8, 0.28);
+      color: #fef3c7;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .bar span {
       position: absolute;
       inset: 0;
@@ -900,6 +912,7 @@
         <span>LV <span id="level"></span></span>
         <div id="player-status-list" class="status-list" aria-label="プレイヤー状態"></div>
         <span class="pill">階層 <span id="floor-inline"></span>F</span>
+        <span class="pill gold-pill">💰 <span id="gold"></span>G</span>
       </div>
       <div class="bars">
         <div class="bar">
@@ -1263,6 +1276,13 @@
       legendary: { key: "legendary", label: "レジェンド", color: "#b45309", rank: 3, baseOptions: 5, randomOptions: 5 },
     };
 
+    const SELL_VALUE_BY_RARITY = {
+      normal: 1,
+      magic: 10,
+      rare: 100,
+      legendary: 10000,
+    };
+
     const DEBUG_RARITY_OPTIONS = [
       { key: "legendary", label: "レジェンド" },
       { key: "random", label: "ランダム（ノーマル〜レア）" },
@@ -1299,6 +1319,7 @@
       { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
       { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
       { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "goldChance", label: "ゴールド確率", type: "secondary", range: [5, 18], unit: "%" },
     ];
 
     const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
@@ -1861,6 +1882,7 @@
         barrier: 0,
         dropRate: 0,
         rarity: 0,
+        goldChance: 0,
       };
     }
 
@@ -2237,6 +2259,7 @@
         accessory1: null,
         accessory2: null,
       },
+      gold: 0,
       statPoints: 0,
       skillPoints: 0,
       buffs: { guard: 0, haste: 0, focus: 0 },
@@ -2451,6 +2474,7 @@
       const barrierBase = vit * 2 + int;
       const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
       const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
+      const goldChanceBase = 100;
 
       return {
         maxHp: { base: maxHpBase, bonus: player.bonus.hp, total: maxHpBase + player.bonus.hp },
@@ -2477,6 +2501,7 @@
         barrier: { base: barrierBase, bonus: player.bonus.barrier, total: barrierBase + player.bonus.barrier },
         dropRate: { base: dropRateBase, bonus: player.bonus.dropRate, total: Math.min(50, dropRateBase + player.bonus.dropRate) },
         rarity: { base: rarityBase, bonus: player.bonus.rarity, total: Math.min(30, rarityBase + player.bonus.rarity) },
+        goldChance: { base: goldChanceBase, bonus: player.bonus.goldChance, total: Math.max(0, goldChanceBase + player.bonus.goldChance) },
       };
     }
 
@@ -2507,6 +2532,36 @@
         merged[key] = (baseBonus?.[key] ?? 0) + (extraBonus?.[key] ?? 0);
       });
       return merged;
+    }
+
+    function getGoldMultiplier() {
+      const derived = recalcDerivedStats();
+      const chance = derived.goldChance?.total ?? 100;
+      return Math.max(0, chance) / 100;
+    }
+
+    function grantGold(baseAmount, { source = "" } = {}) {
+      const multiplier = getGoldMultiplier();
+      const gained = Math.max(0, Math.round(baseAmount * multiplier));
+      if (gained <= 0) return 0;
+      player.gold += gained;
+      const prefix = source ? `${source}: ` : "";
+      log(`💰 ${prefix}${gained}Gを獲得 (倍率 ${Math.round(multiplier * 100)}%)`, "good");
+      return gained;
+    }
+
+    function calculateItemSellValue(item) {
+      if (!item) return 0;
+      if (item.type === "equipment" && item.equipment) {
+        const base = SELL_VALUE_BY_RARITY[item.equipment.rarity] ?? 0;
+        const prefixRank = item.equipment.prefix?.rank ?? 0;
+        const suffixRank = item.equipment.suffix?.rank ?? 0;
+        const starBonus = prefixRank + suffixRank;
+        const price = base * (1 + starBonus * 0.2);
+        return Math.max(1, Math.round(price));
+      }
+      if (item.type === "potion") return 1;
+      return 0;
     }
 
     function recalcDerivedStats() {
@@ -2732,6 +2787,7 @@
       document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
+      document.getElementById("gold").textContent = player.gold;
       document.getElementById("stat-points").textContent = player.statPoints;
       document.getElementById("skill-points-skill").textContent = player.skillPoints;
       updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
@@ -3206,6 +3262,7 @@
         { label: "バリア", value: derived.barrier.total },
         { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
         { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
+        { label: "ゴールド確率", value: derived.goldChance.total, unit: "%" },
       ];
 
       rows.forEach((row) => {
@@ -3459,6 +3516,25 @@
       renderInventory();
     }
 
+    function sellInventoryItem(index, item, priceOverride) {
+      const items = player.inventory?.items || [];
+      if (!items[index]) return;
+      if (isItemEquipped(item)) {
+        log("装備中のアイテムは売却できません", "warning");
+        return;
+      }
+      const sellPrice = priceOverride ?? calculateItemSellValue(item);
+      if (!sellPrice || sellPrice <= 0) {
+        log("このアイテムは売却できません", "warning");
+        return;
+      }
+      items.splice(index, 1);
+      grantGold(sellPrice, { source: "売却" });
+      closeInventoryItemModal();
+      renderInventory();
+      updateUI();
+    }
+
     const enemyModal = document.getElementById("enemy-modal");
     const potionModal = document.getElementById("potion-modal");
     const playerModal = document.getElementById("player-modal");
@@ -3684,6 +3760,8 @@
       inventoryItemMeta.textContent = metaParts.join(" / ");
       inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
 
+      const sellPrice = calculateItemSellValue(item);
+
       inventoryItemDetail.innerHTML = "";
       if (item.type === "potion" && item.potion) {
         const useCost = item.potion.useCost ?? 25;
@@ -3695,6 +3773,9 @@
           { label: "消費", value: `1回 ${useCost}% 消費` },
           { label: "残量", value: `${Math.round(currentFill)}% / ${maxFullness}%` },
         ];
+        if (sellPrice > 0) {
+          fields.push({ label: "売値", value: `${sellPrice}G` });
+        }
         fields.forEach((f) => {
           const row = document.createElement("div");
           row.textContent = `${f.label} ${f.value}`;
@@ -3707,6 +3788,9 @@
           { label: "部位", value: slotLabel },
           { label: "レア度", value: rarity },
         ];
+        if (sellPrice > 0) {
+          fields.push({ label: "売値", value: `${sellPrice}G` });
+        }
         fields.forEach((f) => {
           const row = document.createElement("div");
           row.textContent = `${f.label} ${f.value}`;
@@ -3823,6 +3907,14 @@
         inventoryItemActions.appendChild(note);
       }
 
+      if (sellPrice > 0) {
+        const sellBtn = document.createElement("button");
+        sellBtn.textContent = isItemEquipped(item) ? "装備中は売却不可" : `売却 (${sellPrice}G)`;
+        sellBtn.disabled = isItemEquipped(item);
+        sellBtn.onclick = () => sellInventoryItem(index, item, sellPrice);
+        inventoryItemActions.appendChild(sellBtn);
+      }
+
       inventoryItemModal?.classList.remove("hidden");
     }
 
@@ -3918,6 +4010,15 @@
       return final;
     }
 
+    function onEnemyDefeated(enemy, { cause = "" } = {}) {
+      if (!enemy || enemy.defeated) return;
+      enemy.defeated = true;
+      const baseGold = Math.max(1, Math.round(5 + game.floor * 2 + (enemy.isBoss ? 20 : 0)));
+      grantGold(baseGold, { source: cause || "撃破" });
+      refillPotionsOnKill();
+      updateUI();
+    }
+
     function usePotion(index) {
       if (!game.awaitingInput) return;
       if (!player.potions || !player.potions[index]) return;
@@ -4002,7 +4103,7 @@
         log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
         if (target !== player && target.hp <= 0) {
           log(`${target.name} を倒した！`, "good");
-          refillPotionsOnKill();
+          onEnemyDefeated(target, { cause: "撃破" });
           checkVictory();
           if (!game.enemies.some(e => e.hp > 0)) break;
         }
@@ -4038,6 +4139,7 @@
       log(`🌌 パワーストライク！ ${target.name} に ${dealt} ダメージ`, "player");
       if (target.hp <= 0) {
         log(`${target.name} を粉砕！`, "good");
+        onEnemyDefeated(target, { cause: "撃破" });
         checkVictory();
       } else {
         const knocked = applyStatus(target, "knockdown", { duration: 1, chance: 70 });
@@ -4136,6 +4238,12 @@
         const dealt = applyDamage(target, finalDmg, { source: enemy.name });
         const critText = isCrit ? " (会心！)" : "";
         log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
+        if (target !== player && target.hp <= 0) {
+          log(`${target.name} は倒れた`, "good");
+          onEnemyDefeated(target, { cause: "混乱" });
+          checkVictory();
+          if (!game.enemies.some(e => e.hp > 0)) return;
+        }
         if (player.hp <= 0) return;
         enemy.attacksRemaining = Math.max(0, attacks - i - 1);
       }
@@ -4162,6 +4270,7 @@
 
       if (entity.hp <= 0) {
         if (actor.type === "enemy") {
+          onEnemyDefeated(entity, { cause: "撃破" });
           log(`${entity.name} は倒れた`, "good");
           checkVictory();
         } else {
