@@ -1181,8 +1181,7 @@
       { key: "body", label: "胴" },
       { key: "hands", label: "手" },
       { key: "feet", label: "足" },
-      { key: "accessory1", label: "装飾品1" },
-      { key: "accessory2", label: "装飾品2" },
+      { key: "accessory", label: "装飾品" },
       { key: "items", label: "アイテム" },
       { key: "sort", label: "並び替え" },
     ];
@@ -1201,6 +1200,16 @@
       body: { label: "胴" },
       hands: { label: "手" },
       feet: { label: "足" },
+      accessory: { label: "装飾品" },
+    };
+
+    const PLAYER_EQUIPMENT_SLOTS = {
+      weapon: { label: "メイン(武器)" },
+      subWeapon: { label: "サブ(武器)" },
+      head: { label: "頭" },
+      body: { label: "胴" },
+      hands: { label: "手" },
+      feet: { label: "足" },
       accessory1: { label: "装飾品1" },
       accessory2: { label: "装飾品2" },
     };
@@ -1211,6 +1220,13 @@
       rare: { key: "rare", label: "レア", color: "#fcd34d", rank: 2, baseOptions: 3, randomOptions: 3 },
       legendary: { key: "legendary", label: "レジェンド", color: "#fb7185", rank: 3, baseOptions: 5, randomOptions: 5 },
     };
+
+    const DEBUG_RARITY_OPTIONS = [
+      { key: "legendary", label: "レジェンド" },
+      { key: "random", label: "ランダム（ノーマル〜レア）" },
+    ];
+
+    const NON_LEGENDARY_RARITIES = ["normal", "magic", "rare"];
 
     const EQUIPMENT_STAT_POOL = [
       { key: "str", label: "力", type: "primary", range: [1, 4] },
@@ -1346,7 +1362,7 @@
           unique: { name: "奈落の跳躍", range: [16, 28], unit: "%", effect: "回避成功時、{value}で追加行動を得る" },
         },
       ],
-      accessory1: [
+      accessory: [
         {
           key: "twinMoonRing",
           name: "幸運の双月リング",
@@ -1357,8 +1373,6 @@
           name: "翠緑の誓約指輪",
           unique: { name: "癒しの盟約", range: [18, 30], unit: "%", effect: "継続回復効果量+{value}" },
         },
-      ],
-      accessory2: [
         {
           key: "bloodcrystalTalisman",
           name: "血晶のタリスマン",
@@ -1985,9 +1999,16 @@
       return derived;
     }
 
+    function canEquipInSlot(itemSlot, targetSlot) {
+      if (!itemSlot) return true;
+      if (itemSlot === targetSlot) return true;
+      if (itemSlot === "accessory" && (targetSlot === "accessory1" || targetSlot === "accessory2")) return true;
+      return false;
+    }
+
     function equipItem(slot, item) {
       if (!player.equipment || !(slot in player.equipment)) return;
-      if (item?.equipment?.slot && item.equipment.slot !== slot) return;
+      if (!canEquipInSlot(item?.equipment?.slot, slot)) return;
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -2296,7 +2317,7 @@
         });
       }
       if (!debugGearRaritySelect.options.length) {
-        Object.values(EQUIPMENT_RARITIES).forEach((rarity) => {
+        DEBUG_RARITY_OPTIONS.forEach((rarity) => {
           const opt = document.createElement("option");
           opt.value = rarity.key;
           opt.textContent = rarity.label;
@@ -2304,7 +2325,7 @@
         });
       }
       if (!debugGearSlotSelect.value) debugGearSlotSelect.value = "weapon";
-      if (!debugGearRaritySelect.value) debugGearRaritySelect.value = "rare";
+      if (!debugGearRaritySelect.value) debugGearRaritySelect.value = "random";
     }
 
     function populateLegendaryTemplateSelect() {
@@ -2414,13 +2435,19 @@
       appendAffix("後称号", item.equipment?.suffix);
     }
 
+    function resolveDebugRarity(selection) {
+      if (selection === "legendary") return "legendary";
+      return NON_LEGENDARY_RARITIES[randomInt(0, NON_LEGENDARY_RARITIES.length - 1)];
+    }
+
     function generateDebugGear({ randomRarity = false } = {}) {
       if (!debugGearSlotSelect || !debugGearRaritySelect) return null;
       const slotKey = debugGearSlotSelect.value || "weapon";
-      const rarityKey = randomRarity
-        ? Object.keys(EQUIPMENT_RARITIES)[randomInt(0, Object.keys(EQUIPMENT_RARITIES).length - 1)]
+      const rarityChoice = randomRarity
+        ? DEBUG_RARITY_OPTIONS[randomInt(0, DEBUG_RARITY_OPTIONS.length - 1)]?.key
         : debugGearRaritySelect.value;
-      const legendaryKey = rarityKey === "legendary" ? debugLegendarySelect?.value || "" : "";
+      const rarityKey = resolveDebugRarity(rarityChoice);
+      const legendaryKey = rarityChoice === "legendary" ? debugLegendarySelect?.value || "" : "";
       const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey });
       lastGeneratedEquipment = item;
       player.inventory.items.push(item);
@@ -3128,25 +3155,36 @@
         });
       } else if (item.type === "equipment" && item.equipment) {
         const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
-        const equipBtn = document.createElement("button");
-        equipBtn.textContent = `${slotLabel}に装備`;
-        equipBtn.onclick = () => {
-          equipItem(item.equipment.slot, item);
-          log(`🛡️ ${item.name} を${slotLabel}に装備した`, "good");
-          renderInventory();
-        };
-        inventoryItemActions.appendChild(equipBtn);
-
-        const equipped = player.equipment?.[item.equipment.slot];
-        if (equipped) {
-          const unequipBtn = document.createElement("button");
-          unequipBtn.textContent = `${slotLabel}を外す`;
-          unequipBtn.onclick = () => {
-            unequipItem(item.equipment.slot);
-            log(`🧤 ${slotLabel}の装備を外した`, "info");
+        const addEquipButtons = (slotKey) => {
+          const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
+          const equipped = player.equipment?.[slotKey];
+          const isSame = equipped?.id === item.id;
+          const equipBtn = document.createElement("button");
+          equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
+          equipBtn.disabled = isSame;
+          equipBtn.onclick = () => {
+            equipItem(slotKey, item);
+            log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
             renderInventory();
           };
-          inventoryItemActions.appendChild(unequipBtn);
+          inventoryItemActions.appendChild(equipBtn);
+
+          if (equipped) {
+            const unequipBtn = document.createElement("button");
+            unequipBtn.textContent = `${slotName}を外す`;
+            unequipBtn.onclick = () => {
+              unequipItem(slotKey);
+              log(`🧤 ${slotName}の装備を外した`, "info");
+              renderInventory();
+            };
+            inventoryItemActions.appendChild(unequipBtn);
+          }
+        };
+
+        if (item.equipment.slot === "accessory") {
+          ["accessory1", "accessory2"].forEach(addEquipButtons);
+        } else {
+          addEquipButtons(item.equipment.slot);
         }
       } else {
         const note = document.createElement("div");
