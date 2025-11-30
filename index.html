@@ -1237,6 +1237,26 @@
       { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
     ];
 
+    const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
+
+    const EQUIPMENT_TITLE_PREFIXES = [
+      { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
+      { key: "sharp", name: "鋭い", rank: 1, options: ["critRate"] },
+      { key: "colossal", name: "巨大な", rank: 2, options: ["str", "vit"] },
+      { key: "arcane", name: "魔導の", rank: 2, options: ["int", "mp"] },
+      { key: "tempest", name: "迅雷の", rank: 3, options: ["speed", "evade", "critRate"] },
+      { key: "mythic", name: "神獣の", rank: 3, options: ["str", "vit", "hp"] },
+    ];
+
+    const EQUIPMENT_TITLE_SUFFIXES = [
+      { key: "apprentice", name: "の研鑽", rank: 1, options: ["hp"] },
+      { key: "trailblazer", name: "の先駆者", rank: 1, options: ["speed"] },
+      { key: "onslaught", name: "の猛攻", rank: 2, options: ["physAtk", "critDamage"] },
+      { key: "sorcery", name: "の叡智", rank: 2, options: ["magAtk", "cooldown"] },
+      { key: "conqueror", name: "の覇者", rank: 3, options: ["physAtk", "physPen", "critRate"] },
+      { key: "eternal", name: "の終焉", rank: 3, options: ["magAtk", "magPen", "debuffResist"] },
+    ];
+
     const LEGENDARY_UNIQUE_OPTIONS = [
       { name: "烈火", effect: "パワーストライクのダメージ+25%" },
       { name: "蒼氷", effect: "攻撃命中時に低確率で敵を鈍足化" },
@@ -1353,13 +1373,36 @@
       return result;
     }
 
+    function pickTitle(titles) {
+      if (!titles?.length) return null;
+      return titles[randomInt(0, titles.length - 1)];
+    }
+
+    function generateTitleOptions(title, rarity) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      if (!title?.options?.length) return { entries: [], primaryBonus, bonus };
+
+      const entries = title.options
+        .map((key) => {
+          const def = EQUIPMENT_STAT_BY_KEY[key];
+          if (!def) return null;
+          const value = rollStatValue(def, rarity);
+          applyOptionToBonus(def, value, primaryBonus, bonus);
+          return { key: def.key, label: def.label, unit: def.unit, type: def.type, value };
+        })
+        .filter(Boolean);
+
+      return { entries, primaryBonus, bonus };
+    }
+
     function formatEquipmentValue(entry) {
       const sign = entry.value >= 0 ? "+" : "";
       const unit = entry.unit || "";
       return `${entry.label} ${sign}${entry.value}${unit}`;
     }
 
-    function buildEquipmentName(slotKey, rarity, uniqueOptions) {
+    function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle) {
       const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
       const prefixPool = {
         normal: ["粗削りな", "見慣れた", "手軽な"],
@@ -1368,9 +1411,10 @@
         legendary: ["伝説の", "神話の", "唯一無二の"],
       };
       const list = prefixPool[rarity.key] || ["謎めいた"];
-      const prefix = list[randomInt(0, list.length - 1)];
-      const unique = uniqueOptions?.[0]?.name ? `『${uniqueOptions[0].name}』` : "";
-      return `${prefix} ${slotLabel}${unique ? ` ${unique}` : ""}`;
+      const rarityPrefix = list[randomInt(0, list.length - 1)];
+      const prefix = prefixTitle?.name || rarityPrefix;
+      const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
+      return `${prefix} ${slotLabel}${suffix}`;
     }
 
     function createEquipmentItem(slotKey, rarityKey) {
@@ -1378,15 +1422,26 @@
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
       const base = generateEquipmentOptions(rarity, rarity.baseOptions);
       const random = generateEquipmentOptions(rarity, rarity.randomOptions);
+      const prefixTitle = pickTitle(EQUIPMENT_TITLE_PREFIXES);
+      const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
+      const prefixOptions = generateTitleOptions(prefixTitle, rarity);
+      const suffixOptions = generateTitleOptions(suffixTitle, rarity);
       const uniqueOptions = rarityKey === "legendary" ? pickUniqueOptions(5) : [];
 
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
-      [...base.entries, ...random.entries].forEach((entry) => {
+      [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach((entry) => {
         applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
       });
 
-      const name = buildEquipmentName(slot, rarity, uniqueOptions);
+      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle);
+
+      const prefixAffix = prefixTitle
+        ? { ...prefixTitle, options: prefixOptions.entries }
+        : null;
+      const suffixAffix = suffixTitle
+        ? { ...suffixTitle, options: suffixOptions.entries }
+        : null;
 
       return ensureAcquiredOrder({
         id: crypto.randomUUID ? `eq-${crypto.randomUUID()}` : `eq-${Date.now()}-${Math.random()}`,
@@ -1402,6 +1457,8 @@
           color: rarity.color,
           baseOptions: base.entries,
           randomOptions: random.entries,
+          prefix: prefixAffix,
+          suffix: suffixAffix,
           uniqueOptions,
         },
         primaryBonus,
@@ -2181,6 +2238,13 @@
         });
       };
 
+      const appendAffix = (label, affix) => {
+        if (!affix?.options?.length) return;
+        appendList(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+      };
+
+      appendAffix("前称号", item.equipment?.prefix);
+      appendAffix("後称号", item.equipment?.suffix);
       appendList("基礎オプション", item.equipment?.baseOptions);
       appendList("ランダムオプション", item.equipment?.randomOptions);
       if (item.equipment?.uniqueOptions?.length) {
@@ -2860,6 +2924,13 @@
           inventoryItemDetail.appendChild(block);
         };
 
+        const appendAffix = (label, affix) => {
+          if (!affix?.options?.length) return;
+          appendOptions(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+        };
+
+        appendAffix("前称号", item.equipment.prefix);
+        appendAffix("後称号", item.equipment.suffix);
         appendOptions("基礎オプション", item.equipment.baseOptions);
         appendOptions("ランダムオプション", item.equipment.randomOptions);
 
