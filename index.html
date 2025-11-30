@@ -304,6 +304,12 @@
       letter-spacing: 0.02em;
     }
 
+    .favorite-badge {
+      color: #fcd34d;
+      font-weight: 900;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+
     .inline-buttons {
       display: flex;
       gap: 6px;
@@ -1895,6 +1901,9 @@
       if (typeof item.acquiredOrder !== "number") {
         item.acquiredOrder = inventoryAcquireSequence++;
       }
+      if (typeof item.favorite !== "boolean") {
+        item.favorite = false;
+      }
       return item;
     }
 
@@ -2540,13 +2549,17 @@
       return Math.max(0, chance) / 100;
     }
 
+    function formatGold(amount) {
+      return Math.trunc(amount || 0).toLocaleString("ja-JP");
+    }
+
     function grantGold(baseAmount, { source = "" } = {}) {
       const multiplier = getGoldMultiplier();
       const gained = Math.max(0, Math.round(baseAmount * multiplier));
       if (gained <= 0) return 0;
       player.gold += gained;
       const prefix = source ? `${source}: ` : "";
-      log(`💰 ${prefix}${gained}Gを獲得 (倍率 ${Math.round(multiplier * 100)}%)`, "good");
+      log(`💰 ${prefix}${formatGold(gained)}Gを獲得`, "good");
       return gained;
     }
 
@@ -2787,7 +2800,7 @@
       document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
-      document.getElementById("gold").textContent = player.gold;
+      document.getElementById("gold").textContent = formatGold(player.gold);
       document.getElementById("stat-points").textContent = player.statPoints;
       document.getElementById("skill-points-skill").textContent = player.skillPoints;
       updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
@@ -3481,6 +3494,12 @@
           badge.textContent = "[E]";
           name.appendChild(badge);
         }
+        if (item.favorite) {
+          const fav = document.createElement("span");
+          fav.className = "favorite-badge";
+          fav.textContent = "★";
+          name.appendChild(fav);
+        }
         const label = document.createElement("span");
         label.textContent = item?.name || "不明なアイテム";
         applyItemRarityColor(label, item);
@@ -3521,6 +3540,10 @@
       if (!items[index]) return;
       if (isItemEquipped(item)) {
         log("装備中のアイテムは売却できません", "warning");
+        return;
+      }
+      if (item.favorite) {
+        log("お気に入り登録中のアイテムは売却できません", "warning");
         return;
       }
       const sellPrice = priceOverride ?? calculateItemSellValue(item);
@@ -3752,13 +3775,19 @@
       applyItemRarityColor(inventoryItemName, item);
       inventoryItemDesc.textContent = item?.desc || "説明なし";
 
-      const metaParts = [];
-      if (isItemEquipped(item)) metaParts.push("装備中");
-      const qty = typeof item?.quantity === "number" ? item.quantity : 1;
-      if (qty > 1) metaParts.push(`所持: ×${qty}`);
-      if (item.equipment?.rarityLabel) metaParts.push(item.equipment.rarityLabel);
-      inventoryItemMeta.textContent = metaParts.join(" / ");
-      inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
+      const updateMeta = () => {
+        const metaParts = [];
+        if (item.favorite) metaParts.push("★お気に入り");
+        if (isItemEquipped(item)) metaParts.push("装備中");
+        const qty = typeof item?.quantity === "number" ? item.quantity : 1;
+        if (qty > 1) metaParts.push(`所持: ×${qty}`);
+        if (item.equipment?.rarityLabel) metaParts.push(item.equipment.rarityLabel);
+        inventoryItemMeta.textContent = metaParts.join(" / ");
+        inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
+      };
+      updateMeta();
+
+      const sellPrice = calculateItemSellValue(item);
 
       const sellPrice = calculateItemSellValue(item);
 
@@ -3774,7 +3803,7 @@
           { label: "残量", value: `${Math.round(currentFill)}% / ${maxFullness}%` },
         ];
         if (sellPrice > 0) {
-          fields.push({ label: "売値", value: `${sellPrice}G` });
+          fields.push({ label: "売値", value: `${formatGold(sellPrice)}G` });
         }
         fields.forEach((f) => {
           const row = document.createElement("div");
@@ -3789,7 +3818,7 @@
           { label: "レア度", value: rarity },
         ];
         if (sellPrice > 0) {
-          fields.push({ label: "売値", value: `${sellPrice}G` });
+          fields.push({ label: "売値", value: `${formatGold(sellPrice)}G` });
         }
         fields.forEach((f) => {
           const row = document.createElement("div");
@@ -3848,6 +3877,35 @@
       }
 
       inventoryItemActions.innerHTML = "";
+      const favoriteBtn = document.createElement("button");
+      const updateFavoriteButton = () => {
+        favoriteBtn.textContent = item.favorite ? "★ お気に入り中" : "☆ お気に入り登録";
+        favoriteBtn.ariaPressed = item.favorite ? "true" : "false";
+      };
+      favoriteBtn.onclick = () => {
+        item.favorite = !item.favorite;
+        updateFavoriteButton();
+        updateMeta();
+        refreshSellButton();
+        renderInventory();
+      };
+      updateFavoriteButton();
+      inventoryItemActions.appendChild(favoriteBtn);
+
+      let sellBtn = null;
+      const refreshSellButton = () => {
+        if (!sellBtn) return;
+        const equipped = isItemEquipped(item);
+        const disabled = equipped || item.favorite;
+        const label = disabled
+          ? equipped
+            ? "装備中は売却不可"
+            : "お気に入りは売却不可"
+          : `売却 (${formatGold(sellPrice)}G)`;
+        sellBtn.textContent = label;
+        sellBtn.disabled = disabled;
+      };
+
       if (item.type === "potion" && item.potion && player.potions?.length) {
         player.potions.forEach((p, slot) => {
           const btn = document.createElement("button");
@@ -3908,9 +3966,8 @@
       }
 
       if (sellPrice > 0) {
-        const sellBtn = document.createElement("button");
-        sellBtn.textContent = isItemEquipped(item) ? "装備中は売却不可" : `売却 (${sellPrice}G)`;
-        sellBtn.disabled = isItemEquipped(item);
+        sellBtn = document.createElement("button");
+        refreshSellButton();
         sellBtn.onclick = () => sellInventoryItem(index, item, sellPrice);
         inventoryItemActions.appendChild(sellBtn);
       }
