@@ -1257,14 +1257,114 @@
       { key: "eternal", name: "の終焉", rank: 3, options: ["magAtk", "magPen", "debuffResist"] },
     ];
 
-    const LEGENDARY_UNIQUE_OPTIONS = [
-      { name: "烈火", effect: "パワーストライクのダメージ+25%" },
-      { name: "蒼氷", effect: "攻撃命中時に低確率で敵を鈍足化" },
-      { name: "雷鳴", effect: "通常攻撃が追加で1ヒットすることがある" },
-      { name: "翠風", effect: "回避時にHPを少量回復" },
-      { name: "朧", effect: "スキルのクールタイム-10%" },
-      { name: "星辰", effect: "クリティカルダメージ+15%" },
-    ];
+    const LEGENDARY_EQUIPMENT_LIBRARY = {
+      weapon: [
+        {
+          key: "infernoGreatsword",
+          name: "灼煌の大剣",
+          unique: { name: "煉獄覇斬", range: [28, 42], unit: "%", effect: "火属性スキルダメージ+{value}" },
+        },
+        {
+          key: "mistTwinblade",
+          name: "霧閃の双刃",
+          unique: {
+            name: "幻影連舞",
+            range: [20, 32],
+            unit: "%",
+            effect: "通常攻撃命中時{value}で3連撃化（追加攻撃は威力50%）",
+          },
+        },
+      ],
+      subWeapon: [
+        {
+          key: "azureBulwark",
+          name: "蒼紋の盾",
+          unique: { name: "蒼守の障壁", range: [320, 480], effect: "戦闘開始時、{value}のダメージを吸収するシールドを得る" },
+        },
+        {
+          key: "dawnGrimoire",
+          name: "暁星の魔導書",
+          unique: {
+            name: "黎明の喝采",
+            range: [18, 30],
+            unit: "%",
+            effect: "スキル使用後、次の通常攻撃が必ずクリティカルし与ダメージ+{value}",
+          },
+        },
+      ],
+      head: [
+        {
+          key: "starseerCirclet",
+          name: "星読のサークレット",
+          unique: { name: "予兆読み", range: [8, 15], unit: "%", effect: "クリティカル時、全スキルCTを{value}短縮" },
+        },
+        {
+          key: "wyrmhelm",
+          name: "竜骨の兜",
+          unique: { name: "竜眼の威圧", range: [20, 32], unit: "%", effect: "被弾時{value}で次の攻撃が必中＆与ダメ上昇" },
+        },
+      ],
+      body: [
+        {
+          key: "azureScaleArmor",
+          name: "蒼竜の鱗鎧",
+          unique: { name: "鱗の守護", range: [12, 20], unit: "%", effect: "受けるダメージを常時{value}軽減" },
+        },
+        {
+          key: "wrathPlate",
+          name: "赫怒の戦装",
+          unique: { name: "怒涛の復讐", range: [18, 30], unit: "%", effect: "被ダメージ時、次のターン終了まで与ダメージ+{value}" },
+        },
+      ],
+      hands: [
+        {
+          key: "stormGauntlet",
+          name: "雷纏いの篭手",
+          unique: { name: "雷禍の連鎖", range: [35, 55], unit: "%", effect: "スキル命中時、追加で{value}の確率で感電を付与" },
+        },
+        {
+          key: "shadowWeave",
+          name: "影縫いの手袋",
+          unique: { name: "拘束の刺突", range: [22, 36], unit: "%", effect: "クリティカル時、敵を{value}で1ターン行動不能にする" },
+        },
+      ],
+      feet: [
+        {
+          key: "galeGreaves",
+          name: "疾風のグリーヴ",
+          unique: { name: "風走", range: [14, 24], unit: "%", effect: "回避率+{value}、回避成功時は次ターンの行動順を早める" },
+        },
+        {
+          key: "abyssWalker",
+          name: "深淵歩きのブーツ",
+          unique: { name: "奈落の跳躍", range: [16, 28], unit: "%", effect: "回避成功時、{value}で追加行動を得る" },
+        },
+      ],
+      accessory1: [
+        {
+          key: "twinMoonRing",
+          name: "幸運の双月リング",
+          unique: { name: "双月の導き", range: [6, 12], unit: "%", effect: "宝箱とドロップのレアリティ+{value}" },
+        },
+        {
+          key: "verdantPledge",
+          name: "翠緑の誓約指輪",
+          unique: { name: "癒しの盟約", range: [18, 30], unit: "%", effect: "継続回復効果量+{value}" },
+        },
+      ],
+      accessory2: [
+        {
+          key: "bloodcrystalTalisman",
+          name: "血晶のタリスマン",
+          unique: { name: "血晶吸収", range: [6, 12], unit: "%", effect: "スキル使用時、与ダメージの{value}をHPとして吸収" },
+        },
+        {
+          key: "starwardCharm",
+          name: "蒼星の護符",
+          unique: { name: "蒼星結界", range: [80, 140], effect: "獲得するバリア量+{value}、バリア破壊時に周囲へ小ダメージ" },
+        },
+      ],
+    };
 
     function createEmptyBonus() {
       return {
@@ -1315,6 +1415,16 @@
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
+    function rollValueInRange(range, precision = 0) {
+      const [min, max] = range;
+      const raw = min + Math.random() * (max - min);
+      if (precision > 0) {
+        const base = 10 ** precision;
+        return Math.round(raw * base) / base;
+      }
+      return Math.round(raw);
+    }
+
     function rollStatValue(def, rarity) {
       const [min, max] = def.range;
       const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
@@ -1360,17 +1470,22 @@
       return { entries, primaryBonus, bonus };
     }
 
-    function pickUniqueOptions(count) {
-      const pool = [...LEGENDARY_UNIQUE_OPTIONS];
-      const result = [];
-      for (let i = pool.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      for (let i = 0; i < count && i < pool.length; i += 1) {
-        result.push(pool[i]);
-      }
-      return result;
+    function pickLegendaryEquipment(slotKey) {
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey];
+      if (!list?.length) return null;
+      return list[randomInt(0, list.length - 1)];
+    }
+
+    function rollLegendaryUniqueOption(slotKey) {
+      const def = pickLegendaryEquipment(slotKey);
+      if (!def?.unique) return null;
+      const precision = def.unique.precision ?? (def.unique.unit === "%" ? 1 : 0);
+      const value = def.unique.range ? rollValueInRange(def.unique.range, precision) : null;
+      const replaced = def.unique.effect?.replace(
+        "{value}",
+        value != null ? `${value}${def.unique.unit || ""}` : ""
+      );
+      return { itemName: def.name, option: { name: def.unique.name, effect: replaced || def.unique.effect } };
     }
 
     function pickTitle(titles) {
@@ -1402,7 +1517,7 @@
       return `${entry.label} ${sign}${entry.value}${unit}`;
     }
 
-    function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle) {
+    function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle, baseName) {
       const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
       const prefixPool = {
         normal: ["粗削りな", "見慣れた", "手軽な"],
@@ -1414,7 +1529,8 @@
       const rarityPrefix = list[randomInt(0, list.length - 1)];
       const prefix = prefixTitle?.name || rarityPrefix;
       const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
-      return `${prefix} ${slotLabel}${suffix}`;
+      const base = baseName || slotLabel;
+      return `${prefix} ${base}${suffix}`;
     }
 
     function createEquipmentItem(slotKey, rarityKey) {
@@ -1426,7 +1542,7 @@
       const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
       const prefixOptions = generateTitleOptions(prefixTitle, rarity);
       const suffixOptions = generateTitleOptions(suffixTitle, rarity);
-      const uniqueOptions = rarityKey === "legendary" ? pickUniqueOptions(5) : [];
+      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(slot) : null;
 
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
@@ -1434,7 +1550,7 @@
         applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
       });
 
-      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle);
+      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, uniqueOption?.itemName);
 
       const prefixAffix = prefixTitle
         ? { ...prefixTitle, options: prefixOptions.entries }
@@ -1459,7 +1575,7 @@
           randomOptions: random.entries,
           prefix: prefixAffix,
           suffix: suffixAffix,
-          uniqueOptions,
+          uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
         },
         primaryBonus,
         bonus,
@@ -2243,10 +2359,6 @@
         appendList(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
       };
 
-      appendAffix("前称号", item.equipment?.prefix);
-      appendAffix("後称号", item.equipment?.suffix);
-      appendList("基礎オプション", item.equipment?.baseOptions);
-      appendList("ランダムオプション", item.equipment?.randomOptions);
       if (item.equipment?.uniqueOptions?.length) {
         const heading = document.createElement("div");
         heading.className = "option-label";
@@ -2259,6 +2371,10 @@
           debugGearPreview.appendChild(row);
         });
       }
+      appendList("基礎オプション", item.equipment?.baseOptions);
+      appendList("ランダムオプション", item.equipment?.randomOptions);
+      appendAffix("前称号", item.equipment?.prefix);
+      appendAffix("後称号", item.equipment?.suffix);
     }
 
     function generateDebugGear({ randomRarity = false } = {}) {
@@ -2929,11 +3045,6 @@
           appendOptions(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
         };
 
-        appendAffix("前称号", item.equipment.prefix);
-        appendAffix("後称号", item.equipment.suffix);
-        appendOptions("基礎オプション", item.equipment.baseOptions);
-        appendOptions("ランダムオプション", item.equipment.randomOptions);
-
         if (item.equipment.uniqueOptions?.length) {
           const uniqueBlock = document.createElement("div");
           uniqueBlock.className = "equipment-option-list";
@@ -2949,6 +3060,11 @@
           });
           inventoryItemDetail.appendChild(uniqueBlock);
         }
+
+        appendOptions("基礎オプション", item.equipment.baseOptions);
+        appendOptions("ランダムオプション", item.equipment.randomOptions);
+        appendAffix("前称号", item.equipment.prefix);
+        appendAffix("後称号", item.equipment.suffix);
       } else {
         const empty = document.createElement("div");
         empty.className = "help-panel";
