@@ -299,6 +299,47 @@
       margin-top: 6px;
     }
 
+    .rarity-normal {
+      color: #e5e7eb;
+    }
+
+    .rarity-magic {
+      color: #60a5fa;
+    }
+
+    .rarity-rare {
+      color: #fcd34d;
+    }
+
+    .rarity-legendary {
+      color: #b45309;
+    }
+
+    .stat-diff-list {
+      display: grid;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .stat-diff {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-weight: 700;
+    }
+
+    .stat-diff.positive {
+      color: #34d399;
+    }
+
+    .stat-diff.negative {
+      color: #f87171;
+    }
+
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1076,6 +1117,7 @@
       <div id="inventory-item-desc" class="body" style="margin-top: 6px;"></div>
       <div id="inventory-item-meta" class="subtle" style="margin: 8px 0 4px;"></div>
       <div id="inventory-item-detail" class="stats" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px;"></div>
+      <div id="inventory-compare-result" class="equipment-option-list" style="margin-top: 8px; display: none;"></div>
       <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
     </div>
   </div>
@@ -1218,7 +1260,7 @@
       normal: { key: "normal", label: "ノーマル", color: "#e5e7eb", rank: 0, baseOptions: 3, randomOptions: 0 },
       magic: { key: "magic", label: "マジック", color: "#60a5fa", rank: 1, baseOptions: 3, randomOptions: 2 },
       rare: { key: "rare", label: "レア", color: "#fcd34d", rank: 2, baseOptions: 3, randomOptions: 3 },
-      legendary: { key: "legendary", label: "レジェンド", color: "#fb7185", rank: 3, baseOptions: 5, randomOptions: 5 },
+      legendary: { key: "legendary", label: "レジェンド", color: "#b45309", rank: 3, baseOptions: 5, randomOptions: 5 },
     };
 
     const DEBUG_RARITY_OPTIONS = [
@@ -2045,6 +2087,77 @@
       });
     }
 
+    function applyItemRarityColor(element, item) {
+      if (!element) return;
+      const classNames = ["rarity-normal", "rarity-magic", "rarity-rare", "rarity-legendary"];
+      classNames.forEach((cls) => element.classList.remove(cls));
+      const rarityKey = item?.equipment?.rarity;
+      if (!rarityKey || !EQUIPMENT_RARITIES[rarityKey]) {
+        return;
+      }
+      element.classList.add(`rarity-${rarityKey}`);
+    }
+
+    function getEquipmentBonuses(item) {
+      const primary = createEmptyPrimaryBonus();
+      const secondary = createEmptyBonus();
+      if (!item?.equipment) return { primary, secondary };
+
+      if (item.primaryBonus || item.bonus) {
+        Object.assign(primary, item.primaryBonus || {});
+        Object.assign(secondary, item.bonus || {});
+        return { primary, secondary };
+      }
+
+      const collect = (options) => {
+        (options || []).forEach((opt) => {
+          if (!opt) return;
+          applyOptionToBonus(opt, opt.value, primary, secondary);
+        });
+      };
+
+      collect(item.equipment.baseOptions);
+      collect(item.equipment.randomOptions);
+      collect(item.equipment.prefix?.options);
+      collect(item.equipment.suffix?.options);
+      return { primary, secondary };
+    }
+
+    function diffEquipmentBonuses(newItem, equippedItem) {
+      const next = getEquipmentBonuses(newItem);
+      const current = getEquipmentBonuses(equippedItem);
+      const diffs = [];
+
+      const pushDiff = (key, delta) => {
+        if (!delta) return;
+        const def = EQUIPMENT_STAT_BY_KEY[key];
+        const unit = def?.unit || "";
+        const precision = def?.precision ?? (unit === "%" ? 1 : 0);
+        const value = Math.abs(delta);
+        const formatted = precision ? value.toFixed(precision) : Math.round(value).toString();
+        const label = def?.label || key;
+        diffs.push({
+          key,
+          label,
+          unit,
+          delta,
+          text: `${label} ${delta > 0 ? "+" : "-"}${formatted}${unit}`,
+        });
+      };
+
+      const aggregateKeys = (objA, objB) => Array.from(new Set([...Object.keys(objA), ...Object.keys(objB)]));
+      aggregateKeys(next.primary, current.primary).forEach((key) => {
+        const delta = (next.primary?.[key] || 0) - (current.primary?.[key] || 0);
+        pushDiff(key, delta);
+      });
+      aggregateKeys(next.secondary, current.secondary).forEach((key) => {
+        const delta = (next.secondary?.[key] || 0) - (current.secondary?.[key] || 0);
+        pushDiff(key, delta);
+      });
+
+      return diffs;
+    }
+
     function getInventorySlotKey(item) {
       if (!item) return null;
       if (item.slot) return item.slot;
@@ -2829,6 +2942,7 @@
       const title = document.createElement("div");
       title.className = "option-value";
       title.textContent = `${item.name} (${EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || item.equipment?.rarityLabel || ""})`;
+      applyItemRarityColor(title, item);
       debugGearPreview.appendChild(title);
 
       const slot = document.createElement("div");
@@ -3312,6 +3426,7 @@
         }
         const label = document.createElement("span");
         label.textContent = item?.name || "不明なアイテム";
+        applyItemRarityColor(label, item);
         name.appendChild(label);
 
         row.appendChild(name);
@@ -3358,6 +3473,7 @@
     const inventoryItemCloseButton = document.getElementById("inventory-item-close");
     const statHelpButton = document.getElementById("stat-help");
     const potionModalName = document.getElementById("potion-modal-name");
+    const inventoryCompareResult = document.getElementById("inventory-compare-result");
     const potionModalType = document.getElementById("potion-modal-type");
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
@@ -3487,9 +3603,77 @@
       inventoryModal.classList.add("hidden");
     }
 
+    function clearComparisonResult() {
+      if (!inventoryCompareResult) return;
+      inventoryCompareResult.innerHTML = "";
+      inventoryCompareResult.style.display = "none";
+    }
+
+    function renderComparisonResult(slotKey, item) {
+      if (!inventoryCompareResult || !item?.equipment) return;
+      const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
+      const equipped = player.equipment?.[slotKey];
+      const diffs = diffEquipmentBonuses(item, equipped).sort((a, b) => b.delta - a.delta);
+
+      inventoryCompareResult.innerHTML = "";
+      inventoryCompareResult.style.display = "block";
+
+      const heading = document.createElement("div");
+      heading.className = "option-label";
+      heading.textContent = `${slotName}との比較`;
+      inventoryCompareResult.appendChild(heading);
+
+      const currentRow = document.createElement("div");
+      currentRow.className = "subtle";
+      const currentLabel = document.createElement("span");
+      currentLabel.textContent = "現在";
+      const currentName = document.createElement("span");
+      currentName.textContent = equipped?.name || "なし";
+      applyItemRarityColor(currentName, equipped);
+      currentRow.appendChild(currentLabel);
+      currentRow.appendChild(currentName);
+      inventoryCompareResult.appendChild(currentRow);
+
+      const nextRow = document.createElement("div");
+      nextRow.className = "subtle";
+      const nextLabel = document.createElement("span");
+      nextLabel.textContent = "候補";
+      const nextName = document.createElement("span");
+      nextName.textContent = item.name;
+      applyItemRarityColor(nextName, item);
+      nextRow.appendChild(nextLabel);
+      nextRow.appendChild(nextName);
+      inventoryCompareResult.appendChild(nextRow);
+
+      if (!diffs.length) {
+        const row = document.createElement("div");
+        row.className = "option-value";
+        row.textContent = "ステータス変化なし";
+        inventoryCompareResult.appendChild(row);
+        return;
+      }
+
+      const list = document.createElement("div");
+      list.className = "stat-diff-list";
+      diffs.forEach((diff) => {
+        const row = document.createElement("div");
+        row.className = `stat-diff ${diff.delta > 0 ? "positive" : "negative"}`;
+        const label = document.createElement("span");
+        label.textContent = diff.label;
+        const value = document.createElement("span");
+        value.textContent = diff.text.replace(`${diff.label} `, "");
+        row.appendChild(label);
+        row.appendChild(value);
+        list.appendChild(row);
+      });
+      inventoryCompareResult.appendChild(list);
+    }
+
     function openInventoryItemModal(item, index) {
       if (!item) return;
+      clearComparisonResult();
       inventoryItemName.textContent = item?.name || "不明なアイテム";
+      applyItemRarityColor(inventoryItemName, item);
       inventoryItemDesc.textContent = item?.desc || "説明なし";
 
       const metaParts = [];
@@ -3605,8 +3789,14 @@
             equipItem(slotKey, item);
             log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
             renderInventory();
+            clearComparisonResult();
           };
           inventoryItemActions.appendChild(equipBtn);
+
+          const compareBtn = document.createElement("button");
+          compareBtn.textContent = `${slotName}と比較`;
+          compareBtn.onclick = () => renderComparisonResult(slotKey, item);
+          inventoryItemActions.appendChild(compareBtn);
 
           if (equipped) {
             const unequipBtn = document.createElement("button");
@@ -3615,6 +3805,7 @@
               unequipItem(slotKey);
               log(`🧤 ${slotName}の装備を外した`, "info");
               renderInventory();
+              clearComparisonResult();
             };
             inventoryItemActions.appendChild(unequipBtn);
           }
@@ -3636,6 +3827,7 @@
     }
 
     function closeInventoryItemModal() {
+      clearComparisonResult();
       inventoryItemModal?.classList.add("hidden");
     }
 
