@@ -598,6 +598,48 @@
       display: none;
     }
 
+    .debug-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .debug-tab-button {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px;
+      font-weight: 700;
+    }
+
+    .debug-tab-button.active {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.3);
+    }
+
+    .debug-tab-panel.hidden {
+      display: none;
+    }
+
+    .equipment-option-list {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .equipment-option-list .option-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .equipment-option-list .option-value {
+      font-weight: 700;
+    }
+
     .modal-content {
       width: min(420px, 94%);
       background: rgba(17, 24, 39, 0.95);
@@ -1044,22 +1086,53 @@
         <div class="section-title" style="margin: 0;">デバッグ</div>
         <button id="debug-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="debug-selects">
-        <label>
-          対象:
-          <select id="debug-target">
-            <option value="enemy">敵</option>
-            <option value="player">プレイヤー</option>
-          </select>
-        </label>
-        <label>
-          敵選択:
-          <select id="debug-enemy"></select>
-        </label>
+      <div class="debug-tabs">
+        <button class="debug-tab-button active" data-tab="status">状態異常</button>
+        <button class="debug-tab-button" data-tab="equipment">装備生成</button>
       </div>
-      <div id="debug-status-buttons"></div>
-      <div class="modal-actions">
-        <button id="debug-clear-status">選択対象の状態異常を全解除</button>
+      <div id="debug-tab-status" class="debug-tab-panel">
+        <div class="debug-selects">
+          <label>
+            対象:
+            <select id="debug-target">
+              <option value="enemy">敵</option>
+              <option value="player">プレイヤー</option>
+            </select>
+          </label>
+          <label>
+            敵選択:
+            <select id="debug-enemy"></select>
+          </label>
+        </div>
+        <div id="debug-status-buttons"></div>
+        <div class="modal-actions">
+          <button id="debug-clear-status">選択対象の状態異常を全解除</button>
+        </div>
+      </div>
+      <div id="debug-tab-equipment" class="debug-tab-panel hidden">
+        <div class="debug-selects">
+          <label>
+            部位:
+            <select id="debug-gear-slot"></select>
+          </label>
+          <label>
+            レア度:
+            <select id="debug-gear-rarity"></select>
+          </label>
+        </div>
+        <div id="debug-legendary-wrapper" class="debug-selects hidden">
+          <label>
+            レジェンド装備:
+            <select id="debug-legendary-template"></select>
+          </label>
+        </div>
+        <div id="debug-gear-preview" class="equipment-option-list">
+          <div class="option-label">プレビューがここに表示されます</div>
+        </div>
+        <div class="modal-actions">
+          <button id="debug-generate-gear">装備品を作成して追加</button>
+          <button id="debug-generate-gear-random">ランダム作成</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1108,8 +1181,7 @@
       { key: "body", label: "胴" },
       { key: "hands", label: "手" },
       { key: "feet", label: "足" },
-      { key: "accessory1", label: "装飾品1" },
-      { key: "accessory2", label: "装飾品2" },
+      { key: "accessory", label: "装飾品" },
       { key: "items", label: "アイテム" },
       { key: "sort", label: "並び替え" },
     ];
@@ -1120,6 +1192,199 @@
     let inventoryFilter = "all";
     let inventorySortMode = "acquire";
     let inventoryAcquireSequence = 0;
+
+    const EQUIPMENT_SLOTS = {
+      weapon: { label: "メイン(武器)" },
+      subWeapon: { label: "サブ(武器)" },
+      head: { label: "頭" },
+      body: { label: "胴" },
+      hands: { label: "手" },
+      feet: { label: "足" },
+      accessory: { label: "装飾品" },
+    };
+
+    const PLAYER_EQUIPMENT_SLOTS = {
+      weapon: { label: "メイン(武器)" },
+      subWeapon: { label: "サブ(武器)" },
+      head: { label: "頭" },
+      body: { label: "胴" },
+      hands: { label: "手" },
+      feet: { label: "足" },
+      accessory1: { label: "装飾品1" },
+      accessory2: { label: "装飾品2" },
+    };
+
+    const EQUIPMENT_RARITIES = {
+      normal: { key: "normal", label: "ノーマル", color: "#e5e7eb", rank: 0, baseOptions: 3, randomOptions: 0 },
+      magic: { key: "magic", label: "マジック", color: "#60a5fa", rank: 1, baseOptions: 3, randomOptions: 2 },
+      rare: { key: "rare", label: "レア", color: "#fcd34d", rank: 2, baseOptions: 3, randomOptions: 3 },
+      legendary: { key: "legendary", label: "レジェンド", color: "#fb7185", rank: 3, baseOptions: 5, randomOptions: 5 },
+    };
+
+    const DEBUG_RARITY_OPTIONS = [
+      { key: "legendary", label: "レジェンド" },
+      { key: "random", label: "ランダム（ノーマル〜レア）" },
+    ];
+
+    const NON_LEGENDARY_RARITIES = ["normal", "magic", "rare"];
+
+    const EQUIPMENT_STAT_POOL = [
+      { key: "str", label: "力", type: "primary", range: [1, 4] },
+      { key: "int", label: "知識", type: "primary", range: [1, 4] },
+      { key: "vit", label: "体力", type: "primary", range: [1, 4] },
+      { key: "agi", label: "敏捷", type: "primary", range: [1, 4] },
+      { key: "luck", label: "運", type: "primary", range: [1, 4] },
+      { key: "hp", label: "最大HP", type: "secondary", range: [12, 28] },
+      { key: "mp", label: "最大MP", type: "secondary", range: [6, 18] },
+      { key: "physAtk", label: "物理攻撃力", type: "secondary", range: [6, 14] },
+      { key: "magAtk", label: "魔法攻撃力", type: "secondary", range: [6, 14] },
+      { key: "physDef", label: "物理防御力", type: "secondary", range: [4, 10] },
+      { key: "magDef", label: "魔法防御力", type: "secondary", range: [4, 10] },
+      { key: "speed", label: "速度", type: "secondary", range: [1, 4] },
+      { key: "critRate", label: "クリティカル率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "critDamage", label: "クリティカルダメージ", type: "secondary", range: [4, 12], unit: "%" },
+      { key: "evade", label: "回避率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "physPen", label: "物理貫通", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "magPen", label: "魔法貫通", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "damageReduction", label: "被ダメージ軽減", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "block", label: "ブロック率", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "controlResist", label: "行動阻害抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "dotResist", label: "DoT抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "debuffResist", label: "弱体化抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "cooldown", label: "CT短縮", type: "secondary", range: [1, 6], unit: "%" },
+      { key: "hpRegen", label: "HP再生", type: "secondary", range: [0.5, 2], precision: 1 },
+      { key: "lifeSteal", label: "HP吸収", type: "secondary", range: [1, 3], unit: "%" },
+      { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
+      { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+    ];
+
+    const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
+
+    const EQUIPMENT_TITLE_PREFIXES = [
+      { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
+      { key: "sharp", name: "鋭い", rank: 1, options: ["critRate"] },
+      { key: "colossal", name: "巨大な", rank: 2, options: ["str", "vit"] },
+      { key: "arcane", name: "魔導の", rank: 2, options: ["int", "mp"] },
+      { key: "tempest", name: "迅雷の", rank: 3, options: ["speed", "evade", "critRate"] },
+      { key: "mythic", name: "神獣の", rank: 3, options: ["str", "vit", "hp"] },
+    ];
+
+    const EQUIPMENT_TITLE_SUFFIXES = [
+      { key: "apprentice", name: "の研鑽", rank: 1, options: ["hp"] },
+      { key: "trailblazer", name: "の先駆者", rank: 1, options: ["speed"] },
+      { key: "onslaught", name: "の猛攻", rank: 2, options: ["physAtk", "critDamage"] },
+      { key: "sorcery", name: "の叡智", rank: 2, options: ["magAtk", "cooldown"] },
+      { key: "conqueror", name: "の覇者", rank: 3, options: ["physAtk", "physPen", "critRate"] },
+      { key: "eternal", name: "の終焉", rank: 3, options: ["magAtk", "magPen", "debuffResist"] },
+    ];
+
+    const LEGENDARY_EQUIPMENT_LIBRARY = {
+      weapon: [
+        {
+          key: "infernoGreatsword",
+          name: "灼煌の大剣",
+          unique: { name: "煉獄覇斬", range: [28, 42], unit: "%", effect: "火属性スキルダメージ+{value}" },
+        },
+        {
+          key: "mistTwinblade",
+          name: "霧閃の双刃",
+          unique: {
+            name: "幻影連舞",
+            range: [20, 32],
+            unit: "%",
+            effect: "通常攻撃命中時{value}で3連撃化（追加攻撃は威力50%）",
+          },
+        },
+      ],
+      subWeapon: [
+        {
+          key: "azureBulwark",
+          name: "蒼紋の盾",
+          unique: { name: "蒼守の障壁", range: [320, 480], effect: "戦闘開始時、{value}のダメージを吸収するシールドを得る" },
+        },
+        {
+          key: "dawnGrimoire",
+          name: "暁星の魔導書",
+          unique: {
+            name: "黎明の喝采",
+            range: [18, 30],
+            unit: "%",
+            effect: "スキル使用後、次の通常攻撃が必ずクリティカルし与ダメージ+{value}",
+          },
+        },
+      ],
+      head: [
+        {
+          key: "starseerCirclet",
+          name: "星読のサークレット",
+          unique: { name: "予兆読み", range: [8, 15], unit: "%", effect: "クリティカル時、全スキルCTを{value}短縮" },
+        },
+        {
+          key: "wyrmhelm",
+          name: "竜骨の兜",
+          unique: { name: "竜眼の威圧", range: [20, 32], unit: "%", effect: "被弾時{value}で次の攻撃が必中＆与ダメ上昇" },
+        },
+      ],
+      body: [
+        {
+          key: "azureScaleArmor",
+          name: "蒼竜の鱗鎧",
+          unique: { name: "鱗の守護", range: [12, 20], unit: "%", effect: "受けるダメージを常時{value}軽減" },
+        },
+        {
+          key: "wrathPlate",
+          name: "赫怒の戦装",
+          unique: { name: "怒涛の復讐", range: [18, 30], unit: "%", effect: "被ダメージ時、次のターン終了まで与ダメージ+{value}" },
+        },
+      ],
+      hands: [
+        {
+          key: "stormGauntlet",
+          name: "雷纏いの篭手",
+          unique: { name: "雷禍の連鎖", range: [35, 55], unit: "%", effect: "スキル命中時、追加で{value}の確率で感電を付与" },
+        },
+        {
+          key: "shadowWeave",
+          name: "影縫いの手袋",
+          unique: { name: "拘束の刺突", range: [22, 36], unit: "%", effect: "クリティカル時、敵を{value}で1ターン行動不能にする" },
+        },
+      ],
+      feet: [
+        {
+          key: "galeGreaves",
+          name: "疾風のグリーヴ",
+          unique: { name: "風走", range: [14, 24], unit: "%", effect: "回避率+{value}、回避成功時は次ターンの行動順を早める" },
+        },
+        {
+          key: "abyssWalker",
+          name: "深淵歩きのブーツ",
+          unique: { name: "奈落の跳躍", range: [16, 28], unit: "%", effect: "回避成功時、{value}で追加行動を得る" },
+        },
+      ],
+      accessory: [
+        {
+          key: "twinMoonRing",
+          name: "幸運の双月リング",
+          unique: { name: "双月の導き", range: [6, 12], unit: "%", effect: "宝箱とドロップのレアリティ+{value}" },
+        },
+        {
+          key: "verdantPledge",
+          name: "翠緑の誓約指輪",
+          unique: { name: "癒しの盟約", range: [18, 30], unit: "%", effect: "継続回復効果量+{value}" },
+        },
+        {
+          key: "bloodcrystalTalisman",
+          name: "血晶のタリスマン",
+          unique: { name: "血晶吸収", range: [6, 12], unit: "%", effect: "スキル使用時、与ダメージの{value}をHPとして吸収" },
+        },
+        {
+          key: "starwardCharm",
+          name: "蒼星の護符",
+          unique: { name: "蒼星結界", range: [80, 140], effect: "獲得するバリア量+{value}、バリア破壊時に周囲へ小ダメージ" },
+        },
+      ],
+    };
 
     function createEmptyBonus() {
       return {
@@ -1149,6 +1414,10 @@
       };
     }
 
+    function createEmptyPrimaryBonus() {
+      return { str: 0, int: 0, vit: 0, agi: 0, luck: 0 };
+    }
+
     function ensureAcquiredOrder(item) {
       if (!item) return item;
       if (typeof item.acquiredOrder !== "number") {
@@ -1160,6 +1429,181 @@
     function getAcquiredOrder(item, fallback) {
       if (typeof item?.acquiredOrder === "number") return item.acquiredOrder;
       return fallback;
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function rollValueInRange(range, precision = 0) {
+      const [min, max] = range;
+      const raw = min + Math.random() * (max - min);
+      if (precision > 0) {
+        const base = 10 ** precision;
+        return Math.round(raw * base) / base;
+      }
+      return Math.round(raw);
+    }
+
+    function rollStatValue(def, rarity) {
+      const [min, max] = def.range;
+      const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
+      const raw = min + Math.random() * (max - min);
+      const scaled = raw * rarityScale;
+      const precision = def.precision ?? (def.unit === "%" ? 1 : 0);
+      if (precision > 0) {
+        const base = 10 ** precision;
+        return Math.round(scaled * base) / base;
+      }
+      return Math.round(scaled);
+    }
+
+    function pickStatOptions(count) {
+      const pool = [...EQUIPMENT_STAT_POOL];
+      const options = [];
+      for (let i = pool.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      for (let i = 0; i < count && i < pool.length; i += 1) {
+        options.push(pool[i]);
+      }
+      return options;
+    }
+
+    function applyOptionToBonus(option, value, primaryBonus, bonus) {
+      if (option.type === "primary") {
+        primaryBonus[option.key] = (primaryBonus[option.key] ?? 0) + value;
+      } else {
+        bonus[option.key] = (bonus[option.key] ?? 0) + value;
+      }
+    }
+
+    function generateEquipmentOptions(rarity, optionCount) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      const entries = pickStatOptions(optionCount).map((option) => {
+        const value = rollStatValue(option, rarity);
+        applyOptionToBonus(option, value, primaryBonus, bonus);
+        return { key: option.key, label: option.label, unit: option.unit, type: option.type, value };
+      });
+      return { entries, primaryBonus, bonus };
+    }
+
+    function pickLegendaryEquipment(slotKey, preferredKey) {
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey];
+      if (!list?.length) return null;
+      if (preferredKey) {
+        const found = list.find((entry) => entry.key === preferredKey);
+        if (found) return found;
+      }
+      return list[randomInt(0, list.length - 1)];
+    }
+
+    function rollLegendaryUniqueOption(slotKey, preferredKey) {
+      const def = pickLegendaryEquipment(slotKey, preferredKey);
+      if (!def?.unique) return null;
+      const precision = def.unique.precision ?? (def.unique.unit === "%" ? 1 : 0);
+      const value = def.unique.range ? rollValueInRange(def.unique.range, precision) : null;
+      const replaced = def.unique.effect?.replace(
+        "{value}",
+        value != null ? `${value}${def.unique.unit || ""}` : ""
+      );
+      return { itemName: def.name, option: { name: def.unique.name, effect: replaced || def.unique.effect } };
+    }
+
+    function pickTitle(titles) {
+      if (!titles?.length) return null;
+      return titles[randomInt(0, titles.length - 1)];
+    }
+
+    function generateTitleOptions(title, rarity) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      if (!title?.options?.length) return { entries: [], primaryBonus, bonus };
+
+      const entries = title.options
+        .map((key) => {
+          const def = EQUIPMENT_STAT_BY_KEY[key];
+          if (!def) return null;
+          const value = rollStatValue(def, rarity);
+          applyOptionToBonus(def, value, primaryBonus, bonus);
+          return { key: def.key, label: def.label, unit: def.unit, type: def.type, value };
+        })
+        .filter(Boolean);
+
+      return { entries, primaryBonus, bonus };
+    }
+
+    function formatEquipmentValue(entry) {
+      const sign = entry.value >= 0 ? "+" : "";
+      const unit = entry.unit || "";
+      return `${entry.label} ${sign}${entry.value}${unit}`;
+    }
+
+    function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle, baseName) {
+      const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
+      const prefixPool = {
+        normal: ["粗削りな", "見慣れた", "手軽な"],
+        magic: ["魔気を帯びた", "研ぎ澄まされた", "快活な"],
+        rare: ["祝福された", "精緻な", "英雄の"],
+        legendary: ["伝説の", "神話の", "唯一無二の"],
+      };
+      const list = prefixPool[rarity.key] || ["謎めいた"];
+      const rarityPrefix = list[randomInt(0, list.length - 1)];
+      const prefix = prefixTitle?.name || rarityPrefix;
+      const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
+      const base = baseName || slotLabel;
+      return `${prefix} ${base}${suffix}`;
+    }
+
+    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "" } = {}) {
+      const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
+      const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
+      const base = generateEquipmentOptions(rarity, rarity.baseOptions);
+      const random = generateEquipmentOptions(rarity, rarity.randomOptions);
+      const prefixTitle = pickTitle(EQUIPMENT_TITLE_PREFIXES);
+      const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
+      const prefixOptions = generateTitleOptions(prefixTitle, rarity);
+      const suffixOptions = generateTitleOptions(suffixTitle, rarity);
+      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(slot, legendaryKey) : null;
+
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach((entry) => {
+        applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
+      });
+
+      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, uniqueOption?.itemName);
+
+      const prefixAffix = prefixTitle
+        ? { ...prefixTitle, options: prefixOptions.entries }
+        : null;
+      const suffixAffix = suffixTitle
+        ? { ...suffixTitle, options: suffixOptions.entries }
+        : null;
+
+      return ensureAcquiredOrder({
+        id: crypto.randomUUID ? `eq-${crypto.randomUUID()}` : `eq-${Date.now()}-${Math.random()}`,
+        type: "equipment",
+        slot,
+        name,
+        desc: "デバッグで生成した装備品",
+        rarity: rarity.rank,
+        equipment: {
+          slot,
+          rarity: rarity.key,
+          rarityLabel: rarity.label,
+          color: rarity.color,
+          baseOptions: base.entries,
+          randomOptions: random.entries,
+          prefix: prefixAffix,
+          suffix: suffixAffix,
+          uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
+        },
+        primaryBonus,
+        bonus,
+      });
     }
 
     function getInventorySlotKey(item) {
@@ -1230,12 +1674,14 @@
       bonus: createEmptyBonus(),
       baseBonus: createEmptyBonus(),
       equipmentBonus: createEmptyBonus(),
+      equipmentPrimaryBonus: createEmptyPrimaryBonus(),
       equipment: {
         head: null,
         body: null,
         hands: null,
         feet: null,
         weapon: null,
+        subWeapon: null,
         accessory1: null,
         accessory2: null,
       },
@@ -1482,16 +1928,25 @@
       };
     }
 
-    function collectEquipmentBonus() {
-      const total = createEmptyBonus();
+    function collectEquipmentBonuses() {
+      const secondary = createEmptyBonus();
+      const primary = createEmptyPrimaryBonus();
       Object.values(player.equipment || {}).forEach((item) => {
-        if (!item || !item.bonus) return;
-        Object.entries(item.bonus).forEach(([key, value]) => {
-          if (typeof value !== "number") return;
-          total[key] = (total[key] ?? 0) + value;
-        });
+        if (!item) return;
+        if (item.primaryBonus) {
+          Object.entries(item.primaryBonus).forEach(([key, value]) => {
+            if (typeof value !== "number") return;
+            primary[key] = (primary[key] ?? 0) + value;
+          });
+        }
+        if (item.bonus) {
+          Object.entries(item.bonus).forEach(([key, value]) => {
+            if (typeof value !== "number") return;
+            secondary[key] = (secondary[key] ?? 0) + value;
+          });
+        }
       });
-      return total;
+      return { primary, secondary };
     }
 
     function mergeBonuses(baseBonus, extraBonus) {
@@ -1503,7 +1958,12 @@
     }
 
     function recalcDerivedStats() {
-      player.equipmentBonus = collectEquipmentBonus();
+      const equipmentBonuses = collectEquipmentBonuses();
+      player.equipmentBonus = equipmentBonuses.secondary;
+      player.equipmentPrimaryBonus = equipmentBonuses.primary;
+      Object.keys(player.primary).forEach((key) => {
+        player.primary[key].bonus = equipmentBonuses.primary[key] ?? 0;
+      });
       player.bonus = mergeBonuses(player.baseBonus, player.equipmentBonus);
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
@@ -1539,8 +1999,16 @@
       return derived;
     }
 
+    function canEquipInSlot(itemSlot, targetSlot) {
+      if (!itemSlot) return true;
+      if (itemSlot === targetSlot) return true;
+      if (itemSlot === "accessory" && (targetSlot === "accessory1" || targetSlot === "accessory2")) return true;
+      return false;
+    }
+
     function equipItem(slot, item) {
       if (!player.equipment || !(slot in player.equipment)) return;
+      if (!canEquipInSlot(item?.equipment?.slot, slot)) return;
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -1838,10 +2306,159 @@
       );
     }
 
+    function populateDebugGearSelects() {
+      if (!debugGearSlotSelect || !debugGearRaritySelect) return;
+      if (!debugGearSlotSelect.options.length) {
+        Object.entries(EQUIPMENT_SLOTS).forEach(([key, def]) => {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = def.label;
+          debugGearSlotSelect.appendChild(opt);
+        });
+      }
+      if (!debugGearRaritySelect.options.length) {
+        DEBUG_RARITY_OPTIONS.forEach((rarity) => {
+          const opt = document.createElement("option");
+          opt.value = rarity.key;
+          opt.textContent = rarity.label;
+          debugGearRaritySelect.appendChild(opt);
+        });
+      }
+      if (!debugGearSlotSelect.value) debugGearSlotSelect.value = "weapon";
+      if (!debugGearRaritySelect.value) debugGearRaritySelect.value = "random";
+    }
+
+    function populateLegendaryTemplateSelect() {
+      if (!debugLegendarySelect) return;
+      const slotKey = debugGearSlotSelect?.value || "weapon";
+      const rarityKey = debugGearRaritySelect?.value;
+      const isLegendary = rarityKey === "legendary";
+
+      debugLegendaryWrapper?.classList.toggle("hidden", !isLegendary);
+      debugLegendarySelect.innerHTML = "";
+      if (!isLegendary) return;
+
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey] || [];
+      const randomOpt = document.createElement("option");
+      randomOpt.value = "";
+      randomOpt.textContent = "おまかせ（ランダム）";
+      debugLegendarySelect.appendChild(randomOpt);
+
+      list.forEach((entry) => {
+        const opt = document.createElement("option");
+        opt.value = entry.key;
+        opt.textContent = entry.name;
+        debugLegendarySelect.appendChild(opt);
+      });
+
+      if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
+    }
+
+    function switchDebugTab(tabKey) {
+      if (!debugTabStatus || !debugTabEquipment) return;
+      const useEquipment = tabKey === "equipment";
+      debugTabStatus.classList.toggle("hidden", useEquipment);
+      debugTabEquipment.classList.toggle("hidden", !useEquipment);
+      debugTabButtons.forEach((btn) => {
+        const active = btn.dataset.tab === tabKey;
+        btn.classList.toggle("active", active);
+      });
+      if (useEquipment) {
+        populateDebugGearSelects();
+        populateLegendaryTemplateSelect();
+        renderDebugGearPreview(lastGeneratedEquipment);
+      } else {
+        populateDebugEnemySelect();
+        renderDebugStatusButtons();
+        updateDebugTargetState();
+      }
+    }
+
+    let lastGeneratedEquipment = null;
+
+    function renderDebugGearPreview(item) {
+      if (!debugGearPreview) return;
+      debugGearPreview.innerHTML = "";
+      if (!item) {
+        const empty = document.createElement("div");
+        empty.className = "option-label";
+        empty.textContent = "プレビューがここに表示されます";
+        debugGearPreview.appendChild(empty);
+        return;
+      }
+
+      const title = document.createElement("div");
+      title.className = "option-value";
+      title.textContent = `${item.name} (${EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || item.equipment?.rarityLabel || ""})`;
+      debugGearPreview.appendChild(title);
+
+      const slot = document.createElement("div");
+      slot.className = "option-label";
+      const slotLabel = EQUIPMENT_SLOTS[item.equipment?.slot]?.label || item.equipment?.slot;
+      slot.textContent = `部位: ${slotLabel}`;
+      debugGearPreview.appendChild(slot);
+
+      const appendList = (titleText, options) => {
+        if (!options?.length) return;
+        const heading = document.createElement("div");
+        heading.className = "option-label";
+        heading.textContent = titleText;
+        debugGearPreview.appendChild(heading);
+        options.forEach((opt) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = formatEquipmentValue(opt);
+          debugGearPreview.appendChild(row);
+        });
+      };
+
+      const appendAffix = (label, affix) => {
+        if (!affix?.options?.length) return;
+        appendList(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+      };
+
+      if (item.equipment?.uniqueOptions?.length) {
+        const heading = document.createElement("div");
+        heading.className = "option-label";
+        heading.textContent = "固有オプション";
+        debugGearPreview.appendChild(heading);
+        item.equipment.uniqueOptions.forEach((opt) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = `${opt.name}: ${opt.effect}`;
+          debugGearPreview.appendChild(row);
+        });
+      }
+      appendList("基礎オプション", item.equipment?.baseOptions);
+      appendList("ランダムオプション", item.equipment?.randomOptions);
+      appendAffix("前称号", item.equipment?.prefix);
+      appendAffix("後称号", item.equipment?.suffix);
+    }
+
+    function resolveDebugRarity(selection) {
+      if (selection === "legendary") return "legendary";
+      return NON_LEGENDARY_RARITIES[randomInt(0, NON_LEGENDARY_RARITIES.length - 1)];
+    }
+
+    function generateDebugGear({ randomRarity = false } = {}) {
+      if (!debugGearSlotSelect || !debugGearRaritySelect) return null;
+      const slotKey = debugGearSlotSelect.value || "weapon";
+      const rarityChoice = randomRarity
+        ? DEBUG_RARITY_OPTIONS[randomInt(0, DEBUG_RARITY_OPTIONS.length - 1)]?.key
+        : debugGearRaritySelect.value;
+      const rarityKey = resolveDebugRarity(rarityChoice);
+      const legendaryKey = rarityChoice === "legendary" ? debugLegendarySelect?.value || "" : "";
+      const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey });
+      lastGeneratedEquipment = item;
+      player.inventory.items.push(item);
+      log(`🛠️ ${item.name} を生成しインベントリへ追加`, "info");
+      renderInventory();
+      renderDebugGearPreview(item);
+      return item;
+    }
+
     function openDebugModal() {
-      populateDebugEnemySelect();
-      renderDebugStatusButtons();
-      updateDebugTargetState();
+      switchDebugTab("status");
       debugModal?.classList.remove("hidden");
     }
 
@@ -2167,6 +2784,9 @@
       if (item.type === "potion" && item.potion?.id) {
         return (player.potions || []).some((p) => p?.id === item.potion.id);
       }
+      if (item.type === "equipment" && item.id) {
+        return Object.values(player.equipment || {}).some((eq) => eq?.id === item.id);
+      }
       return false;
     }
 
@@ -2329,6 +2949,16 @@
     const debugTargetSelect = document.getElementById("debug-target");
     const debugEnemySelect = document.getElementById("debug-enemy");
     const debugClearButton = document.getElementById("debug-clear-status");
+    const debugTabButtons = document.querySelectorAll(".debug-tab-button");
+    const debugTabStatus = document.getElementById("debug-tab-status");
+    const debugTabEquipment = document.getElementById("debug-tab-equipment");
+    const debugGearSlotSelect = document.getElementById("debug-gear-slot");
+    const debugGearRaritySelect = document.getElementById("debug-gear-rarity");
+    const debugLegendaryWrapper = document.getElementById("debug-legendary-wrapper");
+    const debugLegendarySelect = document.getElementById("debug-legendary-template");
+    const debugGearPreview = document.getElementById("debug-gear-preview");
+    const debugGenerateGearButton = document.getElementById("debug-generate-gear");
+    const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
     const inventoryOpenButton = document.getElementById("btn-inventory");
 
     function openEnemyModal(enemy) {
@@ -2427,6 +3057,7 @@
       if (isItemEquipped(item)) metaParts.push("装備中");
       const qty = typeof item?.quantity === "number" ? item.quantity : 1;
       if (qty > 1) metaParts.push(`所持: ×${qty}`);
+      if (item.equipment?.rarityLabel) metaParts.push(item.equipment.rarityLabel);
       inventoryItemMeta.textContent = metaParts.join(" / ");
       inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
 
@@ -2446,6 +3077,61 @@
           row.textContent = `${f.label} ${f.value}`;
           inventoryItemDetail.appendChild(row);
         });
+      } else if (item.type === "equipment" && item.equipment) {
+        const rarity = item.equipment.rarityLabel || item.equipment.rarity;
+        const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
+        const fields = [
+          { label: "部位", value: slotLabel },
+          { label: "レア度", value: rarity },
+        ];
+        fields.forEach((f) => {
+          const row = document.createElement("div");
+          row.textContent = `${f.label} ${f.value}`;
+          inventoryItemDetail.appendChild(row);
+        });
+
+        const appendOptions = (title, options) => {
+          if (!options?.length) return;
+          const block = document.createElement("div");
+          block.className = "equipment-option-list";
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = title;
+          block.appendChild(heading);
+          options.forEach((option) => {
+            const line = document.createElement("div");
+            line.className = "option-value";
+            line.textContent = formatEquipmentValue(option);
+            block.appendChild(line);
+          });
+          inventoryItemDetail.appendChild(block);
+        };
+
+        const appendAffix = (label, affix) => {
+          if (!affix?.options?.length) return;
+          appendOptions(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+        };
+
+        if (item.equipment.uniqueOptions?.length) {
+          const uniqueBlock = document.createElement("div");
+          uniqueBlock.className = "equipment-option-list";
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = "固有オプション";
+          uniqueBlock.appendChild(heading);
+          item.equipment.uniqueOptions.forEach((opt) => {
+            const line = document.createElement("div");
+            line.className = "option-value";
+            line.textContent = `${opt.name}: ${opt.effect}`;
+            uniqueBlock.appendChild(line);
+          });
+          inventoryItemDetail.appendChild(uniqueBlock);
+        }
+
+        appendOptions("基礎オプション", item.equipment.baseOptions);
+        appendOptions("ランダムオプション", item.equipment.randomOptions);
+        appendAffix("前称号", item.equipment.prefix);
+        appendAffix("後称号", item.equipment.suffix);
       } else {
         const empty = document.createElement("div");
         empty.className = "help-panel";
@@ -2467,6 +3153,39 @@
           };
           inventoryItemActions.appendChild(btn);
         });
+      } else if (item.type === "equipment" && item.equipment) {
+        const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
+        const addEquipButtons = (slotKey) => {
+          const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
+          const equipped = player.equipment?.[slotKey];
+          const isSame = equipped?.id === item.id;
+          const equipBtn = document.createElement("button");
+          equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
+          equipBtn.disabled = isSame;
+          equipBtn.onclick = () => {
+            equipItem(slotKey, item);
+            log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
+            renderInventory();
+          };
+          inventoryItemActions.appendChild(equipBtn);
+
+          if (equipped) {
+            const unequipBtn = document.createElement("button");
+            unequipBtn.textContent = `${slotName}を外す`;
+            unequipBtn.onclick = () => {
+              unequipItem(slotKey);
+              log(`🧤 ${slotName}の装備を外した`, "info");
+              renderInventory();
+            };
+            inventoryItemActions.appendChild(unequipBtn);
+          }
+        };
+
+        if (item.equipment.slot === "accessory") {
+          ["accessory1", "accessory2"].forEach(addEquipButtons);
+        } else {
+          addEquipButtons(item.equipment.slot);
+        }
       } else {
         const note = document.createElement("div");
         note.className = "help-panel";
@@ -2912,6 +3631,21 @@
       target.statuses = [];
       log(`🐞 デバッグ: ${target.name} の状態異常を全解除`, "info");
       updateUI();
+    });
+    debugTabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => switchDebugTab(btn.dataset.tab));
+    });
+    debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    debugGenerateGearButton?.addEventListener("click", () => {
+      generateDebugGear();
+    });
+    debugGenerateGearRandomButton?.addEventListener("click", () => {
+      const keys = Object.keys(EQUIPMENT_RARITIES);
+      const randomKey = keys[randomInt(0, keys.length - 1)];
+      debugGearRaritySelect.value = randomKey;
+      populateLegendaryTemplateSelect();
+      generateDebugGear({ randomRarity: true });
     });
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
