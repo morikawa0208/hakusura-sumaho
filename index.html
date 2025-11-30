@@ -146,7 +146,6 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      order: -1;
     }
 
     #log .entry {
@@ -3786,8 +3785,6 @@
         inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
       };
       updateMeta();
-
-      const sellPrice = calculateItemSellValue(item);
 
       const sellPrice = calculateItemSellValue(item);
 
