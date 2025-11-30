@@ -1295,6 +1295,42 @@
 
     const NON_LEGENDARY_RARITIES = ["normal", "magic", "rare"];
 
+    const BASE_DROP_CHANCE = 32;
+    const BOSS_DROP_BONUS = 18;
+    const DROP_RARITY_WEIGHTS = [
+      { key: "normal", weight: 55 },
+      { key: "magic", weight: 32 },
+      { key: "rare", weight: 13 },
+    ];
+    const BOSS_DROP_RARITY_WEIGHTS = [
+      { key: "normal", weight: 38 },
+      { key: "magic", weight: 40 },
+      { key: "rare", weight: 22 },
+    ];
+    const FLOOR_DROP_TABLE = [
+      { min: 1, max: 4, slots: ["weapon", "head", "body", "hands"] },
+      { min: 5, max: 9, slots: ["weapon", "subWeapon", "body", "hands", "feet"] },
+      { min: 10, max: 14, slots: ["weapon", "subWeapon", "hands", "feet", "body"] },
+      { min: 15, max: 19, slots: ["weapon", "subWeapon", "hands", "feet", "body", "accessory"] },
+      { min: 20, max: 999, slots: Object.keys(EQUIPMENT_SLOTS) },
+    ];
+    const BOSS_LEGENDARY_DROPS = {
+      5: { slot: "weapon", legendaryKey: "infernoGreatsword" },
+      10: { slot: "subWeapon", legendaryKey: "azureBulwark" },
+      15: { slot: "head", legendaryKey: "wyrmhelm" },
+      20: { slot: "body", legendaryKey: "wrathPlate" },
+      25: { slot: "hands", legendaryKey: "stormGauntlet" },
+      30: { slot: "feet", legendaryKey: "galeGreaves" },
+      35: { slot: "accessory", legendaryKey: "twinMoonRing" },
+    };
+
+    const TITLE_BASE_CHANCE = { prefix: 55, suffix: 45 };
+    const TITLE_RANK_WEIGHTS = [
+      { rank: 1, weight: 60 },
+      { rank: 2, weight: 30 },
+      { rank: 3, weight: 10 },
+    ];
+
     const EQUIPMENT_STAT_POOL = [
       { key: "str", label: "力", type: "primary", range: [1, 4] },
       { key: "int", label: "知識", type: "primary", range: [1, 4] },
@@ -1324,6 +1360,7 @@
       { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
       { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
       { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "titleChance", label: "称号付与率UP", type: "secondary", range: [4, 10], unit: "%" },
       { key: "goldChance", label: "ゴールド確率", type: "secondary", range: [5, 18], unit: "%" },
     ];
 
@@ -1888,6 +1925,7 @@
         dropRate: 0,
         rarity: 0,
         goldChance: 0,
+        titleChance: 0,
       };
     }
 
@@ -1913,6 +1951,18 @@
 
     function randomInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function weightedRandom(options, fallback = null) {
+      if (!options?.length) return fallback;
+      const total = options.reduce((sum, opt) => sum + (opt.weight ?? 0), 0);
+      if (total <= 0) return options[0] ?? fallback;
+      let roll = Math.random() * total;
+      for (const opt of options) {
+        roll -= opt.weight ?? 0;
+        if (roll <= 0) return opt;
+      }
+      return options[options.length - 1] ?? fallback;
     }
 
     function rollValueInRange(range, precision = 0) {
@@ -2043,6 +2093,37 @@
       return { entries, primaryBonus, bonus };
     }
 
+    function rollTitleRank(rarity, titleBonus) {
+      const maxRank = Math.min(3, (rarity?.rank ?? 0) + 1);
+      const baseWeights = TITLE_RANK_WEIGHTS.map((entry) => ({ ...entry }));
+      const bonus = Math.max(0, titleBonus || 0);
+      baseWeights.forEach((entry) => {
+        if (entry.rank === 1) entry.weight = Math.max(5, entry.weight - bonus * 0.4);
+        if (entry.rank === 2) entry.weight += bonus * 0.45;
+        if (entry.rank === 3) entry.weight += bonus * 0.35;
+      });
+      const filtered = baseWeights.filter((entry) => entry.rank <= maxRank);
+      return weightedRandom(filtered, { rank: 1 })?.rank ?? 1;
+    }
+
+    function rollEquipmentTitle(pool, rarity, titleBonus, baseChance) {
+      const bonus = Math.max(0, titleBonus || 0);
+      const chance = Math.min(95, baseChance + bonus);
+      const defaultResult = {
+        title: null,
+        options: { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() },
+      };
+      if (!pool?.length) return defaultResult;
+      if (Math.random() * 100 >= chance) return defaultResult;
+      const rank = rollTitleRank(rarity, bonus);
+      const candidates = pool.filter((title) => title.rank <= rank);
+      const fallbackRank = Math.min(3, (rarity?.rank ?? 0) + 1);
+      const fallbackPool = pool.filter((title) => title.rank <= fallbackRank);
+      const title = pickTitle(candidates.length ? candidates : fallbackPool.length ? fallbackPool : pool);
+      const options = generateTitleOptions(title, rarity);
+      return { title, options };
+    }
+
     function formatEquipmentValue(entry) {
       const sign = entry.value >= 0 ? "+" : "";
       const unit = entry.unit || "";
@@ -2065,7 +2146,7 @@
       return `${prefix} ${base}${suffix}`;
     }
 
-    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "" } = {}) {
+    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "", titleBonus = 0 } = {}) {
       const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
       const template = rarityKey === "legendary" ? pickLegendaryEquipment(slot, legendaryKey) : pickEquipmentTemplate(slot);
@@ -2073,10 +2154,12 @@
         ? rollTemplateOptions(template.base, rarity)
         : generateEquipmentOptions(rarity, rarity.baseOptions);
       const random = generateEquipmentOptions(rarity, rarity.randomOptions);
-      const prefixTitle = pickTitle(EQUIPMENT_TITLE_PREFIXES);
-      const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
-      const prefixOptions = generateTitleOptions(prefixTitle, rarity);
-      const suffixOptions = generateTitleOptions(suffixTitle, rarity);
+      const prefixRoll = rollEquipmentTitle(EQUIPMENT_TITLE_PREFIXES, rarity, titleBonus, TITLE_BASE_CHANCE.prefix);
+      const suffixRoll = rollEquipmentTitle(EQUIPMENT_TITLE_SUFFIXES, rarity, titleBonus, TITLE_BASE_CHANCE.suffix);
+      const prefixTitle = prefixRoll.title;
+      const suffixTitle = suffixRoll.title;
+      const prefixOptions = prefixRoll.options || { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() };
+      const suffixOptions = suffixRoll.options || { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() };
       const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(template) : null;
 
       const primaryBonus = createEmptyPrimaryBonus();
@@ -2482,6 +2565,7 @@
       const barrierBase = vit * 2 + int;
       const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
       const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
+      const titleChanceBase = Math.min(60, Math.sqrt(luck) * 3 + luck * 0.25);
       const goldChanceBase = 100;
 
       return {
@@ -2509,6 +2593,11 @@
         barrier: { base: barrierBase, bonus: player.bonus.barrier, total: barrierBase + player.bonus.barrier },
         dropRate: { base: dropRateBase, bonus: player.bonus.dropRate, total: Math.min(50, dropRateBase + player.bonus.dropRate) },
         rarity: { base: rarityBase, bonus: player.bonus.rarity, total: Math.min(30, rarityBase + player.bonus.rarity) },
+        titleChance: {
+          base: titleChanceBase,
+          bonus: player.bonus.titleChance,
+          total: Math.min(80, titleChanceBase + player.bonus.titleChance),
+        },
         goldChance: { base: goldChanceBase, bonus: player.bonus.goldChance, total: Math.max(0, goldChanceBase + player.bonus.goldChance) },
       };
     }
@@ -2574,6 +2663,70 @@
       }
       if (item.type === "potion") return 1;
       return 0;
+    }
+
+    function resolveDropSlotForFloor(floor, isBoss) {
+      if (isBoss && BOSS_LEGENDARY_DROPS[floor]?.slot) return BOSS_LEGENDARY_DROPS[floor].slot;
+      const table = FLOOR_DROP_TABLE.find((entry) => floor >= entry.min && floor <= entry.max);
+      const slots = table?.slots?.length ? table.slots : Object.keys(EQUIPMENT_SLOTS);
+      if (!slots.length) return "weapon";
+      return slots[randomInt(0, slots.length - 1)];
+    }
+
+    function rollBaseDropRarity(isBoss) {
+      const weights = isBoss ? BOSS_DROP_RARITY_WEIGHTS : DROP_RARITY_WEIGHTS;
+      return weightedRandom(weights, { key: "normal" })?.key || "normal";
+    }
+
+    function upgradeRarityWithBonus(baseKey, rarityBonus) {
+      const ladder = ["normal", "magic", "rare"];
+      let current = baseKey;
+      let upgradeChance = Math.min(80, Math.max(0, rarityBonus || 0));
+      while (upgradeChance > 0) {
+        const index = ladder.indexOf(current);
+        if (index < 0 || index >= ladder.length - 1) break;
+        if (Math.random() * 100 < upgradeChance) {
+          current = ladder[index + 1];
+          upgradeChance *= 0.45;
+        } else {
+          break;
+        }
+      }
+      return current;
+    }
+
+    function rollDropRarityForEnemy(enemy, rarityBonus, slot) {
+      const legendaryCandidate = enemy.isBoss ? BOSS_LEGENDARY_DROPS[game.floor] : null;
+      if (legendaryCandidate && legendaryCandidate.slot === slot) {
+        const chance = Math.min(60, 10 + (rarityBonus || 0) * 0.6);
+        if (Math.random() * 100 < chance) {
+          return { rarityKey: "legendary", legendaryKey: legendaryCandidate.legendaryKey };
+        }
+      }
+
+      const baseKey = rollBaseDropRarity(enemy.isBoss);
+      const upgraded = upgradeRarityWithBonus(baseKey, rarityBonus);
+      return { rarityKey: upgraded, legendaryKey: "" };
+    }
+
+    function attemptEnemyDrop(enemy) {
+      const derived = recalcDerivedStats();
+      const dropBonus = enemy.isBoss ? BOSS_DROP_BONUS : 0;
+      const chance = Math.min(95, BASE_DROP_CHANCE + dropBonus + (derived.dropRate?.total ?? 0));
+      if (Math.random() * 100 >= chance) return null;
+
+      const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
+      const rarityRoll = rollDropRarityForEnemy(enemy, derived.rarity.total, slot);
+      const item = createEquipmentItem(slot, rarityRoll.rarityKey, {
+        legendaryKey: rarityRoll.legendaryKey,
+        titleBonus: derived.titleChance.total,
+      });
+      player.inventory.items.push(item);
+      const rarityLabel = item.equipment?.rarityLabel || EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || "";
+      const rarityText = rarityLabel ? `${rarityLabel} ` : "";
+      log(`🎁 ${enemy.name} から ${rarityText}${item.name} を入手！`, "good");
+      renderInventory();
+      return item;
     }
 
     function recalcDerivedStats() {
@@ -3274,6 +3427,7 @@
         { label: "バリア", value: derived.barrier.total },
         { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
         { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
+        { label: "称号付与率UP", value: derived.titleChance.total, unit: "%" },
         { label: "ゴールド確率", value: derived.goldChance.total, unit: "%" },
       ];
 
@@ -4069,6 +4223,7 @@
       enemy.defeated = true;
       const baseGold = Math.max(1, Math.round(5 + game.floor * 2 + (enemy.isBoss ? 20 : 0)));
       grantGold(baseGold, { source: cause || "撃破" });
+      attemptEnemyDrop(enemy);
       refillPotionsOnKill();
       updateUI();
     }
