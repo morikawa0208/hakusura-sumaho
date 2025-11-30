@@ -1120,6 +1120,12 @@
             <select id="debug-gear-rarity"></select>
           </label>
         </div>
+        <div id="debug-legendary-wrapper" class="debug-selects hidden">
+          <label>
+            レジェンド装備:
+            <select id="debug-legendary-template"></select>
+          </label>
+        </div>
         <div id="debug-gear-preview" class="equipment-option-list">
           <div class="option-label">プレビューがここに表示されます</div>
         </div>
@@ -1470,14 +1476,18 @@
       return { entries, primaryBonus, bonus };
     }
 
-    function pickLegendaryEquipment(slotKey) {
+    function pickLegendaryEquipment(slotKey, preferredKey) {
       const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey];
       if (!list?.length) return null;
+      if (preferredKey) {
+        const found = list.find((entry) => entry.key === preferredKey);
+        if (found) return found;
+      }
       return list[randomInt(0, list.length - 1)];
     }
 
-    function rollLegendaryUniqueOption(slotKey) {
-      const def = pickLegendaryEquipment(slotKey);
+    function rollLegendaryUniqueOption(slotKey, preferredKey) {
+      const def = pickLegendaryEquipment(slotKey, preferredKey);
       if (!def?.unique) return null;
       const precision = def.unique.precision ?? (def.unique.unit === "%" ? 1 : 0);
       const value = def.unique.range ? rollValueInRange(def.unique.range, precision) : null;
@@ -1533,7 +1543,7 @@
       return `${prefix} ${base}${suffix}`;
     }
 
-    function createEquipmentItem(slotKey, rarityKey) {
+    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "" } = {}) {
       const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
       const base = generateEquipmentOptions(rarity, rarity.baseOptions);
@@ -1542,7 +1552,7 @@
       const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
       const prefixOptions = generateTitleOptions(prefixTitle, rarity);
       const suffixOptions = generateTitleOptions(suffixTitle, rarity);
-      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(slot) : null;
+      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(slot, legendaryKey) : null;
 
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
@@ -2297,6 +2307,32 @@
       if (!debugGearRaritySelect.value) debugGearRaritySelect.value = "rare";
     }
 
+    function populateLegendaryTemplateSelect() {
+      if (!debugLegendarySelect) return;
+      const slotKey = debugGearSlotSelect?.value || "weapon";
+      const rarityKey = debugGearRaritySelect?.value;
+      const isLegendary = rarityKey === "legendary";
+
+      debugLegendaryWrapper?.classList.toggle("hidden", !isLegendary);
+      debugLegendarySelect.innerHTML = "";
+      if (!isLegendary) return;
+
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey] || [];
+      const randomOpt = document.createElement("option");
+      randomOpt.value = "";
+      randomOpt.textContent = "おまかせ（ランダム）";
+      debugLegendarySelect.appendChild(randomOpt);
+
+      list.forEach((entry) => {
+        const opt = document.createElement("option");
+        opt.value = entry.key;
+        opt.textContent = entry.name;
+        debugLegendarySelect.appendChild(opt);
+      });
+
+      if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
+    }
+
     function switchDebugTab(tabKey) {
       if (!debugTabStatus || !debugTabEquipment) return;
       const useEquipment = tabKey === "equipment";
@@ -2308,6 +2344,7 @@
       });
       if (useEquipment) {
         populateDebugGearSelects();
+        populateLegendaryTemplateSelect();
         renderDebugGearPreview(lastGeneratedEquipment);
       } else {
         populateDebugEnemySelect();
@@ -2383,7 +2420,8 @@
       const rarityKey = randomRarity
         ? Object.keys(EQUIPMENT_RARITIES)[randomInt(0, Object.keys(EQUIPMENT_RARITIES).length - 1)]
         : debugGearRaritySelect.value;
-      const item = createEquipmentItem(slotKey, rarityKey);
+      const legendaryKey = rarityKey === "legendary" ? debugLegendarySelect?.value || "" : "";
+      const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey });
       lastGeneratedEquipment = item;
       player.inventory.items.push(item);
       log(`🛠️ ${item.name} を生成しインベントリへ追加`, "info");
@@ -2889,6 +2927,8 @@
     const debugTabEquipment = document.getElementById("debug-tab-equipment");
     const debugGearSlotSelect = document.getElementById("debug-gear-slot");
     const debugGearRaritySelect = document.getElementById("debug-gear-rarity");
+    const debugLegendaryWrapper = document.getElementById("debug-legendary-wrapper");
+    const debugLegendarySelect = document.getElementById("debug-legendary-template");
     const debugGearPreview = document.getElementById("debug-gear-preview");
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
@@ -3557,6 +3597,8 @@
     debugTabButtons.forEach((btn) => {
       btn.addEventListener("click", () => switchDebugTab(btn.dataset.tab));
     });
+    debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
     debugGenerateGearButton?.addEventListener("click", () => {
       generateDebugGear();
     });
@@ -3564,6 +3606,7 @@
       const keys = Object.keys(EQUIPMENT_RARITIES);
       const randomKey = keys[randomInt(0, keys.length - 1)];
       debugGearRaritySelect.value = randomKey;
+      populateLegendaryTemplateSelect();
       generateDebugGear({ randomRarity: true });
     });
     statHelpButton.addEventListener("click", () => {
