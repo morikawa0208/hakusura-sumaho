@@ -299,6 +299,47 @@
       margin-top: 6px;
     }
 
+    .rarity-normal {
+      color: #e5e7eb;
+    }
+
+    .rarity-magic {
+      color: #60a5fa;
+    }
+
+    .rarity-rare {
+      color: #fcd34d;
+    }
+
+    .rarity-legendary {
+      color: #b45309;
+    }
+
+    .stat-diff-list {
+      display: grid;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .stat-diff {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-weight: 700;
+    }
+
+    .stat-diff.positive {
+      color: #34d399;
+    }
+
+    .stat-diff.negative {
+      color: #f87171;
+    }
+
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -596,6 +637,48 @@
 
     .modal.hidden {
       display: none;
+    }
+
+    .debug-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .debug-tab-button {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px;
+      font-weight: 700;
+    }
+
+    .debug-tab-button.active {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.3);
+    }
+
+    .debug-tab-panel.hidden {
+      display: none;
+    }
+
+    .equipment-option-list {
+      display: grid;
+      gap: 4px;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .equipment-option-list .option-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .equipment-option-list .option-value {
+      font-weight: 700;
     }
 
     .modal-content {
@@ -1034,6 +1117,7 @@
       <div id="inventory-item-desc" class="body" style="margin-top: 6px;"></div>
       <div id="inventory-item-meta" class="subtle" style="margin: 8px 0 4px;"></div>
       <div id="inventory-item-detail" class="stats" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px;"></div>
+      <div id="inventory-compare-result" class="equipment-option-list" style="margin-top: 8px; display: none;"></div>
       <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
     </div>
   </div>
@@ -1044,22 +1128,53 @@
         <div class="section-title" style="margin: 0;">デバッグ</div>
         <button id="debug-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="debug-selects">
-        <label>
-          対象:
-          <select id="debug-target">
-            <option value="enemy">敵</option>
-            <option value="player">プレイヤー</option>
-          </select>
-        </label>
-        <label>
-          敵選択:
-          <select id="debug-enemy"></select>
-        </label>
+      <div class="debug-tabs">
+        <button class="debug-tab-button active" data-tab="status">状態異常</button>
+        <button class="debug-tab-button" data-tab="equipment">装備生成</button>
       </div>
-      <div id="debug-status-buttons"></div>
-      <div class="modal-actions">
-        <button id="debug-clear-status">選択対象の状態異常を全解除</button>
+      <div id="debug-tab-status" class="debug-tab-panel">
+        <div class="debug-selects">
+          <label>
+            対象:
+            <select id="debug-target">
+              <option value="enemy">敵</option>
+              <option value="player">プレイヤー</option>
+            </select>
+          </label>
+          <label>
+            敵選択:
+            <select id="debug-enemy"></select>
+          </label>
+        </div>
+        <div id="debug-status-buttons"></div>
+        <div class="modal-actions">
+          <button id="debug-clear-status">選択対象の状態異常を全解除</button>
+        </div>
+      </div>
+      <div id="debug-tab-equipment" class="debug-tab-panel hidden">
+        <div class="debug-selects">
+          <label>
+            部位:
+            <select id="debug-gear-slot"></select>
+          </label>
+          <label>
+            レア度:
+            <select id="debug-gear-rarity"></select>
+          </label>
+        </div>
+        <div id="debug-legendary-wrapper" class="debug-selects hidden">
+          <label>
+            レジェンド装備:
+            <select id="debug-legendary-template"></select>
+          </label>
+        </div>
+        <div id="debug-gear-preview" class="equipment-option-list">
+          <div class="option-label">プレビューがここに表示されます</div>
+        </div>
+        <div class="modal-actions">
+          <button id="debug-generate-gear">装備品を作成して追加</button>
+          <button id="debug-generate-gear-random">ランダム作成</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1108,8 +1223,7 @@
       { key: "body", label: "胴" },
       { key: "hands", label: "手" },
       { key: "feet", label: "足" },
-      { key: "accessory1", label: "装飾品1" },
-      { key: "accessory2", label: "装飾品2" },
+      { key: "accessory", label: "装飾品" },
       { key: "items", label: "アイテム" },
       { key: "sort", label: "並び替え" },
     ];
@@ -1120,6 +1234,607 @@
     let inventoryFilter = "all";
     let inventorySortMode = "acquire";
     let inventoryAcquireSequence = 0;
+
+    const EQUIPMENT_SLOTS = {
+      weapon: { label: "メイン(武器)" },
+      subWeapon: { label: "サブ(武器)" },
+      head: { label: "頭" },
+      body: { label: "胴" },
+      hands: { label: "手" },
+      feet: { label: "足" },
+      accessory: { label: "装飾品" },
+    };
+
+    const PLAYER_EQUIPMENT_SLOTS = {
+      weapon: { label: "メイン(武器)" },
+      subWeapon: { label: "サブ(武器)" },
+      head: { label: "頭" },
+      body: { label: "胴" },
+      hands: { label: "手" },
+      feet: { label: "足" },
+      accessory1: { label: "装飾品1" },
+      accessory2: { label: "装飾品2" },
+    };
+
+    const EQUIPMENT_RARITIES = {
+      normal: { key: "normal", label: "ノーマル", color: "#e5e7eb", rank: 0, baseOptions: 3, randomOptions: 0 },
+      magic: { key: "magic", label: "マジック", color: "#60a5fa", rank: 1, baseOptions: 3, randomOptions: 2 },
+      rare: { key: "rare", label: "レア", color: "#fcd34d", rank: 2, baseOptions: 3, randomOptions: 3 },
+      legendary: { key: "legendary", label: "レジェンド", color: "#b45309", rank: 3, baseOptions: 5, randomOptions: 5 },
+    };
+
+    const DEBUG_RARITY_OPTIONS = [
+      { key: "legendary", label: "レジェンド" },
+      { key: "random", label: "ランダム（ノーマル〜レア）" },
+    ];
+
+    const NON_LEGENDARY_RARITIES = ["normal", "magic", "rare"];
+
+    const EQUIPMENT_STAT_POOL = [
+      { key: "str", label: "力", type: "primary", range: [1, 4] },
+      { key: "int", label: "知識", type: "primary", range: [1, 4] },
+      { key: "vit", label: "体力", type: "primary", range: [1, 4] },
+      { key: "agi", label: "敏捷", type: "primary", range: [1, 4] },
+      { key: "luck", label: "運", type: "primary", range: [1, 4] },
+      { key: "hp", label: "最大HP", type: "secondary", range: [12, 28] },
+      { key: "mp", label: "最大MP", type: "secondary", range: [6, 18] },
+      { key: "physAtk", label: "物理攻撃力", type: "secondary", range: [6, 14] },
+      { key: "magAtk", label: "魔法攻撃力", type: "secondary", range: [6, 14] },
+      { key: "physDef", label: "物理防御力", type: "secondary", range: [4, 10] },
+      { key: "magDef", label: "魔法防御力", type: "secondary", range: [4, 10] },
+      { key: "speed", label: "速度", type: "secondary", range: [1, 4] },
+      { key: "critRate", label: "クリティカル率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "critDamage", label: "クリティカルダメージ", type: "secondary", range: [4, 12], unit: "%" },
+      { key: "evade", label: "回避率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "physPen", label: "物理貫通", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "magPen", label: "魔法貫通", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "damageReduction", label: "被ダメージ軽減", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "block", label: "ブロック率", type: "secondary", range: [1, 5], unit: "%" },
+      { key: "controlResist", label: "行動阻害抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "dotResist", label: "DoT抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "debuffResist", label: "弱体化抵抗", type: "secondary", range: [3, 10], unit: "%" },
+      { key: "cooldown", label: "CT短縮", type: "secondary", range: [1, 6], unit: "%" },
+      { key: "hpRegen", label: "HP再生", type: "secondary", range: [0.5, 2], precision: 1 },
+      { key: "lifeSteal", label: "HP吸収", type: "secondary", range: [1, 3], unit: "%" },
+      { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
+      { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
+      { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+    ];
+
+    const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
+
+    const EQUIPMENT_TEMPLATE_LIBRARY = {
+      weapon: [
+        {
+          key: "steelSword",
+          name: "鋼の剣",
+          base: [
+            { key: "physAtk", range: [12, 18] },
+            { key: "critRate", range: [4, 8], unit: "%" },
+            { key: "speed", range: [1, 3] },
+          ],
+        },
+        {
+          key: "battleAxe",
+          name: "轟槌の戦斧",
+          base: [
+            { key: "physAtk", range: [16, 22] },
+            { key: "critDamage", range: [8, 14], unit: "%" },
+            { key: "str", range: [2, 5] },
+          ],
+        },
+        {
+          key: "sageStaff",
+          name: "叡智の杖",
+          base: [
+            { key: "magAtk", range: [14, 20] },
+            { key: "mp", range: [14, 24] },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+      ],
+      subWeapon: [
+        {
+          key: "guardianShield",
+          name: "守護者の盾",
+          base: [
+            { key: "physDef", range: [8, 14] },
+            { key: "block", range: [4, 8], unit: "%" },
+            { key: "hp", range: [20, 36] },
+          ],
+        },
+        {
+          key: "spellBook",
+          name: "星紋の書",
+          base: [
+            { key: "magAtk", range: [8, 14] },
+            { key: "magDef", range: [6, 12] },
+            { key: "mp", range: [10, 18] },
+          ],
+        },
+        {
+          key: "shadowDagger",
+          name: "影走りの短剣",
+          base: [
+            { key: "physAtk", range: [8, 14] },
+            { key: "speed", range: [2, 4] },
+            { key: "critRate", range: [5, 9], unit: "%" },
+          ],
+        },
+      ],
+      head: [
+        {
+          key: "scoutHood",
+          name: "斥候のフード",
+          base: [
+            { key: "agi", range: [2, 4] },
+            { key: "evade", range: [4, 9], unit: "%" },
+            { key: "speed", range: [1, 3] },
+          ],
+        },
+        {
+          key: "sageCrown",
+          name: "賢者の冠",
+          base: [
+            { key: "int", range: [2, 4] },
+            { key: "magDef", range: [6, 12] },
+            { key: "mp", range: [12, 20] },
+          ],
+        },
+        {
+          key: "veteranHelm",
+          name: "歴戦の兜",
+          base: [
+            { key: "vit", range: [2, 5] },
+            { key: "physDef", range: [8, 14] },
+            { key: "hp", range: [18, 32] },
+          ],
+        },
+      ],
+      body: [
+        {
+          key: "brigandine",
+          name: "旅人のコート",
+          base: [
+            { key: "evade", range: [3, 7], unit: "%" },
+            { key: "speed", range: [1, 3] },
+            { key: "hp", range: [18, 30] },
+          ],
+        },
+        {
+          key: "plateArmor",
+          name: "鋼鉄の鎧",
+          base: [
+            { key: "physDef", range: [10, 16] },
+            { key: "magDef", range: [6, 12] },
+            { key: "damageReduction", range: [2, 5], unit: "%" },
+          ],
+        },
+        {
+          key: "mageRobe",
+          name: "星霜のローブ",
+          base: [
+            { key: "magDef", range: [8, 14] },
+            { key: "mp", range: [16, 26] },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+      ],
+      hands: [
+        {
+          key: "assassinGloves",
+          name: "夜影のグローブ",
+          base: [
+            { key: "critRate", range: [4, 9], unit: "%" },
+            { key: "speed", range: [1, 3] },
+            { key: "physAtk", range: [6, 12] },
+          ],
+        },
+        {
+          key: "sageGloves",
+          name: "術士の手袋",
+          base: [
+            { key: "magAtk", range: [6, 12] },
+            { key: "magPen", range: [2, 5], unit: "%" },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+        {
+          key: "guardianGauntlet",
+          name: "守護のガントレット",
+          base: [
+            { key: "physDef", range: [6, 12] },
+            { key: "block", range: [3, 7], unit: "%" },
+            { key: "hp", range: [12, 24] },
+          ],
+        },
+      ],
+      feet: [
+        {
+          key: "scoutBoots",
+          name: "疾走のブーツ",
+          base: [
+            { key: "speed", range: [2, 5] },
+            { key: "evade", range: [4, 8], unit: "%" },
+            { key: "agi", range: [2, 4] },
+          ],
+        },
+        {
+          key: "heavyGreaves",
+          name: "要塞のグリーブ",
+          base: [
+            { key: "physDef", range: [8, 14] },
+            { key: "magDef", range: [6, 12] },
+            { key: "hp", range: [16, 30] },
+          ],
+        },
+        {
+          key: "mysticSandals",
+          name: "神秘のサンダル",
+          base: [
+            { key: "magDef", range: [8, 12] },
+            { key: "mp", range: [12, 20] },
+            { key: "cooldown", range: [2, 5], unit: "%" },
+          ],
+        },
+      ],
+      accessory: [
+        {
+          key: "warriorCharm",
+          name: "武勇の護符",
+          base: [
+            { key: "str", range: [2, 4] },
+            { key: "physAtk", range: [6, 12] },
+            { key: "critDamage", range: [6, 12], unit: "%" },
+          ],
+        },
+        {
+          key: "sagePendant",
+          name: "賢智のペンダント",
+          base: [
+            { key: "int", range: [2, 4] },
+            { key: "magAtk", range: [6, 12] },
+            { key: "mp", range: [12, 22] },
+          ],
+        },
+        {
+          key: "luckyRing",
+          name: "幸運の指輪",
+          base: [
+            { key: "luck", range: [2, 4] },
+            { key: "dropRate", range: [4, 10], unit: "%" },
+            { key: "critRate", range: [3, 7], unit: "%" },
+          ],
+        },
+      ],
+    };
+
+    const EQUIPMENT_TITLE_PREFIXES = [
+      { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
+      { key: "sharp", name: "鋭い", rank: 1, options: ["critRate"] },
+      { key: "colossal", name: "巨大な", rank: 2, options: ["str", "vit"] },
+      { key: "arcane", name: "魔導の", rank: 2, options: ["int", "mp"] },
+      { key: "tempest", name: "迅雷の", rank: 3, options: ["speed", "evade", "critRate"] },
+      { key: "mythic", name: "神獣の", rank: 3, options: ["str", "vit", "hp"] },
+      { key: "immortal", name: "不朽の", rank: 3, options: ["hp", "damageReduction", "block"] },
+      { key: "twilight", name: "黄昏の", rank: 2, options: ["int", "magAtk"] },
+      { key: "hunter", name: "狩人の", rank: 2, options: ["critRate", "speed"] },
+    ];
+
+    const EQUIPMENT_TITLE_SUFFIXES = [
+      { key: "apprentice", name: "の研鑽", rank: 1, options: ["hp"] },
+      { key: "trailblazer", name: "の先駆者", rank: 1, options: ["speed"] },
+      { key: "onslaught", name: "の猛攻", rank: 2, options: ["physAtk", "critDamage"] },
+      { key: "sorcery", name: "の叡智", rank: 2, options: ["magAtk", "cooldown"] },
+      { key: "conqueror", name: "の覇者", rank: 3, options: ["physAtk", "physPen", "critRate"] },
+      { key: "eternal", name: "の終焉", rank: 3, options: ["magAtk", "magPen", "debuffResist"] },
+      { key: "guardian", name: "の守護者", rank: 2, options: ["hp", "physDef", "magDef"] },
+      { key: "storm", name: "の雷鳴", rank: 2, options: ["speed", "critRate"] },
+      { key: "void", name: "の虚無", rank: 3, options: ["magAtk", "dotResist", "controlResist"] },
+    ];
+
+    const LEGENDARY_EQUIPMENT_LIBRARY = {
+      weapon: [
+        {
+          key: "infernoGreatsword",
+          name: "灼煌の大剣",
+          base: [
+            { key: "physAtk", range: [28, 36] },
+            { key: "critDamage", range: [12, 20], unit: "%" },
+            { key: "str", range: [4, 7] },
+            { key: "hp", range: [30, 50] },
+            { key: "physPen", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "煉獄覇斬", range: [28, 42], unit: "%", effect: "火属性スキルダメージ+{value}" },
+        },
+        {
+          key: "mistTwinblade",
+          name: "霧閃の双刃",
+          base: [
+            { key: "physAtk", range: [20, 30] },
+            { key: "speed", range: [3, 6] },
+            { key: "evade", range: [6, 12], unit: "%" },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "agi", range: [4, 6] },
+          ],
+          unique: {
+            name: "幻影連舞",
+            range: [20, 32],
+            unit: "%",
+            effect: "通常攻撃命中時{value}で3連撃化（追加攻撃は威力50%）",
+          },
+        },
+        {
+          key: "raidenKatana",
+          name: "雷鳴の刀",
+          base: [
+            { key: "physAtk", range: [24, 34] },
+            { key: "speed", range: [3, 6] },
+            { key: "critRate", range: [8, 14], unit: "%" },
+            { key: "hp", range: [24, 40] },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "雷鳴居合", range: [26, 40], unit: "%", effect: "スキル命中時、{value}で感電を2ターン付与" },
+        },
+      ],
+      subWeapon: [
+        {
+          key: "azureBulwark",
+          name: "蒼紋の盾",
+          base: [
+            { key: "physDef", range: [18, 28] },
+            { key: "magDef", range: [12, 20] },
+            { key: "hp", range: [36, 60] },
+            { key: "block", range: [8, 14], unit: "%" },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+          ],
+          unique: { name: "蒼守の障壁", range: [320, 480], effect: "戦闘開始時、{value}のダメージを吸収するシールドを得る" },
+        },
+        {
+          key: "dawnGrimoire",
+          name: "暁星の魔導書",
+          base: [
+            { key: "magAtk", range: [16, 24] },
+            { key: "mp", range: [28, 44] },
+            { key: "magDef", range: [12, 20] },
+            { key: "cooldown", range: [4, 8], unit: "%" },
+            { key: "int", range: [3, 6] },
+          ],
+          unique: {
+            name: "黎明の喝采",
+            range: [18, 30],
+            unit: "%",
+            effect: "スキル使用後、次の通常攻撃が必ずクリティカルし与ダメージ+{value}",
+          },
+        },
+        {
+          key: "abyssCompass",
+          name: "深淵の羅針盤",
+          base: [
+            { key: "magAtk", range: [14, 22] },
+            { key: "magPen", range: [6, 10], unit: "%" },
+            { key: "mp", range: [22, 36] },
+            { key: "controlResist", range: [10, 18], unit: "%" },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
+          unique: { name: "深淵の呼び声", range: [20, 32], unit: "%", effect: "デバフが付与された敵への与ダメージ+{value}" },
+        },
+      ],
+      head: [
+        {
+          key: "starseerCirclet",
+          name: "星読のサークレット",
+          base: [
+            { key: "int", range: [4, 7] },
+            { key: "magAtk", range: [10, 18] },
+            { key: "magDef", range: [12, 18] },
+            { key: "mp", range: [24, 40] },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
+          unique: { name: "予兆読み", range: [8, 15], unit: "%", effect: "クリティカル時、全スキルCTを{value}短縮" },
+        },
+        {
+          key: "wyrmhelm",
+          name: "竜骨の兜",
+          base: [
+            { key: "str", range: [4, 7] },
+            { key: "vit", range: [4, 7] },
+            { key: "physDef", range: [14, 22] },
+            { key: "hp", range: [32, 52] },
+            { key: "critRate", range: [6, 12], unit: "%" },
+          ],
+          unique: { name: "竜眼の威圧", range: [20, 32], unit: "%", effect: "被弾時{value}で次の攻撃が必中＆与ダメ上昇" },
+        },
+        {
+          key: "moonveilHood",
+          name: "月影のフード",
+          base: [
+            { key: "agi", range: [4, 6] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "speed", range: [3, 5] },
+            { key: "hp", range: [22, 40] },
+            { key: "critRate", range: [6, 12], unit: "%" },
+          ],
+          unique: { name: "月影の覆い", range: [18, 28], unit: "%", effect: "回避時、次ターンの与ダメージ+{value}" },
+        },
+      ],
+      body: [
+        {
+          key: "azureScaleArmor",
+          name: "蒼竜の鱗鎧",
+          base: [
+            { key: "physDef", range: [18, 28] },
+            { key: "magDef", range: [14, 22] },
+            { key: "hp", range: [40, 64] },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+            { key: "block", range: [8, 12], unit: "%" },
+          ],
+          unique: { name: "鱗の守護", range: [12, 20], unit: "%", effect: "受けるダメージを常時{value}軽減" },
+        },
+        {
+          key: "wrathPlate",
+          name: "赫怒の戦装",
+          base: [
+            { key: "physAtk", range: [14, 22] },
+            { key: "hp", range: [32, 56] },
+            { key: "physDef", range: [12, 20] },
+            { key: "critDamage", range: [10, 16], unit: "%" },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "怒涛の復讐", range: [18, 30], unit: "%", effect: "被ダメージ時、次のターン終了まで与ダメージ+{value}" },
+        },
+        {
+          key: "sableRaiment",
+          name: "黒檀の法衣",
+          base: [
+            { key: "magAtk", range: [16, 24] },
+            { key: "mp", range: [32, 52] },
+            { key: "magDef", range: [14, 22] },
+            { key: "cooldown", range: [5, 9], unit: "%" },
+            { key: "dotResist", range: [10, 18], unit: "%" },
+          ],
+          unique: { name: "闇の恩寵", range: [20, 32], unit: "%", effect: "DoTを付与中の敵への与ダメージ+{value}" },
+        },
+      ],
+      hands: [
+        {
+          key: "stormGauntlet",
+          name: "雷纏いの篭手",
+          base: [
+            { key: "physAtk", range: [14, 22] },
+            { key: "speed", range: [3, 6] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "hp", range: [18, 32] },
+            { key: "evade", range: [6, 10], unit: "%" },
+          ],
+          unique: { name: "雷禍の連鎖", range: [35, 55], unit: "%", effect: "スキル命中時、追加で{value}の確率で感電を付与" },
+        },
+        {
+          key: "shadowWeave",
+          name: "影縫いの手袋",
+          base: [
+            { key: "physAtk", range: [12, 20] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "speed", range: [2, 5] },
+            { key: "evade", range: [6, 12], unit: "%" },
+            { key: "hp", range: [16, 28] },
+          ],
+          unique: { name: "拘束の刺突", range: [22, 36], unit: "%", effect: "クリティカル時、敵を{value}で1ターン行動不能にする" },
+        },
+        {
+          key: "frostbinder",
+          name: "氷縛の手甲",
+          base: [
+            { key: "magAtk", range: [14, 22] },
+            { key: "cooldown", range: [4, 8], unit: "%" },
+            { key: "magPen", range: [5, 9], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "magDef", range: [10, 16] },
+          ],
+          unique: { name: "氷刃封殺", range: [24, 38], unit: "%", effect: "スキル命中時{value}で凍結1ターン付与" },
+        },
+      ],
+      feet: [
+        {
+          key: "galeGreaves",
+          name: "疾風のグリーヴ",
+          base: [
+            { key: "speed", range: [4, 8] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "agi", range: [4, 6] },
+            { key: "hp", range: [16, 28] },
+            { key: "critRate", range: [6, 10], unit: "%" },
+          ],
+          unique: { name: "風走", range: [14, 24], unit: "%", effect: "回避率+{value}、回避成功時は次ターンの行動順を早める" },
+        },
+        {
+          key: "abyssWalker",
+          name: "深淵歩きのブーツ",
+          base: [
+            { key: "speed", range: [3, 6] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "hp", range: [18, 32] },
+            { key: "damageReduction", range: [4, 7], unit: "%" },
+            { key: "agi", range: [3, 5] },
+          ],
+          unique: { name: "奈落の跳躍", range: [16, 28], unit: "%", effect: "回避成功時、{value}で追加行動を得る" },
+        },
+        {
+          key: "sunstride",
+          name: "陽炎の靴",
+          base: [
+            { key: "speed", range: [4, 7] },
+            { key: "evade", range: [8, 14], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "physAtk", range: [10, 16] },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+          ],
+          unique: { name: "陽炎疾駆", range: [18, 30], unit: "%", effect: "移動後のターン、初回攻撃の与ダメージ+{value}" },
+        },
+      ],
+      accessory: [
+        {
+          key: "twinMoonRing",
+          name: "幸運の双月リング",
+          base: [
+            { key: "luck", range: [4, 7] },
+            { key: "dropRate", range: [10, 16], unit: "%" },
+            { key: "critRate", range: [6, 10], unit: "%" },
+            { key: "rarity", range: [6, 10], unit: "%" },
+            { key: "hp", range: [14, 24] },
+          ],
+          unique: { name: "双月の導き", range: [6, 12], unit: "%", effect: "宝箱とドロップのレアリティ+{value}" },
+        },
+        {
+          key: "verdantPledge",
+          name: "翠緑の誓約指輪",
+          base: [
+            { key: "vit", range: [3, 6] },
+            { key: "hp", range: [26, 44] },
+            { key: "hpRegen", range: [1.5, 3], precision: 1 },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+            { key: "debuffResist", range: [10, 16], unit: "%" },
+          ],
+          unique: { name: "癒しの盟約", range: [18, 30], unit: "%", effect: "継続回復効果量+{value}" },
+        },
+        {
+          key: "bloodcrystalTalisman",
+          name: "血晶のタリスマン",
+          base: [
+            { key: "physAtk", range: [10, 16] },
+            { key: "magAtk", range: [10, 16] },
+            { key: "lifeSteal", range: [4, 7], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+          ],
+          unique: { name: "血晶吸収", range: [6, 12], unit: "%", effect: "スキル使用時、与ダメージの{value}をHPとして吸収" },
+        },
+        {
+          key: "starwardCharm",
+          name: "蒼星の護符",
+          base: [
+            { key: "magDef", range: [12, 20] },
+            { key: "barrier", range: [40, 70] },
+            { key: "mp", range: [20, 34] },
+            { key: "controlResist", range: [10, 18], unit: "%" },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
+          unique: { name: "蒼星結界", range: [80, 140], effect: "獲得するバリア量+{value}、バリア破壊時に周囲へ小ダメージ" },
+        },
+        {
+          key: "phoenixFeather",
+          name: "不死鳥の羽根飾り",
+          base: [
+            { key: "hp", range: [28, 46] },
+            { key: "hpRegen", range: [1.5, 3.2], precision: 1 },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+            { key: "magDef", range: [12, 20] },
+            { key: "block", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "不死鳥の加護", range: [20, 32], unit: "%", effect: "致死ダメージを受けても{value}でHP1で踏みとどまる" },
+        },
+      ],
+    };
 
     function createEmptyBonus() {
       return {
@@ -1149,6 +1864,10 @@
       };
     }
 
+    function createEmptyPrimaryBonus() {
+      return { str: 0, int: 0, vit: 0, agi: 0, luck: 0 };
+    }
+
     function ensureAcquiredOrder(item) {
       if (!item) return item;
       if (typeof item.acquiredOrder !== "number") {
@@ -1160,6 +1879,283 @@
     function getAcquiredOrder(item, fallback) {
       if (typeof item?.acquiredOrder === "number") return item.acquiredOrder;
       return fallback;
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function rollValueInRange(range, precision = 0) {
+      const [min, max] = range;
+      const raw = min + Math.random() * (max - min);
+      if (precision > 0) {
+        const base = 10 ** precision;
+        return Math.round(raw * base) / base;
+      }
+      return Math.round(raw);
+    }
+
+    function rollStatValue(def, rarity) {
+      const [min, max] = def.range;
+      const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
+      const raw = min + Math.random() * (max - min);
+      const scaled = raw * rarityScale;
+      const precision = def.precision ?? (def.unit === "%" ? 1 : 0);
+      if (precision > 0) {
+        const base = 10 ** precision;
+        return Math.round(scaled * base) / base;
+      }
+      return Math.round(scaled);
+    }
+
+    function rollTemplateOptions(definitions, rarity) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      const entries = (definitions || [])
+        .map((def) => {
+          const baseDef = EQUIPMENT_STAT_BY_KEY[def.key];
+          if (!baseDef?.range) return null;
+          const merged = {
+            ...baseDef,
+            ...def,
+            range: def.range || baseDef.range,
+            unit: def.unit ?? baseDef.unit,
+            precision: def.precision ?? baseDef.precision,
+          };
+          const value = rollStatValue(merged, rarity);
+          applyOptionToBonus(merged, value, primaryBonus, bonus);
+          return { key: merged.key, label: merged.label, unit: merged.unit, type: merged.type, value };
+        })
+        .filter(Boolean);
+
+      return { entries, primaryBonus, bonus };
+    }
+
+    function pickStatOptions(count) {
+      const pool = [...EQUIPMENT_STAT_POOL];
+      const options = [];
+      for (let i = pool.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      for (let i = 0; i < count && i < pool.length; i += 1) {
+        options.push(pool[i]);
+      }
+      return options;
+    }
+
+    function applyOptionToBonus(option, value, primaryBonus, bonus) {
+      if (option.type === "primary") {
+        primaryBonus[option.key] = (primaryBonus[option.key] ?? 0) + value;
+      } else {
+        bonus[option.key] = (bonus[option.key] ?? 0) + value;
+      }
+    }
+
+    function generateEquipmentOptions(rarity, optionCount) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      const entries = pickStatOptions(optionCount).map((option) => {
+        const value = rollStatValue(option, rarity);
+        applyOptionToBonus(option, value, primaryBonus, bonus);
+        return { key: option.key, label: option.label, unit: option.unit, type: option.type, value };
+      });
+      return { entries, primaryBonus, bonus };
+    }
+
+    function pickEquipmentTemplate(slotKey) {
+      const list = EQUIPMENT_TEMPLATE_LIBRARY[slotKey];
+      if (!list?.length) return null;
+      return list[randomInt(0, list.length - 1)];
+    }
+
+    function pickLegendaryEquipment(slotKey, preferredKey) {
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey];
+      if (!list?.length) return null;
+      if (preferredKey) {
+        const found = list.find((entry) => entry.key === preferredKey);
+        if (found) return found;
+      }
+      return list[randomInt(0, list.length - 1)];
+    }
+
+    function rollLegendaryUniqueOption(def) {
+      if (!def?.unique) return null;
+      const precision = def.unique.precision ?? (def.unique.unit === "%" ? 1 : 0);
+      const value = def.unique.range ? rollValueInRange(def.unique.range, precision) : null;
+      const replaced = def.unique.effect?.replace(
+        "{value}",
+        value != null ? `${value}${def.unique.unit || ""}` : ""
+      );
+      return { itemName: def.name, option: { name: def.unique.name, effect: replaced || def.unique.effect } };
+    }
+
+    function pickTitle(titles) {
+      if (!titles?.length) return null;
+      return titles[randomInt(0, titles.length - 1)];
+    }
+
+    function generateTitleOptions(title, rarity) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      if (!title?.options?.length) return { entries: [], primaryBonus, bonus };
+
+      const entries = title.options
+        .map((key) => {
+          const def = EQUIPMENT_STAT_BY_KEY[key];
+          if (!def) return null;
+          const value = rollStatValue(def, rarity);
+          applyOptionToBonus(def, value, primaryBonus, bonus);
+          return { key: def.key, label: def.label, unit: def.unit, type: def.type, value };
+        })
+        .filter(Boolean);
+
+      return { entries, primaryBonus, bonus };
+    }
+
+    function formatEquipmentValue(entry) {
+      const sign = entry.value >= 0 ? "+" : "";
+      const unit = entry.unit || "";
+      return `${entry.label} ${sign}${entry.value}${unit}`;
+    }
+
+    function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle, baseName) {
+      const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
+      const prefixPool = {
+        normal: ["粗削りな", "見慣れた", "手軽な"],
+        magic: ["魔気を帯びた", "研ぎ澄まされた", "快活な"],
+        rare: ["祝福された", "精緻な", "英雄の"],
+        legendary: ["伝説の", "神話の", "唯一無二の"],
+      };
+      const list = prefixPool[rarity.key] || ["謎めいた"];
+      const rarityPrefix = list[randomInt(0, list.length - 1)];
+      const prefix = prefixTitle?.name || rarityPrefix;
+      const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
+      const base = baseName || slotLabel;
+      return `${prefix} ${base}${suffix}`;
+    }
+
+    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "" } = {}) {
+      const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
+      const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
+      const template = rarityKey === "legendary" ? pickLegendaryEquipment(slot, legendaryKey) : pickEquipmentTemplate(slot);
+      const base = template?.base?.length
+        ? rollTemplateOptions(template.base, rarity)
+        : generateEquipmentOptions(rarity, rarity.baseOptions);
+      const random = generateEquipmentOptions(rarity, rarity.randomOptions);
+      const prefixTitle = pickTitle(EQUIPMENT_TITLE_PREFIXES);
+      const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
+      const prefixOptions = generateTitleOptions(prefixTitle, rarity);
+      const suffixOptions = generateTitleOptions(suffixTitle, rarity);
+      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(template) : null;
+
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach((entry) => {
+        applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
+      });
+
+      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, template?.name || uniqueOption?.itemName);
+
+      const prefixAffix = prefixTitle
+        ? { ...prefixTitle, options: prefixOptions.entries }
+        : null;
+      const suffixAffix = suffixTitle
+        ? { ...suffixTitle, options: suffixOptions.entries }
+        : null;
+
+      return ensureAcquiredOrder({
+        id: crypto.randomUUID ? `eq-${crypto.randomUUID()}` : `eq-${Date.now()}-${Math.random()}`,
+        type: "equipment",
+        slot,
+        name,
+        desc: "デバッグで生成した装備品",
+        rarity: rarity.rank,
+        equipment: {
+          slot,
+          rarity: rarity.key,
+          rarityLabel: rarity.label,
+          color: rarity.color,
+          baseOptions: base.entries,
+          randomOptions: random.entries,
+          prefix: prefixAffix,
+          suffix: suffixAffix,
+          uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
+        },
+        primaryBonus,
+        bonus,
+      });
+    }
+
+    function applyItemRarityColor(element, item) {
+      if (!element) return;
+      const classNames = ["rarity-normal", "rarity-magic", "rarity-rare", "rarity-legendary"];
+      classNames.forEach((cls) => element.classList.remove(cls));
+      const rarityKey = item?.equipment?.rarity;
+      if (!rarityKey || !EQUIPMENT_RARITIES[rarityKey]) {
+        return;
+      }
+      element.classList.add(`rarity-${rarityKey}`);
+    }
+
+    function getEquipmentBonuses(item) {
+      const primary = createEmptyPrimaryBonus();
+      const secondary = createEmptyBonus();
+      if (!item?.equipment) return { primary, secondary };
+
+      if (item.primaryBonus || item.bonus) {
+        Object.assign(primary, item.primaryBonus || {});
+        Object.assign(secondary, item.bonus || {});
+        return { primary, secondary };
+      }
+
+      const collect = (options) => {
+        (options || []).forEach((opt) => {
+          if (!opt) return;
+          applyOptionToBonus(opt, opt.value, primary, secondary);
+        });
+      };
+
+      collect(item.equipment.baseOptions);
+      collect(item.equipment.randomOptions);
+      collect(item.equipment.prefix?.options);
+      collect(item.equipment.suffix?.options);
+      return { primary, secondary };
+    }
+
+    function diffEquipmentBonuses(newItem, equippedItem) {
+      const next = getEquipmentBonuses(newItem);
+      const current = getEquipmentBonuses(equippedItem);
+      const diffs = [];
+
+      const pushDiff = (key, delta) => {
+        if (!delta) return;
+        const def = EQUIPMENT_STAT_BY_KEY[key];
+        const unit = def?.unit || "";
+        const precision = def?.precision ?? (unit === "%" ? 1 : 0);
+        const value = Math.abs(delta);
+        const formatted = precision ? value.toFixed(precision) : Math.round(value).toString();
+        const label = def?.label || key;
+        diffs.push({
+          key,
+          label,
+          unit,
+          delta,
+          text: `${label} ${delta > 0 ? "+" : "-"}${formatted}${unit}`,
+        });
+      };
+
+      const aggregateKeys = (objA, objB) => Array.from(new Set([...Object.keys(objA), ...Object.keys(objB)]));
+      aggregateKeys(next.primary, current.primary).forEach((key) => {
+        const delta = (next.primary?.[key] || 0) - (current.primary?.[key] || 0);
+        pushDiff(key, delta);
+      });
+      aggregateKeys(next.secondary, current.secondary).forEach((key) => {
+        const delta = (next.secondary?.[key] || 0) - (current.secondary?.[key] || 0);
+        pushDiff(key, delta);
+      });
+
+      return diffs;
     }
 
     function getInventorySlotKey(item) {
@@ -1230,12 +2226,14 @@
       bonus: createEmptyBonus(),
       baseBonus: createEmptyBonus(),
       equipmentBonus: createEmptyBonus(),
+      equipmentPrimaryBonus: createEmptyPrimaryBonus(),
       equipment: {
         head: null,
         body: null,
         hands: null,
         feet: null,
         weapon: null,
+        subWeapon: null,
         accessory1: null,
         accessory2: null,
       },
@@ -1482,16 +2480,25 @@
       };
     }
 
-    function collectEquipmentBonus() {
-      const total = createEmptyBonus();
+    function collectEquipmentBonuses() {
+      const secondary = createEmptyBonus();
+      const primary = createEmptyPrimaryBonus();
       Object.values(player.equipment || {}).forEach((item) => {
-        if (!item || !item.bonus) return;
-        Object.entries(item.bonus).forEach(([key, value]) => {
-          if (typeof value !== "number") return;
-          total[key] = (total[key] ?? 0) + value;
-        });
+        if (!item) return;
+        if (item.primaryBonus) {
+          Object.entries(item.primaryBonus).forEach(([key, value]) => {
+            if (typeof value !== "number") return;
+            primary[key] = (primary[key] ?? 0) + value;
+          });
+        }
+        if (item.bonus) {
+          Object.entries(item.bonus).forEach(([key, value]) => {
+            if (typeof value !== "number") return;
+            secondary[key] = (secondary[key] ?? 0) + value;
+          });
+        }
       });
-      return total;
+      return { primary, secondary };
     }
 
     function mergeBonuses(baseBonus, extraBonus) {
@@ -1503,7 +2510,12 @@
     }
 
     function recalcDerivedStats() {
-      player.equipmentBonus = collectEquipmentBonus();
+      const equipmentBonuses = collectEquipmentBonuses();
+      player.equipmentBonus = equipmentBonuses.secondary;
+      player.equipmentPrimaryBonus = equipmentBonuses.primary;
+      Object.keys(player.primary).forEach((key) => {
+        player.primary[key].bonus = equipmentBonuses.primary[key] ?? 0;
+      });
       player.bonus = mergeBonuses(player.baseBonus, player.equipmentBonus);
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
@@ -1539,8 +2551,16 @@
       return derived;
     }
 
+    function canEquipInSlot(itemSlot, targetSlot) {
+      if (!itemSlot) return true;
+      if (itemSlot === targetSlot) return true;
+      if (itemSlot === "accessory" && (targetSlot === "accessory1" || targetSlot === "accessory2")) return true;
+      return false;
+    }
+
     function equipItem(slot, item) {
       if (!player.equipment || !(slot in player.equipment)) return;
+      if (!canEquipInSlot(item?.equipment?.slot, slot)) return;
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -1838,10 +2858,160 @@
       );
     }
 
+    function populateDebugGearSelects() {
+      if (!debugGearSlotSelect || !debugGearRaritySelect) return;
+      if (!debugGearSlotSelect.options.length) {
+        Object.entries(EQUIPMENT_SLOTS).forEach(([key, def]) => {
+          const opt = document.createElement("option");
+          opt.value = key;
+          opt.textContent = def.label;
+          debugGearSlotSelect.appendChild(opt);
+        });
+      }
+      if (!debugGearRaritySelect.options.length) {
+        DEBUG_RARITY_OPTIONS.forEach((rarity) => {
+          const opt = document.createElement("option");
+          opt.value = rarity.key;
+          opt.textContent = rarity.label;
+          debugGearRaritySelect.appendChild(opt);
+        });
+      }
+      if (!debugGearSlotSelect.value) debugGearSlotSelect.value = "weapon";
+      if (!debugGearRaritySelect.value) debugGearRaritySelect.value = "random";
+    }
+
+    function populateLegendaryTemplateSelect() {
+      if (!debugLegendarySelect) return;
+      const slotKey = debugGearSlotSelect?.value || "weapon";
+      const rarityKey = debugGearRaritySelect?.value;
+      const isLegendary = rarityKey === "legendary";
+
+      debugLegendaryWrapper?.classList.toggle("hidden", !isLegendary);
+      debugLegendarySelect.innerHTML = "";
+      if (!isLegendary) return;
+
+      const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey] || [];
+      const randomOpt = document.createElement("option");
+      randomOpt.value = "";
+      randomOpt.textContent = "おまかせ（ランダム）";
+      debugLegendarySelect.appendChild(randomOpt);
+
+      list.forEach((entry) => {
+        const opt = document.createElement("option");
+        opt.value = entry.key;
+        opt.textContent = entry.name;
+        debugLegendarySelect.appendChild(opt);
+      });
+
+      if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
+    }
+
+    function switchDebugTab(tabKey) {
+      if (!debugTabStatus || !debugTabEquipment) return;
+      const useEquipment = tabKey === "equipment";
+      debugTabStatus.classList.toggle("hidden", useEquipment);
+      debugTabEquipment.classList.toggle("hidden", !useEquipment);
+      debugTabButtons.forEach((btn) => {
+        const active = btn.dataset.tab === tabKey;
+        btn.classList.toggle("active", active);
+      });
+      if (useEquipment) {
+        populateDebugGearSelects();
+        populateLegendaryTemplateSelect();
+        renderDebugGearPreview(lastGeneratedEquipment);
+      } else {
+        populateDebugEnemySelect();
+        renderDebugStatusButtons();
+        updateDebugTargetState();
+      }
+    }
+
+    let lastGeneratedEquipment = null;
+
+    function renderDebugGearPreview(item) {
+      if (!debugGearPreview) return;
+      debugGearPreview.innerHTML = "";
+      if (!item) {
+        const empty = document.createElement("div");
+        empty.className = "option-label";
+        empty.textContent = "プレビューがここに表示されます";
+        debugGearPreview.appendChild(empty);
+        return;
+      }
+
+      const title = document.createElement("div");
+      title.className = "option-value";
+      title.textContent = `${item.name} (${EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || item.equipment?.rarityLabel || ""})`;
+      applyItemRarityColor(title, item);
+      debugGearPreview.appendChild(title);
+
+      const slot = document.createElement("div");
+      slot.className = "option-label";
+      const slotLabel = EQUIPMENT_SLOTS[item.equipment?.slot]?.label || item.equipment?.slot;
+      slot.textContent = `部位: ${slotLabel}`;
+      debugGearPreview.appendChild(slot);
+
+      const appendList = (titleText, options) => {
+        if (!options?.length) return;
+        const heading = document.createElement("div");
+        heading.className = "option-label";
+        heading.textContent = titleText;
+        debugGearPreview.appendChild(heading);
+        options.forEach((opt) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = formatEquipmentValue(opt);
+          debugGearPreview.appendChild(row);
+        });
+      };
+
+      const appendAffix = (label, affix) => {
+        if (!affix?.options?.length) return;
+        appendList(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+      };
+
+      if (item.equipment?.uniqueOptions?.length) {
+        const heading = document.createElement("div");
+        heading.className = "option-label";
+        heading.textContent = "固有オプション";
+        debugGearPreview.appendChild(heading);
+        item.equipment.uniqueOptions.forEach((opt) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = `${opt.name}: ${opt.effect}`;
+          debugGearPreview.appendChild(row);
+        });
+      }
+      appendList("基礎オプション", item.equipment?.baseOptions);
+      appendList("ランダムオプション", item.equipment?.randomOptions);
+      appendAffix("前称号", item.equipment?.prefix);
+      appendAffix("後称号", item.equipment?.suffix);
+    }
+
+    function resolveDebugRarity(selection) {
+      if (selection === "legendary") return "legendary";
+      return NON_LEGENDARY_RARITIES[randomInt(0, NON_LEGENDARY_RARITIES.length - 1)];
+    }
+
+    function generateDebugGear({ randomRarity = false } = {}) {
+      if (!debugGearSlotSelect || !debugGearRaritySelect) return null;
+      const slotKey = debugGearSlotSelect.value || "weapon";
+      const rarityChoice = randomRarity
+        ? DEBUG_RARITY_OPTIONS[randomInt(0, DEBUG_RARITY_OPTIONS.length - 1)]?.key
+        : debugGearRaritySelect.value;
+      const rarityKey = resolveDebugRarity(rarityChoice);
+      const legendaryKey = rarityChoice === "legendary" ? debugLegendarySelect?.value || "" : "";
+      const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey });
+      lastGeneratedEquipment = item;
+      player.inventory.items.push(item);
+      log(`🛠️ ${item.name} を生成しインベントリへ追加`, "info");
+      renderInventory();
+      renderDebugGearPreview(item);
+      return item;
+    }
+
     function openDebugModal() {
-      populateDebugEnemySelect();
-      renderDebugStatusButtons();
-      updateDebugTargetState();
+      switchDebugTab("status");
       debugModal?.classList.remove("hidden");
     }
 
@@ -2167,6 +3337,9 @@
       if (item.type === "potion" && item.potion?.id) {
         return (player.potions || []).some((p) => p?.id === item.potion.id);
       }
+      if (item.type === "equipment" && item.id) {
+        return Object.values(player.equipment || {}).some((eq) => eq?.id === item.id);
+      }
       return false;
     }
 
@@ -2253,6 +3426,7 @@
         }
         const label = document.createElement("span");
         label.textContent = item?.name || "不明なアイテム";
+        applyItemRarityColor(label, item);
         name.appendChild(label);
 
         row.appendChild(name);
@@ -2299,6 +3473,7 @@
     const inventoryItemCloseButton = document.getElementById("inventory-item-close");
     const statHelpButton = document.getElementById("stat-help");
     const potionModalName = document.getElementById("potion-modal-name");
+    const inventoryCompareResult = document.getElementById("inventory-compare-result");
     const potionModalType = document.getElementById("potion-modal-type");
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
@@ -2329,6 +3504,16 @@
     const debugTargetSelect = document.getElementById("debug-target");
     const debugEnemySelect = document.getElementById("debug-enemy");
     const debugClearButton = document.getElementById("debug-clear-status");
+    const debugTabButtons = document.querySelectorAll(".debug-tab-button");
+    const debugTabStatus = document.getElementById("debug-tab-status");
+    const debugTabEquipment = document.getElementById("debug-tab-equipment");
+    const debugGearSlotSelect = document.getElementById("debug-gear-slot");
+    const debugGearRaritySelect = document.getElementById("debug-gear-rarity");
+    const debugLegendaryWrapper = document.getElementById("debug-legendary-wrapper");
+    const debugLegendarySelect = document.getElementById("debug-legendary-template");
+    const debugGearPreview = document.getElementById("debug-gear-preview");
+    const debugGenerateGearButton = document.getElementById("debug-generate-gear");
+    const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
     const inventoryOpenButton = document.getElementById("btn-inventory");
 
     function openEnemyModal(enemy) {
@@ -2418,15 +3603,84 @@
       inventoryModal.classList.add("hidden");
     }
 
+    function clearComparisonResult() {
+      if (!inventoryCompareResult) return;
+      inventoryCompareResult.innerHTML = "";
+      inventoryCompareResult.style.display = "none";
+    }
+
+    function renderComparisonResult(slotKey, item) {
+      if (!inventoryCompareResult || !item?.equipment) return;
+      const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
+      const equipped = player.equipment?.[slotKey];
+      const diffs = diffEquipmentBonuses(item, equipped).sort((a, b) => b.delta - a.delta);
+
+      inventoryCompareResult.innerHTML = "";
+      inventoryCompareResult.style.display = "block";
+
+      const heading = document.createElement("div");
+      heading.className = "option-label";
+      heading.textContent = `${slotName}との比較`;
+      inventoryCompareResult.appendChild(heading);
+
+      const currentRow = document.createElement("div");
+      currentRow.className = "subtle";
+      const currentLabel = document.createElement("span");
+      currentLabel.textContent = "現在";
+      const currentName = document.createElement("span");
+      currentName.textContent = equipped?.name || "なし";
+      applyItemRarityColor(currentName, equipped);
+      currentRow.appendChild(currentLabel);
+      currentRow.appendChild(currentName);
+      inventoryCompareResult.appendChild(currentRow);
+
+      const nextRow = document.createElement("div");
+      nextRow.className = "subtle";
+      const nextLabel = document.createElement("span");
+      nextLabel.textContent = "候補";
+      const nextName = document.createElement("span");
+      nextName.textContent = item.name;
+      applyItemRarityColor(nextName, item);
+      nextRow.appendChild(nextLabel);
+      nextRow.appendChild(nextName);
+      inventoryCompareResult.appendChild(nextRow);
+
+      if (!diffs.length) {
+        const row = document.createElement("div");
+        row.className = "option-value";
+        row.textContent = "ステータス変化なし";
+        inventoryCompareResult.appendChild(row);
+        return;
+      }
+
+      const list = document.createElement("div");
+      list.className = "stat-diff-list";
+      diffs.forEach((diff) => {
+        const row = document.createElement("div");
+        row.className = `stat-diff ${diff.delta > 0 ? "positive" : "negative"}`;
+        const label = document.createElement("span");
+        label.textContent = diff.label;
+        const value = document.createElement("span");
+        value.textContent = diff.text.replace(`${diff.label} `, "");
+        row.appendChild(label);
+        row.appendChild(value);
+        list.appendChild(row);
+      });
+      inventoryCompareResult.appendChild(list);
+    }
+
     function openInventoryItemModal(item, index) {
       if (!item) return;
+      clearComparisonResult();
       inventoryItemName.textContent = item?.name || "不明なアイテム";
+      applyItemRarityColor(inventoryItemName, item);
       inventoryItemDesc.textContent = item?.desc || "説明なし";
 
       const metaParts = [];
       if (isItemEquipped(item)) metaParts.push("装備中");
       const qty = typeof item?.quantity === "number" ? item.quantity : 1;
       if (qty > 1) metaParts.push(`所持: ×${qty}`);
+      if (item.equipment?.rarityLabel) metaParts.push(item.equipment.rarityLabel);
       inventoryItemMeta.textContent = metaParts.join(" / ");
       inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
 
@@ -2446,6 +3700,61 @@
           row.textContent = `${f.label} ${f.value}`;
           inventoryItemDetail.appendChild(row);
         });
+      } else if (item.type === "equipment" && item.equipment) {
+        const rarity = item.equipment.rarityLabel || item.equipment.rarity;
+        const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
+        const fields = [
+          { label: "部位", value: slotLabel },
+          { label: "レア度", value: rarity },
+        ];
+        fields.forEach((f) => {
+          const row = document.createElement("div");
+          row.textContent = `${f.label} ${f.value}`;
+          inventoryItemDetail.appendChild(row);
+        });
+
+        const appendOptions = (title, options) => {
+          if (!options?.length) return;
+          const block = document.createElement("div");
+          block.className = "equipment-option-list";
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = title;
+          block.appendChild(heading);
+          options.forEach((option) => {
+            const line = document.createElement("div");
+            line.className = "option-value";
+            line.textContent = formatEquipmentValue(option);
+            block.appendChild(line);
+          });
+          inventoryItemDetail.appendChild(block);
+        };
+
+        const appendAffix = (label, affix) => {
+          if (!affix?.options?.length) return;
+          appendOptions(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+        };
+
+        if (item.equipment.uniqueOptions?.length) {
+          const uniqueBlock = document.createElement("div");
+          uniqueBlock.className = "equipment-option-list";
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = "固有オプション";
+          uniqueBlock.appendChild(heading);
+          item.equipment.uniqueOptions.forEach((opt) => {
+            const line = document.createElement("div");
+            line.className = "option-value";
+            line.textContent = `${opt.name}: ${opt.effect}`;
+            uniqueBlock.appendChild(line);
+          });
+          inventoryItemDetail.appendChild(uniqueBlock);
+        }
+
+        appendOptions("基礎オプション", item.equipment.baseOptions);
+        appendOptions("ランダムオプション", item.equipment.randomOptions);
+        appendAffix("前称号", item.equipment.prefix);
+        appendAffix("後称号", item.equipment.suffix);
       } else {
         const empty = document.createElement("div");
         empty.className = "help-panel";
@@ -2467,6 +3776,46 @@
           };
           inventoryItemActions.appendChild(btn);
         });
+      } else if (item.type === "equipment" && item.equipment) {
+        const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
+        const addEquipButtons = (slotKey) => {
+          const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
+          const equipped = player.equipment?.[slotKey];
+          const isSame = equipped?.id === item.id;
+          const equipBtn = document.createElement("button");
+          equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
+          equipBtn.disabled = isSame;
+          equipBtn.onclick = () => {
+            equipItem(slotKey, item);
+            log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
+            renderInventory();
+            clearComparisonResult();
+          };
+          inventoryItemActions.appendChild(equipBtn);
+
+          const compareBtn = document.createElement("button");
+          compareBtn.textContent = `${slotName}と比較`;
+          compareBtn.onclick = () => renderComparisonResult(slotKey, item);
+          inventoryItemActions.appendChild(compareBtn);
+
+          if (equipped) {
+            const unequipBtn = document.createElement("button");
+            unequipBtn.textContent = `${slotName}を外す`;
+            unequipBtn.onclick = () => {
+              unequipItem(slotKey);
+              log(`🧤 ${slotName}の装備を外した`, "info");
+              renderInventory();
+              clearComparisonResult();
+            };
+            inventoryItemActions.appendChild(unequipBtn);
+          }
+        };
+
+        if (item.equipment.slot === "accessory") {
+          ["accessory1", "accessory2"].forEach(addEquipButtons);
+        } else {
+          addEquipButtons(item.equipment.slot);
+        }
       } else {
         const note = document.createElement("div");
         note.className = "help-panel";
@@ -2478,6 +3827,7 @@
     }
 
     function closeInventoryItemModal() {
+      clearComparisonResult();
       inventoryItemModal?.classList.add("hidden");
     }
 
@@ -2912,6 +4262,21 @@
       target.statuses = [];
       log(`🐞 デバッグ: ${target.name} の状態異常を全解除`, "info");
       updateUI();
+    });
+    debugTabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => switchDebugTab(btn.dataset.tab));
+    });
+    debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    debugGenerateGearButton?.addEventListener("click", () => {
+      generateDebugGear();
+    });
+    debugGenerateGearRandomButton?.addEventListener("click", () => {
+      const keys = Object.keys(EQUIPMENT_RARITIES);
+      const randomKey = keys[randomInt(0, keys.length - 1)];
+      debugGearRaritySelect.value = randomKey;
+      populateLegendaryTemplateSelect();
+      generateDebugGear({ randomRarity: true });
     });
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
