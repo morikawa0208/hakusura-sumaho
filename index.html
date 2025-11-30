@@ -1261,6 +1261,212 @@
 
     const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
 
+    const EQUIPMENT_TEMPLATE_LIBRARY = {
+      weapon: [
+        {
+          key: "steelSword",
+          name: "鋼の剣",
+          base: [
+            { key: "physAtk", range: [12, 18] },
+            { key: "critRate", range: [4, 8], unit: "%" },
+            { key: "speed", range: [1, 3] },
+          ],
+        },
+        {
+          key: "battleAxe",
+          name: "轟槌の戦斧",
+          base: [
+            { key: "physAtk", range: [16, 22] },
+            { key: "critDamage", range: [8, 14], unit: "%" },
+            { key: "str", range: [2, 5] },
+          ],
+        },
+        {
+          key: "sageStaff",
+          name: "叡智の杖",
+          base: [
+            { key: "magAtk", range: [14, 20] },
+            { key: "mp", range: [14, 24] },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+      ],
+      subWeapon: [
+        {
+          key: "guardianShield",
+          name: "守護者の盾",
+          base: [
+            { key: "physDef", range: [8, 14] },
+            { key: "block", range: [4, 8], unit: "%" },
+            { key: "hp", range: [20, 36] },
+          ],
+        },
+        {
+          key: "spellBook",
+          name: "星紋の書",
+          base: [
+            { key: "magAtk", range: [8, 14] },
+            { key: "magDef", range: [6, 12] },
+            { key: "mp", range: [10, 18] },
+          ],
+        },
+        {
+          key: "shadowDagger",
+          name: "影走りの短剣",
+          base: [
+            { key: "physAtk", range: [8, 14] },
+            { key: "speed", range: [2, 4] },
+            { key: "critRate", range: [5, 9], unit: "%" },
+          ],
+        },
+      ],
+      head: [
+        {
+          key: "scoutHood",
+          name: "斥候のフード",
+          base: [
+            { key: "agi", range: [2, 4] },
+            { key: "evade", range: [4, 9], unit: "%" },
+            { key: "speed", range: [1, 3] },
+          ],
+        },
+        {
+          key: "sageCrown",
+          name: "賢者の冠",
+          base: [
+            { key: "int", range: [2, 4] },
+            { key: "magDef", range: [6, 12] },
+            { key: "mp", range: [12, 20] },
+          ],
+        },
+        {
+          key: "veteranHelm",
+          name: "歴戦の兜",
+          base: [
+            { key: "vit", range: [2, 5] },
+            { key: "physDef", range: [8, 14] },
+            { key: "hp", range: [18, 32] },
+          ],
+        },
+      ],
+      body: [
+        {
+          key: "brigandine",
+          name: "旅人のコート",
+          base: [
+            { key: "evade", range: [3, 7], unit: "%" },
+            { key: "speed", range: [1, 3] },
+            { key: "hp", range: [18, 30] },
+          ],
+        },
+        {
+          key: "plateArmor",
+          name: "鋼鉄の鎧",
+          base: [
+            { key: "physDef", range: [10, 16] },
+            { key: "magDef", range: [6, 12] },
+            { key: "damageReduction", range: [2, 5], unit: "%" },
+          ],
+        },
+        {
+          key: "mageRobe",
+          name: "星霜のローブ",
+          base: [
+            { key: "magDef", range: [8, 14] },
+            { key: "mp", range: [16, 26] },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+      ],
+      hands: [
+        {
+          key: "assassinGloves",
+          name: "夜影のグローブ",
+          base: [
+            { key: "critRate", range: [4, 9], unit: "%" },
+            { key: "speed", range: [1, 3] },
+            { key: "physAtk", range: [6, 12] },
+          ],
+        },
+        {
+          key: "sageGloves",
+          name: "術士の手袋",
+          base: [
+            { key: "magAtk", range: [6, 12] },
+            { key: "magPen", range: [2, 5], unit: "%" },
+            { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+        {
+          key: "guardianGauntlet",
+          name: "守護のガントレット",
+          base: [
+            { key: "physDef", range: [6, 12] },
+            { key: "block", range: [3, 7], unit: "%" },
+            { key: "hp", range: [12, 24] },
+          ],
+        },
+      ],
+      feet: [
+        {
+          key: "scoutBoots",
+          name: "疾走のブーツ",
+          base: [
+            { key: "speed", range: [2, 5] },
+            { key: "evade", range: [4, 8], unit: "%" },
+            { key: "agi", range: [2, 4] },
+          ],
+        },
+        {
+          key: "heavyGreaves",
+          name: "要塞のグリーブ",
+          base: [
+            { key: "physDef", range: [8, 14] },
+            { key: "magDef", range: [6, 12] },
+            { key: "hp", range: [16, 30] },
+          ],
+        },
+        {
+          key: "mysticSandals",
+          name: "神秘のサンダル",
+          base: [
+            { key: "magDef", range: [8, 12] },
+            { key: "mp", range: [12, 20] },
+            { key: "cooldown", range: [2, 5], unit: "%" },
+          ],
+        },
+      ],
+      accessory: [
+        {
+          key: "warriorCharm",
+          name: "武勇の護符",
+          base: [
+            { key: "str", range: [2, 4] },
+            { key: "physAtk", range: [6, 12] },
+            { key: "critDamage", range: [6, 12], unit: "%" },
+          ],
+        },
+        {
+          key: "sagePendant",
+          name: "賢智のペンダント",
+          base: [
+            { key: "int", range: [2, 4] },
+            { key: "magAtk", range: [6, 12] },
+            { key: "mp", range: [12, 22] },
+          ],
+        },
+        {
+          key: "luckyRing",
+          name: "幸運の指輪",
+          base: [
+            { key: "luck", range: [2, 4] },
+            { key: "dropRate", range: [4, 10], unit: "%" },
+            { key: "critRate", range: [3, 7], unit: "%" },
+          ],
+        },
+      ],
+    };
+
     const EQUIPMENT_TITLE_PREFIXES = [
       { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
       { key: "sharp", name: "鋭い", rank: 1, options: ["critRate"] },
@@ -1268,6 +1474,9 @@
       { key: "arcane", name: "魔導の", rank: 2, options: ["int", "mp"] },
       { key: "tempest", name: "迅雷の", rank: 3, options: ["speed", "evade", "critRate"] },
       { key: "mythic", name: "神獣の", rank: 3, options: ["str", "vit", "hp"] },
+      { key: "immortal", name: "不朽の", rank: 3, options: ["hp", "damageReduction", "block"] },
+      { key: "twilight", name: "黄昏の", rank: 2, options: ["int", "magAtk"] },
+      { key: "hunter", name: "狩人の", rank: 2, options: ["critRate", "speed"] },
     ];
 
     const EQUIPMENT_TITLE_SUFFIXES = [
@@ -1277,6 +1486,9 @@
       { key: "sorcery", name: "の叡智", rank: 2, options: ["magAtk", "cooldown"] },
       { key: "conqueror", name: "の覇者", rank: 3, options: ["physAtk", "physPen", "critRate"] },
       { key: "eternal", name: "の終焉", rank: 3, options: ["magAtk", "magPen", "debuffResist"] },
+      { key: "guardian", name: "の守護者", rank: 2, options: ["hp", "physDef", "magDef"] },
+      { key: "storm", name: "の雷鳴", rank: 2, options: ["speed", "critRate"] },
+      { key: "void", name: "の虚無", rank: 3, options: ["magAtk", "dotResist", "controlResist"] },
     ];
 
     const LEGENDARY_EQUIPMENT_LIBRARY = {
@@ -1284,11 +1496,25 @@
         {
           key: "infernoGreatsword",
           name: "灼煌の大剣",
+          base: [
+            { key: "physAtk", range: [28, 36] },
+            { key: "critDamage", range: [12, 20], unit: "%" },
+            { key: "str", range: [4, 7] },
+            { key: "hp", range: [30, 50] },
+            { key: "physPen", range: [4, 8], unit: "%" },
+          ],
           unique: { name: "煉獄覇斬", range: [28, 42], unit: "%", effect: "火属性スキルダメージ+{value}" },
         },
         {
           key: "mistTwinblade",
           name: "霧閃の双刃",
+          base: [
+            { key: "physAtk", range: [20, 30] },
+            { key: "speed", range: [3, 6] },
+            { key: "evade", range: [6, 12], unit: "%" },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "agi", range: [4, 6] },
+          ],
           unique: {
             name: "幻影連舞",
             range: [20, 32],
@@ -1296,16 +1522,42 @@
             effect: "通常攻撃命中時{value}で3連撃化（追加攻撃は威力50%）",
           },
         },
+        {
+          key: "raidenKatana",
+          name: "雷鳴の刀",
+          base: [
+            { key: "physAtk", range: [24, 34] },
+            { key: "speed", range: [3, 6] },
+            { key: "critRate", range: [8, 14], unit: "%" },
+            { key: "hp", range: [24, 40] },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "雷鳴居合", range: [26, 40], unit: "%", effect: "スキル命中時、{value}で感電を2ターン付与" },
+        },
       ],
       subWeapon: [
         {
           key: "azureBulwark",
           name: "蒼紋の盾",
+          base: [
+            { key: "physDef", range: [18, 28] },
+            { key: "magDef", range: [12, 20] },
+            { key: "hp", range: [36, 60] },
+            { key: "block", range: [8, 14], unit: "%" },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+          ],
           unique: { name: "蒼守の障壁", range: [320, 480], effect: "戦闘開始時、{value}のダメージを吸収するシールドを得る" },
         },
         {
           key: "dawnGrimoire",
           name: "暁星の魔導書",
+          base: [
+            { key: "magAtk", range: [16, 24] },
+            { key: "mp", range: [28, 44] },
+            { key: "magDef", range: [12, 20] },
+            { key: "cooldown", range: [4, 8], unit: "%" },
+            { key: "int", range: [3, 6] },
+          ],
           unique: {
             name: "黎明の喝采",
             range: [18, 30],
@@ -1313,75 +1565,231 @@
             effect: "スキル使用後、次の通常攻撃が必ずクリティカルし与ダメージ+{value}",
           },
         },
+        {
+          key: "abyssCompass",
+          name: "深淵の羅針盤",
+          base: [
+            { key: "magAtk", range: [14, 22] },
+            { key: "magPen", range: [6, 10], unit: "%" },
+            { key: "mp", range: [22, 36] },
+            { key: "controlResist", range: [10, 18], unit: "%" },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
+          unique: { name: "深淵の呼び声", range: [20, 32], unit: "%", effect: "デバフが付与された敵への与ダメージ+{value}" },
+        },
       ],
       head: [
         {
           key: "starseerCirclet",
           name: "星読のサークレット",
+          base: [
+            { key: "int", range: [4, 7] },
+            { key: "magAtk", range: [10, 18] },
+            { key: "magDef", range: [12, 18] },
+            { key: "mp", range: [24, 40] },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
           unique: { name: "予兆読み", range: [8, 15], unit: "%", effect: "クリティカル時、全スキルCTを{value}短縮" },
         },
         {
           key: "wyrmhelm",
           name: "竜骨の兜",
+          base: [
+            { key: "str", range: [4, 7] },
+            { key: "vit", range: [4, 7] },
+            { key: "physDef", range: [14, 22] },
+            { key: "hp", range: [32, 52] },
+            { key: "critRate", range: [6, 12], unit: "%" },
+          ],
           unique: { name: "竜眼の威圧", range: [20, 32], unit: "%", effect: "被弾時{value}で次の攻撃が必中＆与ダメ上昇" },
+        },
+        {
+          key: "moonveilHood",
+          name: "月影のフード",
+          base: [
+            { key: "agi", range: [4, 6] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "speed", range: [3, 5] },
+            { key: "hp", range: [22, 40] },
+            { key: "critRate", range: [6, 12], unit: "%" },
+          ],
+          unique: { name: "月影の覆い", range: [18, 28], unit: "%", effect: "回避時、次ターンの与ダメージ+{value}" },
         },
       ],
       body: [
         {
           key: "azureScaleArmor",
           name: "蒼竜の鱗鎧",
+          base: [
+            { key: "physDef", range: [18, 28] },
+            { key: "magDef", range: [14, 22] },
+            { key: "hp", range: [40, 64] },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+            { key: "block", range: [8, 12], unit: "%" },
+          ],
           unique: { name: "鱗の守護", range: [12, 20], unit: "%", effect: "受けるダメージを常時{value}軽減" },
         },
         {
           key: "wrathPlate",
           name: "赫怒の戦装",
+          base: [
+            { key: "physAtk", range: [14, 22] },
+            { key: "hp", range: [32, 56] },
+            { key: "physDef", range: [12, 20] },
+            { key: "critDamage", range: [10, 16], unit: "%" },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+          ],
           unique: { name: "怒涛の復讐", range: [18, 30], unit: "%", effect: "被ダメージ時、次のターン終了まで与ダメージ+{value}" },
+        },
+        {
+          key: "sableRaiment",
+          name: "黒檀の法衣",
+          base: [
+            { key: "magAtk", range: [16, 24] },
+            { key: "mp", range: [32, 52] },
+            { key: "magDef", range: [14, 22] },
+            { key: "cooldown", range: [5, 9], unit: "%" },
+            { key: "dotResist", range: [10, 18], unit: "%" },
+          ],
+          unique: { name: "闇の恩寵", range: [20, 32], unit: "%", effect: "DoTを付与中の敵への与ダメージ+{value}" },
         },
       ],
       hands: [
         {
           key: "stormGauntlet",
           name: "雷纏いの篭手",
+          base: [
+            { key: "physAtk", range: [14, 22] },
+            { key: "speed", range: [3, 6] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "hp", range: [18, 32] },
+            { key: "evade", range: [6, 10], unit: "%" },
+          ],
           unique: { name: "雷禍の連鎖", range: [35, 55], unit: "%", effect: "スキル命中時、追加で{value}の確率で感電を付与" },
         },
         {
           key: "shadowWeave",
           name: "影縫いの手袋",
+          base: [
+            { key: "physAtk", range: [12, 20] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "speed", range: [2, 5] },
+            { key: "evade", range: [6, 12], unit: "%" },
+            { key: "hp", range: [16, 28] },
+          ],
           unique: { name: "拘束の刺突", range: [22, 36], unit: "%", effect: "クリティカル時、敵を{value}で1ターン行動不能にする" },
+        },
+        {
+          key: "frostbinder",
+          name: "氷縛の手甲",
+          base: [
+            { key: "magAtk", range: [14, 22] },
+            { key: "cooldown", range: [4, 8], unit: "%" },
+            { key: "magPen", range: [5, 9], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "magDef", range: [10, 16] },
+          ],
+          unique: { name: "氷刃封殺", range: [24, 38], unit: "%", effect: "スキル命中時{value}で凍結1ターン付与" },
         },
       ],
       feet: [
         {
           key: "galeGreaves",
           name: "疾風のグリーヴ",
+          base: [
+            { key: "speed", range: [4, 8] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "agi", range: [4, 6] },
+            { key: "hp", range: [16, 28] },
+            { key: "critRate", range: [6, 10], unit: "%" },
+          ],
           unique: { name: "風走", range: [14, 24], unit: "%", effect: "回避率+{value}、回避成功時は次ターンの行動順を早める" },
         },
         {
           key: "abyssWalker",
           name: "深淵歩きのブーツ",
+          base: [
+            { key: "speed", range: [3, 6] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "hp", range: [18, 32] },
+            { key: "damageReduction", range: [4, 7], unit: "%" },
+            { key: "agi", range: [3, 5] },
+          ],
           unique: { name: "奈落の跳躍", range: [16, 28], unit: "%", effect: "回避成功時、{value}で追加行動を得る" },
+        },
+        {
+          key: "sunstride",
+          name: "陽炎の靴",
+          base: [
+            { key: "speed", range: [4, 7] },
+            { key: "evade", range: [8, 14], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "physAtk", range: [10, 16] },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+          ],
+          unique: { name: "陽炎疾駆", range: [18, 30], unit: "%", effect: "移動後のターン、初回攻撃の与ダメージ+{value}" },
         },
       ],
       accessory: [
         {
           key: "twinMoonRing",
           name: "幸運の双月リング",
+          base: [
+            { key: "luck", range: [4, 7] },
+            { key: "dropRate", range: [10, 16], unit: "%" },
+            { key: "critRate", range: [6, 10], unit: "%" },
+            { key: "rarity", range: [6, 10], unit: "%" },
+            { key: "hp", range: [14, 24] },
+          ],
           unique: { name: "双月の導き", range: [6, 12], unit: "%", effect: "宝箱とドロップのレアリティ+{value}" },
         },
         {
           key: "verdantPledge",
           name: "翠緑の誓約指輪",
+          base: [
+            { key: "vit", range: [3, 6] },
+            { key: "hp", range: [26, 44] },
+            { key: "hpRegen", range: [1.5, 3], precision: 1 },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+            { key: "debuffResist", range: [10, 16], unit: "%" },
+          ],
           unique: { name: "癒しの盟約", range: [18, 30], unit: "%", effect: "継続回復効果量+{value}" },
         },
         {
           key: "bloodcrystalTalisman",
           name: "血晶のタリスマン",
+          base: [
+            { key: "physAtk", range: [10, 16] },
+            { key: "magAtk", range: [10, 16] },
+            { key: "lifeSteal", range: [4, 7], unit: "%" },
+            { key: "hp", range: [18, 30] },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+          ],
           unique: { name: "血晶吸収", range: [6, 12], unit: "%", effect: "スキル使用時、与ダメージの{value}をHPとして吸収" },
         },
         {
           key: "starwardCharm",
           name: "蒼星の護符",
+          base: [
+            { key: "magDef", range: [12, 20] },
+            { key: "barrier", range: [40, 70] },
+            { key: "mp", range: [20, 34] },
+            { key: "controlResist", range: [10, 18], unit: "%" },
+            { key: "cooldown", range: [4, 7], unit: "%" },
+          ],
           unique: { name: "蒼星結界", range: [80, 140], effect: "獲得するバリア量+{value}、バリア破壊時に周囲へ小ダメージ" },
+        },
+        {
+          key: "phoenixFeather",
+          name: "不死鳥の羽根飾り",
+          base: [
+            { key: "hp", range: [28, 46] },
+            { key: "hpRegen", range: [1.5, 3.2], precision: 1 },
+            { key: "damageReduction", range: [4, 8], unit: "%" },
+            { key: "magDef", range: [12, 20] },
+            { key: "block", range: [4, 8], unit: "%" },
+          ],
+          unique: { name: "不死鳥の加護", range: [20, 32], unit: "%", effect: "致死ダメージを受けても{value}でHP1で踏みとどまる" },
         },
       ],
     };
@@ -1458,6 +1866,29 @@
       return Math.round(scaled);
     }
 
+    function rollTemplateOptions(definitions, rarity) {
+      const primaryBonus = createEmptyPrimaryBonus();
+      const bonus = createEmptyBonus();
+      const entries = (definitions || [])
+        .map((def) => {
+          const baseDef = EQUIPMENT_STAT_BY_KEY[def.key];
+          if (!baseDef?.range) return null;
+          const merged = {
+            ...baseDef,
+            ...def,
+            range: def.range || baseDef.range,
+            unit: def.unit ?? baseDef.unit,
+            precision: def.precision ?? baseDef.precision,
+          };
+          const value = rollStatValue(merged, rarity);
+          applyOptionToBonus(merged, value, primaryBonus, bonus);
+          return { key: merged.key, label: merged.label, unit: merged.unit, type: merged.type, value };
+        })
+        .filter(Boolean);
+
+      return { entries, primaryBonus, bonus };
+    }
+
     function pickStatOptions(count) {
       const pool = [...EQUIPMENT_STAT_POOL];
       const options = [];
@@ -1490,6 +1921,12 @@
       return { entries, primaryBonus, bonus };
     }
 
+    function pickEquipmentTemplate(slotKey) {
+      const list = EQUIPMENT_TEMPLATE_LIBRARY[slotKey];
+      if (!list?.length) return null;
+      return list[randomInt(0, list.length - 1)];
+    }
+
     function pickLegendaryEquipment(slotKey, preferredKey) {
       const list = LEGENDARY_EQUIPMENT_LIBRARY[slotKey];
       if (!list?.length) return null;
@@ -1500,8 +1937,7 @@
       return list[randomInt(0, list.length - 1)];
     }
 
-    function rollLegendaryUniqueOption(slotKey, preferredKey) {
-      const def = pickLegendaryEquipment(slotKey, preferredKey);
+    function rollLegendaryUniqueOption(def) {
       if (!def?.unique) return null;
       const precision = def.unique.precision ?? (def.unique.unit === "%" ? 1 : 0);
       const value = def.unique.range ? rollValueInRange(def.unique.range, precision) : null;
@@ -1560,13 +1996,16 @@
     function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "" } = {}) {
       const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
-      const base = generateEquipmentOptions(rarity, rarity.baseOptions);
+      const template = rarityKey === "legendary" ? pickLegendaryEquipment(slot, legendaryKey) : pickEquipmentTemplate(slot);
+      const base = template?.base?.length
+        ? rollTemplateOptions(template.base, rarity)
+        : generateEquipmentOptions(rarity, rarity.baseOptions);
       const random = generateEquipmentOptions(rarity, rarity.randomOptions);
       const prefixTitle = pickTitle(EQUIPMENT_TITLE_PREFIXES);
       const suffixTitle = pickTitle(EQUIPMENT_TITLE_SUFFIXES);
       const prefixOptions = generateTitleOptions(prefixTitle, rarity);
       const suffixOptions = generateTitleOptions(suffixTitle, rarity);
-      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(slot, legendaryKey) : null;
+      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(template) : null;
 
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
@@ -1574,7 +2013,7 @@
         applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
       });
 
-      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, uniqueOption?.itemName);
+      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, template?.name || uniqueOption?.itemName);
 
       const prefixAffix = prefixTitle
         ? { ...prefixTitle, options: prefixOptions.entries }
