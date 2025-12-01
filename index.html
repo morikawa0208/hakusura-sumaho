@@ -1352,6 +1352,66 @@
         legendaryKey: "dawnbringerAegis",
       },
     };
+
+    const ENEMY_VARIANTS = [
+      {
+        key: "brute",
+        label: "剛腕",
+        description: "単純だが痛い一撃を振り下ろす。",
+        weight: 3,
+        modifiers: { atk: 1.25, def: 0.95, hp: 1.05 },
+      },
+      {
+        key: "bulwark",
+        label: "重甲",
+        description: "硬い外殻で攻撃をいなし、じわじわ迫る。",
+        weight: 2,
+        minFloor: 5,
+        modifiers: { def: 1.5, hp: 1.2, spd: 0.9, accuracy: 0.98 },
+      },
+      {
+        key: "skirmisher",
+        label: "疾走",
+        description: "素早く間合いを詰め、ヒット＆アウェイを狙う。",
+        weight: 2,
+        minFloor: 15,
+        modifiers: { spd: 1.3, evade: 1.18, def: 0.9, hp: 0.95 },
+      },
+      {
+        key: "hexer",
+        label: "呪詠",
+        description: "呪気をまとい、異常耐性がやや高い。",
+        weight: 1,
+        minFloor: 30,
+        modifiers: { atk: 1.1, def: 0.95, resist: { control: 1.15, dot: 1.15, debuff: 1.15 } },
+      },
+      {
+        key: "berserker",
+        label: "狂戦",
+        description: "手数で押す荒ぶる敵。防御はやや薄い。",
+        weight: 1,
+        minFloor: 50,
+        modifiers: { atk: 1.18, def: 0.85, hp: 0.92, attackCountBonus: 1 },
+      },
+    ];
+
+    const ENEMY_NAME_POOLS = [
+      {
+        min: 1,
+        max: 200,
+        names: ["洞窟オオコウモリ", "朽ちた槍兵", "原野の狼", "石守のスライム", "巡回する鎧"],
+      },
+      {
+        min: 201,
+        max: 600,
+        names: ["深層トカゲ", "鉱脈のゴーレム", "闇走りの盗賊", "夜目の狩人", "結晶クラブ"],
+      },
+      {
+        min: 601,
+        max: 1000,
+        names: ["雷尾スコーピオン", "霧歩きの影獣", "虚ろの魔騎兵", "灰燼の獣王", "空隙ワーム"],
+      },
+    ];
     const FLOOR_DROP_TABLE = [
       { min: 1, max: 4, slots: ["weapon", "head", "body", "hands"] },
       { min: 5, max: 9, slots: ["weapon", "subWeapon", "body", "hands", "feet"] },
@@ -3096,11 +3156,58 @@
       return BOSS_FLOORS.includes(floor);
     }
 
+    function pickEnemyBaseName(floor) {
+      const pool = ENEMY_NAME_POOLS.find((p) => floor >= p.min && floor <= p.max) || ENEMY_NAME_POOLS[0];
+      return pool.names[randomInt(0, pool.names.length - 1)];
+    }
+
+    function pickEnemyVariant(floor) {
+      const pool = ENEMY_VARIANTS.filter((variant) => !variant.minFloor || floor >= variant.minFloor);
+      const totalWeight = pool.reduce((sum, v) => sum + (v.weight || 1), 0) || 1;
+      let roll = Math.random() * totalWeight;
+      for (const variant of pool) {
+        roll -= variant.weight || 1;
+        if (roll <= 0) return variant;
+      }
+      return pool[0];
+    }
+
+    function applyEnemyModifiers(enemy, modifiers = {}) {
+      const applyRate = (key, rate, { keepDecimal = false } = {}) => {
+        if (!rate) return;
+        const value = enemy[key] * rate;
+        enemy[key] = keepDecimal ? Math.round(value * 10) / 10 : Math.round(value);
+      };
+
+      applyRate("hp", modifiers.hp);
+      applyRate("maxHp", modifiers.hp);
+      applyRate("atk", modifiers.atk);
+      applyRate("def", modifiers.def);
+      applyRate("spd", modifiers.spd, { keepDecimal: true });
+      applyRate("accuracy", modifiers.accuracy);
+      applyRate("evade", modifiers.evade);
+
+      if (modifiers.resist) {
+        enemy.resist.control = Math.min(100, Math.round(enemy.resist.control * (modifiers.resist.control || 1)));
+        enemy.resist.dot = Math.min(100, Math.round(enemy.resist.dot * (modifiers.resist.dot || 1)));
+        enemy.resist.debuff = Math.min(100, Math.round(enemy.resist.debuff * (modifiers.resist.debuff || 1)));
+      }
+
+      if (modifiers.attackCount) {
+        enemy.attackCount = Math.max(1, Math.round(modifiers.attackCount));
+      }
+      if (modifiers.attackCountBonus) {
+        enemy.attackCount = Math.max(1, Math.round(enemy.attackCount + modifiers.attackCountBonus));
+      }
+    }
+
     function createEnemy(isBoss = false) {
       const base = game.floor * 5 + (isBoss ? 20 : 0);
+      const variant = isBoss ? null : pickEnemyVariant(game.floor);
+      const baseName = isBoss ? `階層ボス ${game.floor}F` : pickEnemyBaseName(game.floor);
       const enemy = {
         id: crypto.randomUUID(),
-        name: isBoss ? `階層ボス ${game.floor}F` : `雑魚 ${game.floor}-${Math.ceil(Math.random() * 3)}`,
+        name: baseName,
         hp: base + (isBoss ? 30 : 0),
         maxHp: base + (isBoss ? 30 : 0),
         atk: 5 + game.floor * 1.5 + (isBoss ? 4 : 0),
@@ -3119,6 +3226,14 @@
         statuses: [],
       };
 
+      if (variant && !isBoss) {
+        enemy.variant = variant.key;
+        enemy.archetypeLabel = variant.label;
+        enemy.flavor = variant.description;
+        enemy.name = `${variant.label} ${baseName}`;
+        applyEnemyModifiers(enemy, variant.modifiers);
+      }
+
       if (isBoss) {
         const bossDef = BOSS_DEFINITIONS[game.floor];
         if (bossDef) {
@@ -3126,25 +3241,11 @@
           enemy.flavor = bossDef.flavor;
           enemy.bossLegendaryKey = bossDef.legendaryKey;
           const { modifiers = {} } = bossDef;
-          const applyRate = (key, rate) => {
-            if (!rate) return;
-            enemy[key] = Math.round(enemy[key] * rate);
-          };
-          applyRate("hp", modifiers.hp);
-          applyRate("maxHp", modifiers.hp);
-          applyRate("atk", modifiers.atk);
-          applyRate("def", modifiers.def);
-          applyRate("spd", modifiers.spd);
-          applyRate("accuracy", modifiers.accuracy);
-          applyRate("evade", modifiers.evade);
-
-          if (modifiers.resist) {
-            enemy.resist.control = Math.min(100, Math.round(enemy.resist.control * (modifiers.resist.control || 1)));
-            enemy.resist.dot = Math.min(100, Math.round(enemy.resist.dot * (modifiers.resist.dot || 1)));
-            enemy.resist.debuff = Math.min(100, Math.round(enemy.resist.debuff * (modifiers.resist.debuff || 1)));
-          }
+          applyEnemyModifiers(enemy, modifiers);
         }
       }
+
+      enemy.attacksRemaining = enemy.attackCount;
 
       return enemy;
     }
@@ -3599,6 +3700,12 @@
         statusList.className = "status-list";
         renderStatusList(statusList, enemy);
         meta.appendChild(order);
+        if (enemy.archetypeLabel && !enemy.isBoss) {
+          const archetype = document.createElement("span");
+          archetype.className = "tag";
+          archetype.textContent = enemy.archetypeLabel;
+          meta.appendChild(archetype);
+        }
         meta.appendChild(statusList);
 
         name.appendChild(titleLabel);
@@ -4114,7 +4221,16 @@
       document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
       document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
       document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
-      document.getElementById("modal-tag").style.display = enemy.isBoss ? "inline-flex" : "none";
+      const tag = document.getElementById("modal-tag");
+      if (enemy.isBoss) {
+        tag.textContent = "BOSS";
+        tag.style.display = "inline-flex";
+      } else if (enemy.archetypeLabel) {
+        tag.textContent = enemy.archetypeLabel;
+        tag.style.display = "inline-flex";
+      } else {
+        tag.style.display = "none";
+      }
       enemyModal.classList.remove("hidden");
     }
 
