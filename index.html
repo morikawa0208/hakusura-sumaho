@@ -3645,6 +3645,15 @@
       const row = document.createElement("div");
       row.className = "actions-row";
 
+      const escapeWrapper = document.createElement("div");
+      escapeWrapper.className = "action-button-wrapper";
+      const escapeBtn = document.createElement("button");
+      escapeBtn.textContent = "🏃 にげる";
+      escapeBtn.disabled = !canAct;
+      escapeBtn.onclick = attemptEscape;
+      escapeWrapper.appendChild(escapeBtn);
+      row.appendChild(escapeWrapper);
+
       (player.potions || []).forEach((potion, index) => {
         const potionRow = document.createElement("div");
         potionRow.className = "potion-row";
@@ -4765,14 +4774,50 @@
       endPlayerTurn();
     }
 
+    function resetPlayerAfterPenalty() {
+      player.statuses = [];
+      player.buffs = { guard: 0, haste: 0, focus: 0 };
+      recalcDerivedStats();
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      player.attacksRemaining = player.attackCount;
+      game.enemies = [];
+      game.turnQueue = [];
+      game.awaitingInput = false;
+    }
+
+    function retreatLowerFloors(drop, { reason = "撤退", tone = "warning" } = {}) {
+      const previousFloor = game.floor;
+      game.floor = Math.max(1, game.floor - drop);
+      const moved = previousFloor - game.floor;
+      const movementText = moved > 0 ? `${moved}階さがる` : "これ以上下がれない";
+      log(`↘️ ${reason}で${movementText} (${previousFloor}F → ${game.floor}F)`, tone);
+      resetPlayerAfterPenalty();
+      spawnEnemies();
+    }
+
+    function handlePlayerDefeat() {
+      retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
+    }
+
+    function attemptEscape() {
+      if (!game.awaitingInput) return;
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      if (!enemiesAlive) {
+        log("逃げる相手がいない", "info");
+        return;
+      }
+      retreatLowerFloors(5, { reason: "にげだした", tone: "warning" });
+    }
+
     function enemyAction(enemy) {
-      if (enemy.hp <= 0) return;
+      if (enemy.hp <= 0) return false;
       const attacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 0));
-      if (attacks <= 0) return;
+      if (attacks <= 0) return false;
       enemy.attacksRemaining = attacks;
       for (let i = 0; i < attacks; i += 1) {
         const target = chooseTargetForEnemy(enemy);
-        if (!target) return;
+        if (!target) return false;
         const hit = attemptHit(enemy, target);
         const targetLabel = target === player ? "あなた" : target.name;
         if (!hit) {
@@ -4785,20 +4830,24 @@
         const dealt = applyDamage(target, finalDmg, { source: enemy.name });
         const critText = isCrit ? " (会心！)" : "";
         log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
-        if (target !== player && target.hp <= 0) {
-          log(`${target.name} は倒れた`, "good");
-          onEnemyDefeated(target, { cause: "混乱" });
-          checkVictory();
-          if (!game.enemies.some(e => e.hp > 0)) return;
+          if (target !== player && target.hp <= 0) {
+            log(`${target.name} は倒れた`, "good");
+            onEnemyDefeated(target, { cause: "混乱" });
+            checkVictory();
+            if (!game.enemies.some(e => e.hp > 0)) return false;
+          }
+        if (player.hp <= 0) {
+          handlePlayerDefeat();
+          return true;
         }
-        if (player.hp <= 0) return;
         enemy.attacksRemaining = Math.max(0, attacks - i - 1);
       }
+      return false;
     }
 
     function nextTurn() {
       if (player.hp <= 0) {
-        log("💀 ゲームオーバー！", "danger");
+        handlePlayerDefeat();
         return;
       }
       if (game.turnQueue.length === 0) {
@@ -4821,7 +4870,8 @@
           log(`${entity.name} は倒れた`, "good");
           checkVictory();
         } else {
-          log("💀 ゲームオーバー！", "danger");
+          handlePlayerDefeat();
+          return;
         }
         setTimeout(() => nextTurn(), 380);
         return;
@@ -4837,10 +4887,14 @@
         promptPlayerTurn();
         return;
       }
-      enemyAction(entity);
+      const playerFell = enemyAction(entity);
+      if (playerFell) return;
       finalizeTurn(entity);
       updateUI();
-      if (player.hp <= 0) return;
+      if (player.hp <= 0) {
+        handlePlayerDefeat();
+        return;
+      }
       setTimeout(() => nextTurn(), 380);
     }
 
