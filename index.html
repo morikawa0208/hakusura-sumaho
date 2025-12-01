@@ -3232,15 +3232,20 @@
       return pool.names[randomInt(0, pool.names.length - 1)];
     }
 
-    function pickEnemyVariant(floor) {
+    let lastArchetypeKey = null;
+
+    function pickEnemyVariant(floor, { avoidKey = null } = {}) {
       const pool = ENEMY_VARIANTS.filter((variant) => !variant.minFloor || floor >= variant.minFloor);
-      const totalWeight = pool.reduce((sum, v) => sum + (v.weight || 1), 0) || 1;
-      let roll = Math.random() * totalWeight;
-      for (const variant of pool) {
-        roll -= variant.weight || 1;
-        if (roll <= 0) return variant;
+      if (!pool.length) return null;
+      const primary = weightedRandom(pool, pool[0]);
+
+      if (avoidKey && pool.length > 1 && primary?.key === avoidKey) {
+        const rerollPool = pool.filter((v) => v.key !== avoidKey);
+        const rerolled = weightedRandom(rerollPool, rerollPool[0]);
+        return rerolled || primary;
       }
-      return pool[0];
+
+      return primary;
     }
 
     function pickEnemyBaseProfile(floor) {
@@ -3253,9 +3258,10 @@
       const namedBonus = Math.max(0, derived?.namedRate?.total ?? 0);
       const effective = Math.min(90, baseChance + namedBonus);
       if (Math.random() * 100 >= effective) return null;
-      const variant = pickEnemyVariant(floor);
+      const variant = pickEnemyVariant(floor, { avoidKey: lastArchetypeKey });
       if (!variant) return null;
       const rank = weightedRandom(ARCHETYPE_RANK_WEIGHTS, ARCHETYPE_RANK_WEIGHTS[0])?.rank || 1;
+      lastArchetypeKey = variant.key;
       return { variant, rank };
     }
 
@@ -3274,9 +3280,11 @@
         .slice(0, rank)
         .forEach((ability) => {
           applyEnemyModifiers(enemy, ability.modifiers);
-          applied.push(ability.label);
+          applied.push({ label: ability.label, modifiers: ability.modifiers });
         });
-      enemy.archetypeTraits = applied;
+      enemy.archetypeBaseModifiers = variant.baseModifiers;
+      enemy.archetypeTraits = applied.map((a) => a.label);
+      enemy.archetypeAbilities = applied;
       enemy.rarityBonus = (enemy.rarityBonus || 0) + rank * 3;
       enemy.dropChanceBonus = (enemy.dropChanceBonus || 0) + rank * 4;
     }
@@ -3317,6 +3325,62 @@
 
       applyFlat("dropChanceBonus", modifiers.dropChanceBonus, { clampMin: 0 });
       applyFlat("rarityBonus", modifiers.rarityBonus, { clampMin: 0 });
+    }
+
+    function describeModifiers(modifiers = {}) {
+      if (!modifiers) return "";
+      const parts = [];
+      const formatRate = (rate) => {
+        const delta = Math.round((rate - 1) * 1000) / 10;
+        if (delta === 0) return null;
+        const sign = delta > 0 ? "+" : "";
+        return `${sign}${delta}%`;
+      };
+
+      const addRate = (key, label) => {
+        if (typeof modifiers[key] === "number") {
+          const formatted = formatRate(modifiers[key]);
+          if (formatted) parts.push(`${label}${formatted}`);
+        }
+      };
+
+      addRate("hp", "HP/最大HP");
+      addRate("atk", "攻撃力");
+      addRate("def", "防御力");
+      addRate("spd", "速度");
+      addRate("accuracy", "命中");
+      addRate("evade", "回避");
+
+      if (modifiers.resist) {
+        const resist = modifiers.resist;
+        if (typeof resist.control === "number") {
+          const formatted = formatRate(resist.control);
+          if (formatted) parts.push(`行動阻害耐性${formatted}`);
+        }
+        if (typeof resist.dot === "number") {
+          const formatted = formatRate(resist.dot);
+          if (formatted) parts.push(`持続ダメ耐性${formatted}`);
+        }
+        if (typeof resist.debuff === "number") {
+          const formatted = formatRate(resist.debuff);
+          if (formatted) parts.push(`弱体耐性${formatted}`);
+        }
+      }
+
+      if (modifiers.attackCount) {
+        parts.push(`攻撃回数を${Math.max(1, Math.round(modifiers.attackCount))}回に固定`);
+      }
+      if (modifiers.attackCountBonus) {
+        parts.push(`攻撃回数+${Math.round(modifiers.attackCountBonus)}回`);
+      }
+      if (modifiers.dropChanceBonus) {
+        parts.push(`ドロップ率ボーナス+${Math.round(modifiers.dropChanceBonus)}%`);
+      }
+      if (modifiers.rarityBonus) {
+        parts.push(`レアリティボーナス+${Math.round(modifiers.rarityBonus)}%`);
+      }
+
+      return parts.join("、");
     }
 
     function createEnemy(isBoss = false, derivedStats = null) {
@@ -4379,12 +4443,17 @@
       const variant = ENEMY_VARIANTS.find((v) => v.key === enemy.variant);
       archetypeModalDesc.textContent = variant?.description || enemy.flavor || "特徴不明";
       archetypeModalAbilities.innerHTML = "";
-      const abilityList = enemy.archetypeTraits?.length
-        ? enemy.archetypeTraits
+      const baseModifierText = describeModifiers(enemy.archetypeBaseModifiers || variant?.baseModifiers);
+      const baseRow = document.createElement("div");
+      baseRow.className = "option-value";
+      baseRow.textContent = baseModifierText ? `基礎補正: ${baseModifierText}` : "基礎補正: なし";
+      archetypeModalAbilities.appendChild(baseRow);
+
+      const abilityList = enemy.archetypeAbilities?.length
+        ? enemy.archetypeAbilities
         : (variant?.abilities || [])
             .filter(Boolean)
-            .slice(0, enemy.archetypeRank || 1)
-            .map((a) => a.label);
+            .slice(0, enemy.archetypeRank || 1);
 
       if (!abilityList.length) {
         const none = document.createElement("div");
@@ -4392,10 +4461,11 @@
         none.textContent = "追加能力なし";
         archetypeModalAbilities.appendChild(none);
       } else {
-        abilityList.forEach((label) => {
+        abilityList.forEach((ability) => {
           const row = document.createElement("div");
           row.className = "option-value";
-          row.textContent = `・${label}`;
+          const detail = describeModifiers(ability.modifiers);
+          row.textContent = detail ? `・${ability.label}: ${detail}` : `・${ability.label}`;
           archetypeModalAbilities.appendChild(row);
         });
       }
