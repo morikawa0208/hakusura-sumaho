@@ -234,6 +234,12 @@
       letter-spacing: 0.03em;
     }
 
+    .tag.clickable {
+      cursor: pointer;
+      border: 1px solid rgba(96, 165, 250, 0.5);
+      background: rgba(96, 165, 250, 0.12);
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -970,6 +976,21 @@
     </div>
   </div>
 
+  <div id="archetype-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">アーキタイプ詳細</div>
+          <div id="archetype-modal-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="archetype-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="help-panel" id="archetype-modal-desc" style="margin-top: 10px;"></div>
+      <div class="option-label" style="margin-top: 10px;">付与能力</div>
+      <div id="archetype-modal-abilities" class="option-value"></div>
+    </div>
+  </div>
+
   <div id="potion-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
@@ -1371,6 +1392,7 @@
       {
         key: "brute",
         label: "剛腕",
+        rankLabels: ["剛腕の徒", "剛腕の豪傑", "剛腕の覇鎚"],
         description: "単純だが痛い一撃を振り下ろす。",
         weight: 3,
         minFloor: 1,
@@ -1384,6 +1406,7 @@
       {
         key: "bulwark",
         label: "重甲",
+        rankLabels: ["重甲の守り手", "重甲の城壁", "重甲の要塞"],
         description: "硬い外殻で攻撃をいなし、じわじわ迫る。",
         weight: 2,
         minFloor: 5,
@@ -1397,6 +1420,7 @@
       {
         key: "skirmisher",
         label: "疾走",
+        rankLabels: ["疾走の斥候", "疾走の影刃", "疾走の迅雷"],
         description: "素早く間合いを詰め、ヒット＆アウェイを狙う。",
         weight: 2,
         minFloor: 15,
@@ -1410,6 +1434,7 @@
       {
         key: "hexer",
         label: "呪詠",
+        rankLabels: ["呪詠の徒", "呪詠の典礼師", "呪詠の大導師"],
         description: "呪気をまとい、異常耐性がやや高い。",
         weight: 1,
         minFloor: 30,
@@ -1423,6 +1448,7 @@
       {
         key: "berserker",
         label: "狂戦",
+        rankLabels: ["狂戦の鬨", "狂戦の猛者", "狂戦の暴帝"],
         description: "手数で押す荒ぶる敵。防御はやや薄い。",
         weight: 1,
         minFloor: 50,
@@ -3238,9 +3264,9 @@
       const { variant, rank } = roll;
       enemy.variant = variant.key;
       enemy.archetypeRank = rank;
-      enemy.archetypeLabel = `${variant.label}★${rank}`;
+      const rankLabel = variant.rankLabels?.[rank - 1] || variant.label;
+      enemy.archetypeLabel = rankLabel;
       enemy.flavor = variant.description;
-      enemy.name = `${variant.label}★${rank} ${enemy.name}`;
       applyEnemyModifiers(enemy, variant.baseModifiers);
       const applied = [];
       (variant.abilities || [])
@@ -3801,8 +3827,12 @@
         meta.appendChild(order);
         if (enemy.archetypeLabel && !enemy.isBoss) {
           const archetype = document.createElement("span");
-          archetype.className = "tag";
+          archetype.className = "tag clickable";
           archetype.textContent = enemy.archetypeLabel;
+          archetype.onclick = (event) => {
+            event.stopPropagation();
+            openArchetypeModal(enemy);
+          };
           meta.appendChild(archetype);
         }
         meta.appendChild(statusList);
@@ -4314,6 +4344,11 @@
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
     const inventoryOpenButton = document.getElementById("btn-inventory");
+    const archetypeModal = document.getElementById("archetype-modal");
+    const archetypeModalName = document.getElementById("archetype-modal-name");
+    const archetypeModalDesc = document.getElementById("archetype-modal-desc");
+    const archetypeModalAbilities = document.getElementById("archetype-modal-abilities");
+    const archetypeCloseButton = document.getElementById("archetype-close");
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
@@ -4336,6 +4371,40 @@
 
     function closeEnemyModal() {
       enemyModal.classList.add("hidden");
+    }
+
+    function openArchetypeModal(enemy) {
+      if (!enemy?.archetypeLabel) return;
+      archetypeModalName.textContent = enemy.archetypeLabel;
+      const variant = ENEMY_VARIANTS.find((v) => v.key === enemy.variant);
+      archetypeModalDesc.textContent = variant?.description || enemy.flavor || "特徴不明";
+      archetypeModalAbilities.innerHTML = "";
+      const abilityList = enemy.archetypeTraits?.length
+        ? enemy.archetypeTraits
+        : (variant?.abilities || [])
+            .filter(Boolean)
+            .slice(0, enemy.archetypeRank || 1)
+            .map((a) => a.label);
+
+      if (!abilityList.length) {
+        const none = document.createElement("div");
+        none.className = "option-value";
+        none.textContent = "追加能力なし";
+        archetypeModalAbilities.appendChild(none);
+      } else {
+        abilityList.forEach((label) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = `・${label}`;
+          archetypeModalAbilities.appendChild(row);
+        });
+      }
+
+      archetypeModal?.classList.remove("hidden");
+    }
+
+    function closeArchetypeModal() {
+      archetypeModal?.classList.add("hidden");
     }
 
     function openPotionModal(potion) {
@@ -5172,6 +5241,7 @@
     inventoryOpenButton?.addEventListener("click", openInventoryModal);
     debugOpenButton?.addEventListener("click", openDebugModal);
     debugCloseButton?.addEventListener("click", closeDebugModal);
+    archetypeCloseButton?.addEventListener("click", closeArchetypeModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
     potionModalCloseButton.addEventListener("click", closePotionModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
@@ -5274,6 +5344,9 @@
     });
     debugModal?.addEventListener("click", (e) => {
       if (e.target === debugModal) closeDebugModal();
+    });
+    archetypeModal?.addEventListener("click", (e) => {
+      if (e.target === archetypeModal) closeArchetypeModal();
     });
 
     const initialDerived = recalcDerivedStats();
