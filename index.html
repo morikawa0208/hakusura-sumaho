@@ -1307,22 +1307,173 @@
       { key: "magic", weight: 40 },
       { key: "rare", weight: 22 },
     ];
+    const BOSS_FLOORS = [10, 50, 100, 200, 500, 700, 1000];
+    const BOSS_DEFINITIONS = {
+      10: {
+        name: "灰翼の斥候アエロー", // 敏捷特化のスカウトタイプ
+        flavor: "灰色の翼で舞い、毒煙を撒く素早い偵察者。",
+        modifiers: { spd: 1.1, evade: 1.15, accuracy: 1.05, resist: { control: 1.05 } },
+        legendaryKey: "stormrunnerClaws",
+      },
+      50: {
+        name: "宝守竜グランフォス", // 防御とシールド
+        flavor: "金貨を抱えた巨竜。身を覆う結界で粘り強く守る。",
+        modifiers: { hp: 1.3, def: 1.15, resist: { debuff: 1.2, dot: 1.15 } },
+        legendaryKey: "aegisCarapace",
+      },
+      100: {
+        name: "燼滅王イグニシオ", // 火炎特化
+        flavor: "燃え盛る王冠を戴く焔の暴君。攻撃のたび焦熱を残す。",
+        modifiers: { atk: 1.25, hp: 1.15, accuracy: 1.1, resist: { control: 1.1 } },
+        legendaryKey: "cinderScepter",
+      },
+      200: {
+        name: "深渦の奏者リヴァン", // 魔力波
+        flavor: "水柱を操る竜人の楽師。リズムに合わせて魔力が高鳴る。",
+        modifiers: { atk: 1.2, spd: 1.05, evade: 1.05, resist: { control: 1.15, dot: 1.05 } },
+        legendaryKey: "tidebinderChord",
+      },
+      500: {
+        name: "虚星の審問官オルド", // 闇・デバフ
+        flavor: "星を喰らう審問官。魔眼で弱点を暴き、命を削る。",
+        modifiers: { atk: 1.28, accuracy: 1.15, resist: { debuff: 1.25, control: 1.2 } },
+        legendaryKey: "voidgazerCrown",
+      },
+      700: {
+        name: "雷礫の戦神ガロルド", // 連撃と速度
+        flavor: "雷鎚を振るう戦神。大地を砕きながら連撃を叩き込む。",
+        modifiers: { atk: 1.35, spd: 1.15, hp: 1.12, resist: { dot: 1.1 } },
+        legendaryKey: "stormreaverGreaves",
+      },
+      1000: {
+        name: "黎明竜フェンラディア", // 最終ボス
+        flavor: "夜明けの光を纏う古竜。すべての属性を操り、終焉を告げる。",
+        modifiers: { atk: 1.4, hp: 1.35, def: 1.2, accuracy: 1.2, resist: { control: 1.25, dot: 1.2 } },
+        legendaryKey: "dawnbringerAegis",
+      },
+    };
+
+    const ENEMY_BASE_PROFILES = [
+      { key: "balanced", label: "標準", weight: 4, modifiers: {} },
+      { key: "ironhide", label: "硬質", weight: 2, modifiers: { hp: 1.06, def: 1.12, spd: 0.96 } },
+      { key: "feral", label: "獰猛", weight: 2, modifiers: { atk: 1.08, spd: 1.04, evade: 1.06, def: 0.94 } },
+      { key: "stalker", label: "狡猾", weight: 1, modifiers: { accuracy: 1.08, evade: 1.08, hp: 0.96, def: 0.95 } },
+      { key: "warded", label: "呪纏", weight: 1, modifiers: { atk: 1.04, resist: { control: 1.08, debuff: 1.08, dot: 1.06 } } },
+    ];
+
+    const ARCHETYPE_RANK_WEIGHTS = [
+      { rank: 1, weight: 55 },
+      { rank: 2, weight: 30 },
+      { rank: 3, weight: 15 },
+    ];
+
+    const ENEMY_VARIANTS = [
+      {
+        key: "brute",
+        label: "剛腕",
+        description: "単純だが痛い一撃を振り下ろす。",
+        weight: 3,
+        minFloor: 1,
+        baseModifiers: { atk: 1.18, hp: 1.05, def: 0.98 },
+        abilities: [
+          { label: "粉砕打ち", modifiers: { atk: 1.12, accuracy: 1.05 } },
+          { label: "激昂", modifiers: { attackCountBonus: 1, hp: 1.05 } },
+          { label: "強奪", modifiers: { dropChanceBonus: 6, rarityBonus: 4 } },
+        ],
+      },
+      {
+        key: "bulwark",
+        label: "重甲",
+        description: "硬い外殻で攻撃をいなし、じわじわ迫る。",
+        weight: 2,
+        minFloor: 5,
+        baseModifiers: { def: 1.4, hp: 1.18, spd: 0.9 },
+        abilities: [
+          { label: "鉄壁", modifiers: { def: 1.15, hp: 1.08 } },
+          { label: "頑健", modifiers: { resist: { debuff: 1.12, dot: 1.12 }, def: 1.08 } },
+          { label: "宝殻", modifiers: { dropChanceBonus: 7, rarityBonus: 5 } },
+        ],
+      },
+      {
+        key: "skirmisher",
+        label: "疾走",
+        description: "素早く間合いを詰め、ヒット＆アウェイを狙う。",
+        weight: 2,
+        minFloor: 15,
+        baseModifiers: { spd: 1.32, evade: 1.14, def: 0.9 },
+        abilities: [
+          { label: "踏み込み", modifiers: { accuracy: 1.08, atk: 1.08 } },
+          { label: "二連斬", modifiers: { attackCountBonus: 1 } },
+          { label: "奇襲者", modifiers: { dropChanceBonus: 5, rarityBonus: 6 } },
+        ],
+      },
+      {
+        key: "hexer",
+        label: "呪詠",
+        description: "呪気をまとい、異常耐性がやや高い。",
+        weight: 1,
+        minFloor: 30,
+        baseModifiers: { atk: 1.12, def: 0.96, resist: { control: 1.12, dot: 1.12, debuff: 1.12 } },
+        abilities: [
+          { label: "穢れの紋", modifiers: { hp: 1.06, atk: 1.08 } },
+          { label: "呪文連鎖", modifiers: { attackCountBonus: 1, spd: 1.05 } },
+          { label: "魔染の贈り物", modifiers: { dropChanceBonus: 8, rarityBonus: 6 } },
+        ],
+      },
+      {
+        key: "berserker",
+        label: "狂戦",
+        description: "手数で押す荒ぶる敵。防御はやや薄い。",
+        weight: 1,
+        minFloor: 50,
+        baseModifiers: { atk: 1.22, def: 0.88, hp: 0.94, attackCountBonus: 1 },
+        abilities: [
+          { label: "血煙", modifiers: { atk: 1.12, spd: 1.08 } },
+          { label: "乱撃", modifiers: { attackCountBonus: 1, accuracy: 1.04 } },
+          { label: "血染めの戦利品", modifiers: { dropChanceBonus: 6, rarityBonus: 5 } },
+        ],
+      },
+    ];
+
+    const ENEMY_NAME_POOLS = [
+      {
+        min: 1,
+        max: 200,
+        names: ["洞窟オオコウモリ", "朽ちた槍兵", "原野の狼", "石守のスライム", "巡回する鎧"],
+      },
+      {
+        min: 201,
+        max: 600,
+        names: ["深層トカゲ", "鉱脈のゴーレム", "闇走りの盗賊", "夜目の狩人", "結晶クラブ"],
+      },
+      {
+        min: 601,
+        max: 1000,
+        names: ["雷尾スコーピオン", "霧歩きの影獣", "虚ろの魔騎兵", "灰燼の獣王", "空隙ワーム"],
+      },
+    ];
     const FLOOR_DROP_TABLE = [
       { min: 1, max: 4, slots: ["weapon", "head", "body", "hands"] },
       { min: 5, max: 9, slots: ["weapon", "subWeapon", "body", "hands", "feet"] },
       { min: 10, max: 14, slots: ["weapon", "subWeapon", "hands", "feet", "body"] },
       { min: 15, max: 19, slots: ["weapon", "subWeapon", "hands", "feet", "body", "accessory"] },
-      { min: 20, max: 999, slots: Object.keys(EQUIPMENT_SLOTS) },
+      { min: 20, max: 1000, slots: Object.keys(EQUIPMENT_SLOTS) },
     ];
     const BOSS_LEGENDARY_DROPS = {
-      5: { slot: "weapon", legendaryKey: "infernoGreatsword" },
-      10: { slot: "subWeapon", legendaryKey: "azureBulwark" },
-      15: { slot: "head", legendaryKey: "wyrmhelm" },
-      20: { slot: "body", legendaryKey: "wrathPlate" },
-      25: { slot: "hands", legendaryKey: "stormGauntlet" },
-      30: { slot: "feet", legendaryKey: "galeGreaves" },
-      35: { slot: "accessory", legendaryKey: "twinMoonRing" },
+      10: { slot: "hands", legendaryKey: "stormrunnerClaws" },
+      50: { slot: "body", legendaryKey: "aegisCarapace" },
+      100: { slot: "subWeapon", legendaryKey: "cinderScepter" },
+      200: { slot: "accessory", legendaryKey: "tidebinderChord" },
+      500: { slot: "head", legendaryKey: "voidgazerCrown" },
+      700: { slot: "feet", legendaryKey: "stormreaverGreaves" },
+      1000: { slot: "weapon", legendaryKey: "dawnbringerAegis" },
     };
+
+    const EQUIPMENT_TIER_BOUNDARIES = [
+      { maxFloor: 300, key: "early" },
+      { maxFloor: 600, key: "mid" },
+      { maxFloor: 1000, key: "late" },
+    ];
 
     const TITLE_BASE_CHANCE = { prefix: 55, suffix: 45 };
     const TITLE_RANK_WEIGHTS = [
@@ -1360,6 +1511,7 @@
       { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
       { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
       { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "namedRate", label: "ネームド遭遇率", type: "secondary", range: [2, 6], unit: "%" },
       { key: "titleChance", label: "称号付与率UP", type: "secondary", range: [4, 10], unit: "%" },
       { key: "goldChance", label: "ゴールド確率", type: "secondary", range: [5, 18], unit: "%" },
     ];
@@ -1395,6 +1547,26 @@
             { key: "cooldown", range: [2, 6], unit: "%" },
           ],
         },
+        {
+          key: "skybreakerSpear",
+          tier: "mid",
+          name: "蒼穹の穿槍",
+          base: [
+            { key: "physAtk", range: [28, 38] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "speed", range: [3, 6] },
+          ],
+        },
+        {
+          key: "astralSpellblade",
+          tier: "late",
+          name: "星幽の呪刃",
+          base: [
+            { key: "physAtk", range: [42, 58] },
+            { key: "magAtk", range: [38, 52] },
+            { key: "critDamage", range: [14, 22], unit: "%" },
+          ],
+        },
       ],
       subWeapon: [
         {
@@ -1422,6 +1594,26 @@
             { key: "physAtk", range: [8, 14] },
             { key: "speed", range: [2, 4] },
             { key: "critRate", range: [5, 9], unit: "%" },
+          ],
+        },
+        {
+          key: "auroraBulwark",
+          tier: "mid",
+          name: "極光の大盾",
+          base: [
+            { key: "physDef", range: [20, 32] },
+            { key: "magDef", range: [14, 26] },
+            { key: "block", range: [10, 16], unit: "%" },
+          ],
+        },
+        {
+          key: "runeboundTome",
+          tier: "late",
+          name: "封刻の書板",
+          base: [
+            { key: "magAtk", range: [28, 40] },
+            { key: "mp", range: [40, 60] },
+            { key: "cooldown", range: [6, 10], unit: "%" },
           ],
         },
       ],
@@ -1453,6 +1645,26 @@
             { key: "hp", range: [18, 32] },
           ],
         },
+        {
+          key: "stormwatchHelm",
+          tier: "mid",
+          name: "雷視の兜",
+          base: [
+            { key: "physDef", range: [18, 28] },
+            { key: "accuracy", range: [10, 18], unit: "%" },
+            { key: "speed", range: [3, 5] },
+          ],
+        },
+        {
+          key: "oraclesVisage",
+          tier: "late",
+          name: "神託のヴェイル",
+          base: [
+            { key: "magDef", range: [22, 34] },
+            { key: "int", range: [6, 10] },
+            { key: "cooldown", range: [6, 10], unit: "%" },
+          ],
+        },
       ],
       body: [
         {
@@ -1480,6 +1692,26 @@
             { key: "magDef", range: [8, 14] },
             { key: "mp", range: [16, 26] },
             { key: "cooldown", range: [2, 6], unit: "%" },
+          ],
+        },
+        {
+          key: "tempestMail",
+          tier: "mid",
+          name: "暴風の鎧",
+          base: [
+            { key: "physDef", range: [22, 32] },
+            { key: "hp", range: [40, 62] },
+            { key: "speed", range: [3, 5] },
+          ],
+        },
+        {
+          key: "starseerRaiment",
+          tier: "late",
+          name: "星詠みの法衣",
+          base: [
+            { key: "magDef", range: [28, 40] },
+            { key: "mp", range: [46, 72] },
+            { key: "evade", range: [10, 16], unit: "%" },
           ],
         },
       ],
@@ -1511,6 +1743,26 @@
             { key: "hp", range: [12, 24] },
           ],
         },
+        {
+          key: "arcShockFist",
+          tier: "mid",
+          name: "電刃の篭手",
+          base: [
+            { key: "physAtk", range: [20, 30] },
+            { key: "speed", range: [3, 6] },
+            { key: "critDamage", range: [10, 16], unit: "%" },
+          ],
+        },
+        {
+          key: "moonweaveGloves",
+          tier: "late",
+          name: "月織の手袋",
+          base: [
+            { key: "magAtk", range: [22, 34] },
+            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "evade", range: [10, 16], unit: "%" },
+          ],
+        },
       ],
       feet: [
         {
@@ -1540,6 +1792,26 @@
             { key: "cooldown", range: [2, 5], unit: "%" },
           ],
         },
+        {
+          key: "sandstormBoots",
+          tier: "mid",
+          name: "砂暴の脚甲",
+          base: [
+            { key: "speed", range: [4, 7] },
+            { key: "evade", range: [8, 14], unit: "%" },
+            { key: "agi", range: [4, 7] },
+          ],
+        },
+        {
+          key: "auroraStride",
+          tier: "late",
+          name: "黎光の歩み",
+          base: [
+            { key: "speed", range: [6, 10] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+          ],
+        },
       ],
       accessory: [
         {
@@ -1567,6 +1839,26 @@
             { key: "luck", range: [2, 4] },
             { key: "dropRate", range: [4, 10], unit: "%" },
             { key: "critRate", range: [3, 7], unit: "%" },
+          ],
+        },
+        {
+          key: "timekeepersRing",
+          tier: "mid",
+          name: "時紡ぎの指輪",
+          base: [
+            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "speed", range: [3, 6] },
+            { key: "mp", range: [22, 36] },
+          ],
+        },
+        {
+          key: "dragonsEmbrace",
+          tier: "late",
+          name: "竜抱きの護符",
+          base: [
+            { key: "hp", range: [50, 80] },
+            { key: "damageReduction", range: [8, 12], unit: "%" },
+            { key: "dropRate", range: [8, 16], unit: "%" },
           ],
         },
       ],
@@ -1639,6 +1931,18 @@
           ],
           unique: { name: "雷鳴居合", range: [26, 40], unit: "%", effect: "スキル命中時、{value}で感電を2ターン付与" },
         },
+        {
+          key: "dawnbringerAegis",
+          name: "黎明の聖盾剣",
+          base: [
+            { key: "physAtk", range: [54, 72] },
+            { key: "hp", range: [80, 120] },
+            { key: "damageReduction", range: [10, 16], unit: "%" },
+            { key: "speed", range: [4, 7] },
+            { key: "critRate", range: [8, 14], unit: "%" },
+          ],
+          unique: { name: "夜明けの誓約", range: [18, 28], unit: "%", effect: "HP50%以上で被ダメ-{value}、50%未満で与ダメ+{value}" },
+        },
       ],
       subWeapon: [
         {
@@ -1682,6 +1986,18 @@
           ],
           unique: { name: "深淵の呼び声", range: [20, 32], unit: "%", effect: "デバフが付与された敵への与ダメージ+{value}" },
         },
+        {
+          key: "cinderScepter",
+          name: "燼灰の軍配",
+          base: [
+            { key: "magAtk", range: [30, 44] },
+            { key: "mp", range: [48, 72] },
+            { key: "burn", range: [8, 12] },
+            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+          ],
+          unique: { name: "焦熱の審判", range: [18, 28], unit: "%", effect: "火傷中の敵へ与ダメ+{value}、自分の火炎DoTダメージ+{value}" },
+        },
       ],
       head: [
         {
@@ -1719,6 +2035,18 @@
             { key: "critRate", range: [6, 12], unit: "%" },
           ],
           unique: { name: "月影の覆い", range: [18, 28], unit: "%", effect: "回避時、次ターンの与ダメージ+{value}" },
+        },
+        {
+          key: "voidgazerCrown",
+          name: "虚星の冕冠",
+          base: [
+            { key: "int", range: [8, 12] },
+            { key: "accuracy", range: [12, 18], unit: "%" },
+            { key: "magAtk", range: [18, 28] },
+            { key: "debuffResist", range: [12, 20], unit: "%" },
+            { key: "dotResist", range: [10, 18], unit: "%" },
+          ],
+          unique: { name: "星喰いの眼", range: [16, 26], unit: "%", effect: "弱体化中の敵に与ダメ+{value}、命中時に低確率で沈黙付与" },
         },
       ],
       body: [
@@ -1758,6 +2086,18 @@
           ],
           unique: { name: "闇の恩寵", range: [20, 32], unit: "%", effect: "DoTを付与中の敵への与ダメージ+{value}" },
         },
+        {
+          key: "aegisCarapace",
+          name: "宝殻の大鎧",
+          base: [
+            { key: "physDef", range: [30, 44] },
+            { key: "magDef", range: [26, 38] },
+            { key: "hp", range: [70, 110] },
+            { key: "block", range: [12, 18], unit: "%" },
+            { key: "damageReduction", range: [8, 12], unit: "%" },
+          ],
+          unique: { name: "宝守の障壁", range: [380, 520], effect: "戦闘開始時、{value}のシールド&被ダメ時に確率で追加シールド獲得" },
+        },
       ],
       hands: [
         {
@@ -1796,6 +2136,18 @@
           ],
           unique: { name: "氷刃封殺", range: [24, 38], unit: "%", effect: "スキル命中時{value}で凍結1ターン付与" },
         },
+        {
+          key: "stormrunnerClaws",
+          name: "灰翼の鉤爪",
+          base: [
+            { key: "physAtk", range: [22, 32] },
+            { key: "speed", range: [4, 7] },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "agi", range: [4, 7] },
+          ],
+          unique: { name: "灰翼の強襲", range: [18, 28], unit: "%", effect: "先制ターンで与ダメ+{value}、回避時に次攻撃が必中化" },
+        },
       ],
       feet: [
         {
@@ -1833,6 +2185,18 @@
             { key: "critDamage", range: [8, 12], unit: "%" },
           ],
           unique: { name: "陽炎疾駆", range: [18, 30], unit: "%", effect: "移動後のターン、初回攻撃の与ダメージ+{value}" },
+        },
+        {
+          key: "stormreaverGreaves",
+          name: "雷礫の戦脚",
+          base: [
+            { key: "speed", range: [6, 10] },
+            { key: "physAtk", range: [18, 28] },
+            { key: "critRate", range: [10, 16], unit: "%" },
+            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "damageReduction", range: [6, 10], unit: "%" },
+          ],
+          unique: { name: "雷礫の奔流", range: [16, 26], unit: "%", effect: "連続攻撃時の2撃目以降の与ダメ+{value}、行動後に速度小上昇" },
         },
       ],
       accessory: [
@@ -1885,6 +2249,18 @@
           unique: { name: "蒼星結界", range: [80, 140], effect: "獲得するバリア量+{value}、バリア破壊時に周囲へ小ダメージ" },
         },
         {
+          key: "tidebinderChord",
+          name: "深渦の調律紐",
+          base: [
+            { key: "magAtk", range: [16, 26] },
+            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "mp", range: [40, 64] },
+            { key: "speed", range: [4, 7] },
+            { key: "controlResist", range: [10, 16], unit: "%" },
+          ],
+          unique: { name: "潮鳴りの旋律", range: [16, 26], unit: "%", effect: "スキル使用毎に与ダメ+{value}(最大3回)、CT短縮効果+{value}" },
+        },
+        {
           key: "phoenixFeather",
           name: "不死鳥の羽根飾り",
           base: [
@@ -1926,6 +2302,7 @@
         rarity: 0,
         goldChance: 0,
         titleChance: 0,
+        namedRate: 0,
       };
     }
 
@@ -2043,10 +2420,26 @@
       return { entries, primaryBonus, bonus };
     }
 
+    function getEquipmentTierKeyForFloor(floor) {
+      const boundary = EQUIPMENT_TIER_BOUNDARIES.find((entry) => floor <= entry.maxFloor);
+      return boundary?.key || "late";
+    }
+
     function pickEquipmentTemplate(slotKey) {
       const list = EQUIPMENT_TEMPLATE_LIBRARY[slotKey];
       if (!list?.length) return null;
-      return list[randomInt(0, list.length - 1)];
+      const tierOrder = ["early", "mid", "late"];
+      const currentTier = getEquipmentTierKeyForFloor(game.floor || 1);
+      const currentIndex = tierOrder.indexOf(currentTier);
+      const candidates = list.filter((entry) => {
+        if (!entry.tier) return true;
+        const idx = tierOrder.indexOf(entry.tier);
+        return idx === -1 ? true : idx <= currentIndex;
+      });
+      const preferredTier = tierOrder[Math.max(0, currentIndex)];
+      const prioritized = candidates.filter((entry) => (entry.tier || "early") === preferredTier);
+      const pool = prioritized.length ? prioritized : candidates.length ? candidates : list;
+      return pool[randomInt(0, pool.length - 1)];
     }
 
     function pickLegendaryEquipment(slotKey, preferredKey) {
@@ -2571,6 +2964,7 @@
       const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
       const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
       const titleChanceBase = Math.min(60, Math.sqrt(luck) * 3 + luck * 0.25);
+      const namedRateBase = Math.min(70, 8 + Math.sqrt(luck) * 2 + luck * 0.25);
       const goldChanceBase = 100;
 
       return {
@@ -2604,6 +2998,7 @@
           total: Math.min(80, titleChanceBase + player.bonus.titleChance),
         },
         goldChance: { base: goldChanceBase, bonus: player.bonus.goldChance, total: Math.max(0, goldChanceBase + player.bonus.goldChance) },
+        namedRate: { base: namedRateBase, bonus: player.bonus.namedRate, total: Math.min(90, namedRateBase + player.bonus.namedRate) },
       };
     }
 
@@ -2716,12 +3111,13 @@
 
     function attemptEnemyDrop(enemy) {
       const derived = recalcDerivedStats();
-      const dropBonus = enemy.isBoss ? BOSS_DROP_BONUS : 0;
+      const dropBonus = (enemy.isBoss ? BOSS_DROP_BONUS : 0) + (enemy.dropChanceBonus || 0);
       const chance = Math.min(95, BASE_DROP_CHANCE + dropBonus + (derived.dropRate?.total ?? 0));
       if (Math.random() * 100 >= chance) return null;
 
       const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
-      const rarityRoll = rollDropRarityForEnemy(enemy, derived.rarity.total, slot);
+      const rarityBonus = (derived.rarity?.total ?? 0) + (enemy.rarityBonus || 0);
+      const rarityRoll = rollDropRarityForEnemy(enemy, rarityBonus, slot);
       const item = createEquipmentItem(slot, rarityRoll.rarityKey, {
         legendaryKey: rarityRoll.legendaryKey,
         titleBonus: derived.titleChance.total,
@@ -2801,11 +3197,111 @@
       updateUI(derived);
     }
 
-    function createEnemy(isBoss = false) {
+    function isBossFloor(floor) {
+      return BOSS_FLOORS.includes(floor);
+    }
+
+    function pickEnemyBaseName(floor) {
+      const pool = ENEMY_NAME_POOLS.find((p) => floor >= p.min && floor <= p.max) || ENEMY_NAME_POOLS[0];
+      return pool.names[randomInt(0, pool.names.length - 1)];
+    }
+
+    function pickEnemyVariant(floor) {
+      const pool = ENEMY_VARIANTS.filter((variant) => !variant.minFloor || floor >= variant.minFloor);
+      const totalWeight = pool.reduce((sum, v) => sum + (v.weight || 1), 0) || 1;
+      let roll = Math.random() * totalWeight;
+      for (const variant of pool) {
+        roll -= variant.weight || 1;
+        if (roll <= 0) return variant;
+      }
+      return pool[0];
+    }
+
+    function pickEnemyBaseProfile(floor) {
+      const pool = ENEMY_BASE_PROFILES.filter((profile) => !profile.minFloor || floor >= profile.minFloor);
+      return weightedRandom(pool, pool[0]);
+    }
+
+    function rollArchetype(floor, derived) {
+      const baseChance = 24 + Math.min(18, Math.floor(floor / 120) * 3);
+      const namedBonus = Math.max(0, derived?.namedRate?.total ?? 0);
+      const effective = Math.min(90, baseChance + namedBonus);
+      if (Math.random() * 100 >= effective) return null;
+      const variant = pickEnemyVariant(floor);
+      if (!variant) return null;
+      const rank = weightedRandom(ARCHETYPE_RANK_WEIGHTS, ARCHETYPE_RANK_WEIGHTS[0])?.rank || 1;
+      return { variant, rank };
+    }
+
+    function applyArchetypeRoll(enemy, roll) {
+      if (!roll) return;
+      const { variant, rank } = roll;
+      enemy.variant = variant.key;
+      enemy.archetypeRank = rank;
+      enemy.archetypeLabel = `${variant.label}★${rank}`;
+      enemy.flavor = variant.description;
+      enemy.name = `${variant.label}★${rank} ${enemy.name}`;
+      applyEnemyModifiers(enemy, variant.baseModifiers);
+      const applied = [];
+      (variant.abilities || [])
+        .filter(Boolean)
+        .slice(0, rank)
+        .forEach((ability) => {
+          applyEnemyModifiers(enemy, ability.modifiers);
+          applied.push(ability.label);
+        });
+      enemy.archetypeTraits = applied;
+      enemy.rarityBonus = (enemy.rarityBonus || 0) + rank * 3;
+      enemy.dropChanceBonus = (enemy.dropChanceBonus || 0) + rank * 4;
+    }
+
+    function applyEnemyModifiers(enemy, modifiers = {}) {
+      const applyRate = (key, rate, { keepDecimal = false } = {}) => {
+        if (!rate) return;
+        const value = enemy[key] * rate;
+        enemy[key] = keepDecimal ? Math.round(value * 10) / 10 : Math.round(value);
+      };
+
+      const applyFlat = (key, delta, { clampMin = null } = {}) => {
+        if (!delta) return;
+        const next = (enemy[key] ?? 0) + delta;
+        enemy[key] = clampMin !== null ? Math.max(clampMin, next) : next;
+      };
+
+      applyRate("hp", modifiers.hp);
+      applyRate("maxHp", modifiers.hp);
+      applyRate("atk", modifiers.atk);
+      applyRate("def", modifiers.def);
+      applyRate("spd", modifiers.spd, { keepDecimal: true });
+      applyRate("accuracy", modifiers.accuracy);
+      applyRate("evade", modifiers.evade);
+
+      if (modifiers.resist) {
+        enemy.resist.control = Math.min(100, Math.round(enemy.resist.control * (modifiers.resist.control || 1)));
+        enemy.resist.dot = Math.min(100, Math.round(enemy.resist.dot * (modifiers.resist.dot || 1)));
+        enemy.resist.debuff = Math.min(100, Math.round(enemy.resist.debuff * (modifiers.resist.debuff || 1)));
+      }
+
+      if (modifiers.attackCount) {
+        enemy.attackCount = Math.max(1, Math.round(modifiers.attackCount));
+      }
+      if (modifiers.attackCountBonus) {
+        enemy.attackCount = Math.max(1, Math.round(enemy.attackCount + modifiers.attackCountBonus));
+      }
+
+      applyFlat("dropChanceBonus", modifiers.dropChanceBonus, { clampMin: 0 });
+      applyFlat("rarityBonus", modifiers.rarityBonus, { clampMin: 0 });
+    }
+
+    function createEnemy(isBoss = false, derivedStats = null) {
+      const derived = derivedStats || recalcDerivedStats();
       const base = game.floor * 5 + (isBoss ? 20 : 0);
+      const baseName = isBoss ? `階層ボス ${game.floor}F` : pickEnemyBaseName(game.floor);
+      const baseProfile = !isBoss ? pickEnemyBaseProfile(game.floor) : null;
+      const archetypeRoll = !isBoss ? rollArchetype(game.floor, derived) : null;
       const enemy = {
         id: crypto.randomUUID(),
-        name: isBoss ? `階層ボス ${game.floor}F` : `雑魚 ${game.floor}-${Math.ceil(Math.random() * 3)}`,
+        name: baseName,
         hp: base + (isBoss ? 30 : 0),
         maxHp: base + (isBoss ? 30 : 0),
         atk: 5 + game.floor * 1.5 + (isBoss ? 4 : 0),
@@ -2821,19 +3317,46 @@
           debuff: Math.min(50, 8 + game.floor * 0.6 + (isBoss ? 6 : 0)),
         },
         isBoss,
+        dropChanceBonus: 0,
+        rarityBonus: 0,
         statuses: [],
       };
+
+      if (baseProfile && !isBoss) {
+        enemy.baseProfile = baseProfile.key;
+        enemy.flavor = baseProfile.label;
+        applyEnemyModifiers(enemy, baseProfile.modifiers);
+      }
+
+      if (archetypeRoll && !isBoss) {
+        applyArchetypeRoll(enemy, archetypeRoll);
+      }
+
+      if (isBoss) {
+        const bossDef = BOSS_DEFINITIONS[game.floor];
+        if (bossDef) {
+          enemy.name = bossDef.name;
+          enemy.flavor = bossDef.flavor;
+          enemy.bossLegendaryKey = bossDef.legendaryKey;
+          const { modifiers = {} } = bossDef;
+          applyEnemyModifiers(enemy, modifiers);
+        }
+      }
+
+      enemy.attacksRemaining = enemy.attackCount;
+
       return enemy;
     }
 
     function spawnEnemies() {
-      const isBossFloor = game.floor % 5 === 0;
-      const count = isBossFloor ? 1 : 2 + Math.floor(Math.random() * 2);
-      game.enemies = Array.from({ length: count }, () => createEnemy(isBossFloor));
+      const boss = isBossFloor(game.floor);
+      const count = boss ? 1 : 2 + Math.floor(Math.random() * 2);
+      const derived = recalcDerivedStats();
+      game.enemies = Array.from({ length: count }, () => createEnemy(boss, derived));
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
       game.awaitingInput = true;
-      updateUI();
+      updateUI(derived);
       promptPlayerTurn();
     }
 
@@ -3276,6 +3799,12 @@
         statusList.className = "status-list";
         renderStatusList(statusList, enemy);
         meta.appendChild(order);
+        if (enemy.archetypeLabel && !enemy.isBoss) {
+          const archetype = document.createElement("span");
+          archetype.className = "tag";
+          archetype.textContent = enemy.archetypeLabel;
+          meta.appendChild(archetype);
+        }
         meta.appendChild(statusList);
 
         name.appendChild(titleLabel);
@@ -3321,6 +3850,15 @@
 
       const row = document.createElement("div");
       row.className = "actions-row";
+
+      const escapeWrapper = document.createElement("div");
+      escapeWrapper.className = "action-button-wrapper";
+      const escapeBtn = document.createElement("button");
+      escapeBtn.textContent = "🏃 にげる";
+      escapeBtn.disabled = !canAct;
+      escapeBtn.onclick = attemptEscape;
+      escapeWrapper.appendChild(escapeBtn);
+      row.appendChild(escapeWrapper);
 
       (player.potions || []).forEach((potion, index) => {
         const potionRow = document.createElement("div");
@@ -3435,6 +3973,7 @@
         { label: "バリア", value: derived.barrier.total },
         { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
         { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
+        { label: "ネームド遭遇率", value: derived.namedRate.total, unit: "%" },
         { label: "称号付与率UP", value: derived.titleChance.total, unit: "%" },
         { label: "ゴールド確率", value: derived.goldChance.total, unit: "%" },
       ];
@@ -3782,7 +4321,16 @@
       document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
       document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
       document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
-      document.getElementById("modal-tag").style.display = enemy.isBoss ? "inline-flex" : "none";
+      const tag = document.getElementById("modal-tag");
+      if (enemy.isBoss) {
+        tag.textContent = "BOSS";
+        tag.style.display = "inline-flex";
+      } else if (enemy.archetypeLabel) {
+        tag.textContent = enemy.archetypeLabel;
+        tag.style.display = "inline-flex";
+      } else {
+        tag.style.display = "none";
+      }
       enemyModal.classList.remove("hidden");
     }
 
@@ -4442,14 +4990,50 @@
       endPlayerTurn();
     }
 
+    function resetPlayerAfterPenalty() {
+      player.statuses = [];
+      player.buffs = { guard: 0, haste: 0, focus: 0 };
+      recalcDerivedStats();
+      player.hp = player.maxHp;
+      player.mp = player.maxMp;
+      player.attacksRemaining = player.attackCount;
+      game.enemies = [];
+      game.turnQueue = [];
+      game.awaitingInput = false;
+    }
+
+    function retreatLowerFloors(drop, { reason = "撤退", tone = "warning" } = {}) {
+      const previousFloor = game.floor;
+      game.floor = Math.max(1, game.floor - drop);
+      const moved = previousFloor - game.floor;
+      const movementText = moved > 0 ? `${moved}階さがる` : "これ以上下がれない";
+      log(`↘️ ${reason}で${movementText} (${previousFloor}F → ${game.floor}F)`, tone);
+      resetPlayerAfterPenalty();
+      spawnEnemies();
+    }
+
+    function handlePlayerDefeat() {
+      retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
+    }
+
+    function attemptEscape() {
+      if (!game.awaitingInput) return;
+      const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      if (!enemiesAlive) {
+        log("逃げる相手がいない", "info");
+        return;
+      }
+      retreatLowerFloors(5, { reason: "にげだした", tone: "warning" });
+    }
+
     function enemyAction(enemy) {
-      if (enemy.hp <= 0) return;
+      if (enemy.hp <= 0) return false;
       const attacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 0));
-      if (attacks <= 0) return;
+      if (attacks <= 0) return false;
       enemy.attacksRemaining = attacks;
       for (let i = 0; i < attacks; i += 1) {
         const target = chooseTargetForEnemy(enemy);
-        if (!target) return;
+        if (!target) return false;
         const hit = attemptHit(enemy, target);
         const targetLabel = target === player ? "あなた" : target.name;
         if (!hit) {
@@ -4462,20 +5046,24 @@
         const dealt = applyDamage(target, finalDmg, { source: enemy.name });
         const critText = isCrit ? " (会心！)" : "";
         log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
-        if (target !== player && target.hp <= 0) {
-          log(`${target.name} は倒れた`, "good");
-          onEnemyDefeated(target, { cause: "混乱" });
-          checkVictory();
-          if (!game.enemies.some(e => e.hp > 0)) return;
+          if (target !== player && target.hp <= 0) {
+            log(`${target.name} は倒れた`, "good");
+            onEnemyDefeated(target, { cause: "混乱" });
+            checkVictory();
+            if (!game.enemies.some(e => e.hp > 0)) return false;
+          }
+        if (player.hp <= 0) {
+          handlePlayerDefeat();
+          return true;
         }
-        if (player.hp <= 0) return;
         enemy.attacksRemaining = Math.max(0, attacks - i - 1);
       }
+      return false;
     }
 
     function nextTurn() {
       if (player.hp <= 0) {
-        log("💀 ゲームオーバー！", "danger");
+        handlePlayerDefeat();
         return;
       }
       if (game.turnQueue.length === 0) {
@@ -4498,7 +5086,8 @@
           log(`${entity.name} は倒れた`, "good");
           checkVictory();
         } else {
-          log("💀 ゲームオーバー！", "danger");
+          handlePlayerDefeat();
+          return;
         }
         setTimeout(() => nextTurn(), 380);
         return;
@@ -4514,10 +5103,14 @@
         promptPlayerTurn();
         return;
       }
-      enemyAction(entity);
+      const playerFell = enemyAction(entity);
+      if (playerFell) return;
       finalizeTurn(entity);
       updateUI();
-      if (player.hp <= 0) return;
+      if (player.hp <= 0) {
+        handlePlayerDefeat();
+        return;
+      }
       setTimeout(() => nextTurn(), 380);
     }
 
