@@ -2456,11 +2456,16 @@
       },
     };
 
-    function log(message, type = "info") {
+    function log(message, type = "info", options = {}) {
+      const { asHtml = false } = options;
       const logBox = document.getElementById("log");
       const entry = document.createElement("div");
       entry.className = `entry ${type}`;
-      entry.textContent = message;
+      if (asHtml) {
+        entry.innerHTML = message;
+      } else {
+        entry.textContent = message;
+      }
       logBox.append(entry);
       logBox.scrollTop = logBox.scrollHeight;
     }
@@ -2724,7 +2729,10 @@
       player.inventory.items.push(item);
       const rarityLabel = item.equipment?.rarityLabel || EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || "";
       const rarityText = rarityLabel ? `${rarityLabel} ` : "";
-      log(`🎁 ${enemy.name} から ${rarityText}${item.name} を入手！`, "good");
+      const coloredName = item?.equipment?.rarity
+        ? `<span class="rarity-${item.equipment.rarity}">${item.name}</span>`
+        : item.name;
+      log(`🎁 ${enemy.name} から ${rarityText}${coloredName} を入手！`, "good", { asHtml: true });
       renderInventory();
       return item;
     }
@@ -4027,102 +4035,109 @@
         inventoryItemDetail.appendChild(empty);
       }
 
-      inventoryItemActions.innerHTML = "";
-      const favoriteBtn = document.createElement("button");
-      const updateFavoriteButton = () => {
-        favoriteBtn.textContent = item.favorite ? "★ お気に入り中" : "☆ お気に入り登録";
-        favoriteBtn.ariaPressed = item.favorite ? "true" : "false";
-      };
-      favoriteBtn.onclick = () => {
-        item.favorite = !item.favorite;
+      const renderActions = () => {
+        inventoryItemActions.innerHTML = "";
+        const favoriteBtn = document.createElement("button");
+        const updateFavoriteButton = () => {
+          favoriteBtn.textContent = item.favorite ? "★ お気に入り中" : "☆ お気に入り登録";
+          favoriteBtn.ariaPressed = item.favorite ? "true" : "false";
+        };
+        favoriteBtn.onclick = () => {
+          item.favorite = !item.favorite;
+          renderInventory();
+          updateFavoriteButton();
+          updateMeta();
+          renderActions();
+        };
         updateFavoriteButton();
-        updateMeta();
-        refreshSellButton();
-        renderInventory();
-      };
-      updateFavoriteButton();
-      inventoryItemActions.appendChild(favoriteBtn);
+        inventoryItemActions.appendChild(favoriteBtn);
 
-      let sellBtn = null;
-      const refreshSellButton = () => {
-        if (!sellBtn) return;
-        const equipped = isItemEquipped(item);
-        const disabled = equipped || item.favorite;
-        const label = disabled
-          ? equipped
-            ? "装備中は売却不可"
-            : "お気に入りは売却不可"
-          : `売却 (${formatGold(sellPrice)}G)`;
-        sellBtn.textContent = label;
-        sellBtn.disabled = disabled;
-      };
-
-      if (item.type === "potion" && item.potion && player.potions?.length) {
-        player.potions.forEach((p, slot) => {
-          const btn = document.createElement("button");
-          const isSame = p?.id === item.potion.id;
-          btn.textContent = isSame ? `スロット${slot + 1}（装備中）` : `スロット${slot + 1}に装備`;
-          btn.disabled = isSame;
-          btn.onclick = () => {
-            equipPotionFromInventory(index, slot);
-            closeInventoryItemModal();
-          };
-          inventoryItemActions.appendChild(btn);
-        });
-      } else if (item.type === "equipment" && item.equipment) {
-        const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
-        const addEquipButtons = (slotKey) => {
-          const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
-          const equipped = player.equipment?.[slotKey];
-          const isSame = equipped?.id === item.id;
-          const equipBtn = document.createElement("button");
-          equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
-          equipBtn.disabled = isSame;
-          equipBtn.onclick = () => {
-            equipItem(slotKey, item);
-            log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
-            renderInventory();
-            clearComparisonResult();
-          };
-          inventoryItemActions.appendChild(equipBtn);
-
-          const compareBtn = document.createElement("button");
-          compareBtn.textContent = `${slotName}と比較`;
-          compareBtn.onclick = () => renderComparisonResult(slotKey, item);
-          inventoryItemActions.appendChild(compareBtn);
-
-          if (equipped) {
-            const unequipBtn = document.createElement("button");
-            unequipBtn.textContent = `${slotName}を外す`;
-            unequipBtn.onclick = () => {
-              unequipItem(slotKey);
-              log(`🧤 ${slotName}の装備を外した`, "info");
-              renderInventory();
-              clearComparisonResult();
-            };
-            inventoryItemActions.appendChild(unequipBtn);
-          }
+        let sellBtn = null;
+        const refreshSellButton = () => {
+          if (!sellBtn) return;
+          const equipped = isItemEquipped(item);
+          const disabled = equipped || item.favorite;
+          const label = disabled
+            ? equipped
+              ? "装備中は売却不可"
+              : "お気に入りは売却不可"
+            : `売却 (${formatGold(sellPrice)}G)`;
+          sellBtn.textContent = label;
+          sellBtn.disabled = disabled;
         };
 
-        if (item.equipment.slot === "accessory") {
-          ["accessory1", "accessory2"].forEach(addEquipButtons);
+        if (item.type === "potion" && item.potion && player.potions?.length) {
+          player.potions.forEach((p, slot) => {
+            const btn = document.createElement("button");
+            const isSame = p?.id === item.potion.id;
+            btn.textContent = isSame ? `スロット${slot + 1}（装備中）` : `スロット${slot + 1}に装備`;
+            btn.disabled = isSame;
+            btn.onclick = () => {
+              equipPotionFromInventory(index, slot);
+              closeInventoryItemModal();
+            };
+            inventoryItemActions.appendChild(btn);
+          });
+        } else if (item.type === "equipment" && item.equipment) {
+          const slotLabel = EQUIPMENT_SLOTS[item.equipment.slot]?.label || item.equipment.slot;
+          const addEquipButtons = (slotKey) => {
+            const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
+            const equipped = player.equipment?.[slotKey];
+            const isSame = equipped?.id === item.id;
+            const equipBtn = document.createElement("button");
+            equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
+            equipBtn.disabled = isSame;
+            equipBtn.onclick = () => {
+              equipItem(slotKey, item);
+              log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
+              renderInventory();
+              clearComparisonResult();
+              updateMeta();
+              renderActions();
+            };
+            inventoryItemActions.appendChild(equipBtn);
+
+            const compareBtn = document.createElement("button");
+            compareBtn.textContent = `${slotName}と比較`;
+            compareBtn.onclick = () => renderComparisonResult(slotKey, item);
+            inventoryItemActions.appendChild(compareBtn);
+
+            if (equipped) {
+              const unequipBtn = document.createElement("button");
+              unequipBtn.textContent = `${slotName}を外す`;
+              unequipBtn.onclick = () => {
+                unequipItem(slotKey);
+                log(`🧤 ${slotName}の装備を外した`, "info");
+                renderInventory();
+                clearComparisonResult();
+                updateMeta();
+                renderActions();
+              };
+              inventoryItemActions.appendChild(unequipBtn);
+            }
+          };
+
+          if (item.equipment.slot === "accessory") {
+            ["accessory1", "accessory2"].forEach(addEquipButtons);
+          } else {
+            addEquipButtons(item.equipment.slot);
+          }
         } else {
-          addEquipButtons(item.equipment.slot);
+          const note = document.createElement("div");
+          note.className = "help-panel";
+          note.textContent = "装備可能なスロットがありません";
+          inventoryItemActions.appendChild(note);
         }
-      } else {
-        const note = document.createElement("div");
-        note.className = "help-panel";
-        note.textContent = "装備可能なスロットがありません";
-        inventoryItemActions.appendChild(note);
-      }
 
-      if (sellPrice > 0) {
-        sellBtn = document.createElement("button");
-        refreshSellButton();
-        sellBtn.onclick = () => sellInventoryItem(index, item, sellPrice);
-        inventoryItemActions.appendChild(sellBtn);
-      }
+        if (sellPrice > 0) {
+          sellBtn = document.createElement("button");
+          refreshSellButton();
+          sellBtn.onclick = () => sellInventoryItem(index, item, sellPrice);
+          inventoryItemActions.appendChild(sellBtn);
+        }
+      };
 
+      renderActions();
       inventoryItemModal?.classList.remove("hidden");
     }
 
