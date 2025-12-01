@@ -1353,13 +1353,33 @@
       },
     };
 
+    const ENEMY_BASE_PROFILES = [
+      { key: "balanced", label: "標準", weight: 4, modifiers: {} },
+      { key: "ironhide", label: "硬質", weight: 2, modifiers: { hp: 1.06, def: 1.12, spd: 0.96 } },
+      { key: "feral", label: "獰猛", weight: 2, modifiers: { atk: 1.08, spd: 1.04, evade: 1.06, def: 0.94 } },
+      { key: "stalker", label: "狡猾", weight: 1, modifiers: { accuracy: 1.08, evade: 1.08, hp: 0.96, def: 0.95 } },
+      { key: "warded", label: "呪纏", weight: 1, modifiers: { atk: 1.04, resist: { control: 1.08, debuff: 1.08, dot: 1.06 } } },
+    ];
+
+    const ARCHETYPE_RANK_WEIGHTS = [
+      { rank: 1, weight: 55 },
+      { rank: 2, weight: 30 },
+      { rank: 3, weight: 15 },
+    ];
+
     const ENEMY_VARIANTS = [
       {
         key: "brute",
         label: "剛腕",
         description: "単純だが痛い一撃を振り下ろす。",
         weight: 3,
-        modifiers: { atk: 1.25, def: 0.95, hp: 1.05 },
+        minFloor: 1,
+        baseModifiers: { atk: 1.18, hp: 1.05, def: 0.98 },
+        abilities: [
+          { label: "粉砕打ち", modifiers: { atk: 1.12, accuracy: 1.05 } },
+          { label: "激昂", modifiers: { attackCountBonus: 1, hp: 1.05 } },
+          { label: "強奪", modifiers: { dropChanceBonus: 6, rarityBonus: 4 } },
+        ],
       },
       {
         key: "bulwark",
@@ -1367,7 +1387,12 @@
         description: "硬い外殻で攻撃をいなし、じわじわ迫る。",
         weight: 2,
         minFloor: 5,
-        modifiers: { def: 1.5, hp: 1.2, spd: 0.9, accuracy: 0.98 },
+        baseModifiers: { def: 1.4, hp: 1.18, spd: 0.9 },
+        abilities: [
+          { label: "鉄壁", modifiers: { def: 1.15, hp: 1.08 } },
+          { label: "頑健", modifiers: { resist: { debuff: 1.12, dot: 1.12 }, def: 1.08 } },
+          { label: "宝殻", modifiers: { dropChanceBonus: 7, rarityBonus: 5 } },
+        ],
       },
       {
         key: "skirmisher",
@@ -1375,7 +1400,12 @@
         description: "素早く間合いを詰め、ヒット＆アウェイを狙う。",
         weight: 2,
         minFloor: 15,
-        modifiers: { spd: 1.3, evade: 1.18, def: 0.9, hp: 0.95 },
+        baseModifiers: { spd: 1.32, evade: 1.14, def: 0.9 },
+        abilities: [
+          { label: "踏み込み", modifiers: { accuracy: 1.08, atk: 1.08 } },
+          { label: "二連斬", modifiers: { attackCountBonus: 1 } },
+          { label: "奇襲者", modifiers: { dropChanceBonus: 5, rarityBonus: 6 } },
+        ],
       },
       {
         key: "hexer",
@@ -1383,7 +1413,12 @@
         description: "呪気をまとい、異常耐性がやや高い。",
         weight: 1,
         minFloor: 30,
-        modifiers: { atk: 1.1, def: 0.95, resist: { control: 1.15, dot: 1.15, debuff: 1.15 } },
+        baseModifiers: { atk: 1.12, def: 0.96, resist: { control: 1.12, dot: 1.12, debuff: 1.12 } },
+        abilities: [
+          { label: "穢れの紋", modifiers: { hp: 1.06, atk: 1.08 } },
+          { label: "呪文連鎖", modifiers: { attackCountBonus: 1, spd: 1.05 } },
+          { label: "魔染の贈り物", modifiers: { dropChanceBonus: 8, rarityBonus: 6 } },
+        ],
       },
       {
         key: "berserker",
@@ -1391,7 +1426,12 @@
         description: "手数で押す荒ぶる敵。防御はやや薄い。",
         weight: 1,
         minFloor: 50,
-        modifiers: { atk: 1.18, def: 0.85, hp: 0.92, attackCountBonus: 1 },
+        baseModifiers: { atk: 1.22, def: 0.88, hp: 0.94, attackCountBonus: 1 },
+        abilities: [
+          { label: "血煙", modifiers: { atk: 1.12, spd: 1.08 } },
+          { label: "乱撃", modifiers: { attackCountBonus: 1, accuracy: 1.04 } },
+          { label: "血染めの戦利品", modifiers: { dropChanceBonus: 6, rarityBonus: 5 } },
+        ],
       },
     ];
 
@@ -1471,6 +1511,7 @@
       { key: "barrier", label: "バリア", type: "secondary", range: [8, 20] },
       { key: "dropRate", label: "ドロップ率", type: "secondary", range: [2, 8], unit: "%" },
       { key: "rarity", label: "レアリティUP", type: "secondary", range: [1, 4], unit: "%" },
+      { key: "namedRate", label: "ネームド遭遇率", type: "secondary", range: [2, 6], unit: "%" },
       { key: "titleChance", label: "称号付与率UP", type: "secondary", range: [4, 10], unit: "%" },
       { key: "goldChance", label: "ゴールド確率", type: "secondary", range: [5, 18], unit: "%" },
     ];
@@ -2261,6 +2302,7 @@
         rarity: 0,
         goldChance: 0,
         titleChance: 0,
+        namedRate: 0,
       };
     }
 
@@ -2922,6 +2964,7 @@
       const dropRateBase = Math.min(50, Math.sqrt(luck) * 4 + luck * 0.2);
       const rarityBase = Math.min(30, Math.sqrt(luck) * 2 + luck * 0.1);
       const titleChanceBase = Math.min(60, Math.sqrt(luck) * 3 + luck * 0.25);
+      const namedRateBase = Math.min(70, 8 + Math.sqrt(luck) * 2 + luck * 0.25);
       const goldChanceBase = 100;
 
       return {
@@ -2955,6 +2998,7 @@
           total: Math.min(80, titleChanceBase + player.bonus.titleChance),
         },
         goldChance: { base: goldChanceBase, bonus: player.bonus.goldChance, total: Math.max(0, goldChanceBase + player.bonus.goldChance) },
+        namedRate: { base: namedRateBase, bonus: player.bonus.namedRate, total: Math.min(90, namedRateBase + player.bonus.namedRate) },
       };
     }
 
@@ -3067,12 +3111,13 @@
 
     function attemptEnemyDrop(enemy) {
       const derived = recalcDerivedStats();
-      const dropBonus = enemy.isBoss ? BOSS_DROP_BONUS : 0;
+      const dropBonus = (enemy.isBoss ? BOSS_DROP_BONUS : 0) + (enemy.dropChanceBonus || 0);
       const chance = Math.min(95, BASE_DROP_CHANCE + dropBonus + (derived.dropRate?.total ?? 0));
       if (Math.random() * 100 >= chance) return null;
 
       const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
-      const rarityRoll = rollDropRarityForEnemy(enemy, derived.rarity.total, slot);
+      const rarityBonus = (derived.rarity?.total ?? 0) + (enemy.rarityBonus || 0);
+      const rarityRoll = rollDropRarityForEnemy(enemy, rarityBonus, slot);
       const item = createEquipmentItem(slot, rarityRoll.rarityKey, {
         legendaryKey: rarityRoll.legendaryKey,
         titleBonus: derived.titleChance.total,
@@ -3172,11 +3217,55 @@
       return pool[0];
     }
 
+    function pickEnemyBaseProfile(floor) {
+      const pool = ENEMY_BASE_PROFILES.filter((profile) => !profile.minFloor || floor >= profile.minFloor);
+      return weightedRandom(pool, pool[0]);
+    }
+
+    function rollArchetype(floor, derived) {
+      const baseChance = 24 + Math.min(18, Math.floor(floor / 120) * 3);
+      const namedBonus = Math.max(0, derived?.namedRate?.total ?? 0);
+      const effective = Math.min(90, baseChance + namedBonus);
+      if (Math.random() * 100 >= effective) return null;
+      const variant = pickEnemyVariant(floor);
+      if (!variant) return null;
+      const rank = weightedRandom(ARCHETYPE_RANK_WEIGHTS, ARCHETYPE_RANK_WEIGHTS[0])?.rank || 1;
+      return { variant, rank };
+    }
+
+    function applyArchetypeRoll(enemy, roll) {
+      if (!roll) return;
+      const { variant, rank } = roll;
+      enemy.variant = variant.key;
+      enemy.archetypeRank = rank;
+      enemy.archetypeLabel = `${variant.label}★${rank}`;
+      enemy.flavor = variant.description;
+      enemy.name = `${variant.label}★${rank} ${enemy.name}`;
+      applyEnemyModifiers(enemy, variant.baseModifiers);
+      const applied = [];
+      (variant.abilities || [])
+        .filter(Boolean)
+        .slice(0, rank)
+        .forEach((ability) => {
+          applyEnemyModifiers(enemy, ability.modifiers);
+          applied.push(ability.label);
+        });
+      enemy.archetypeTraits = applied;
+      enemy.rarityBonus = (enemy.rarityBonus || 0) + rank * 3;
+      enemy.dropChanceBonus = (enemy.dropChanceBonus || 0) + rank * 4;
+    }
+
     function applyEnemyModifiers(enemy, modifiers = {}) {
       const applyRate = (key, rate, { keepDecimal = false } = {}) => {
         if (!rate) return;
         const value = enemy[key] * rate;
         enemy[key] = keepDecimal ? Math.round(value * 10) / 10 : Math.round(value);
+      };
+
+      const applyFlat = (key, delta, { clampMin = null } = {}) => {
+        if (!delta) return;
+        const next = (enemy[key] ?? 0) + delta;
+        enemy[key] = clampMin !== null ? Math.max(clampMin, next) : next;
       };
 
       applyRate("hp", modifiers.hp);
@@ -3199,12 +3288,17 @@
       if (modifiers.attackCountBonus) {
         enemy.attackCount = Math.max(1, Math.round(enemy.attackCount + modifiers.attackCountBonus));
       }
+
+      applyFlat("dropChanceBonus", modifiers.dropChanceBonus, { clampMin: 0 });
+      applyFlat("rarityBonus", modifiers.rarityBonus, { clampMin: 0 });
     }
 
-    function createEnemy(isBoss = false) {
+    function createEnemy(isBoss = false, derivedStats = null) {
+      const derived = derivedStats || recalcDerivedStats();
       const base = game.floor * 5 + (isBoss ? 20 : 0);
-      const variant = isBoss ? null : pickEnemyVariant(game.floor);
       const baseName = isBoss ? `階層ボス ${game.floor}F` : pickEnemyBaseName(game.floor);
+      const baseProfile = !isBoss ? pickEnemyBaseProfile(game.floor) : null;
+      const archetypeRoll = !isBoss ? rollArchetype(game.floor, derived) : null;
       const enemy = {
         id: crypto.randomUUID(),
         name: baseName,
@@ -3223,15 +3317,19 @@
           debuff: Math.min(50, 8 + game.floor * 0.6 + (isBoss ? 6 : 0)),
         },
         isBoss,
+        dropChanceBonus: 0,
+        rarityBonus: 0,
         statuses: [],
       };
 
-      if (variant && !isBoss) {
-        enemy.variant = variant.key;
-        enemy.archetypeLabel = variant.label;
-        enemy.flavor = variant.description;
-        enemy.name = `${variant.label} ${baseName}`;
-        applyEnemyModifiers(enemy, variant.modifiers);
+      if (baseProfile && !isBoss) {
+        enemy.baseProfile = baseProfile.key;
+        enemy.flavor = baseProfile.label;
+        applyEnemyModifiers(enemy, baseProfile.modifiers);
+      }
+
+      if (archetypeRoll && !isBoss) {
+        applyArchetypeRoll(enemy, archetypeRoll);
       }
 
       if (isBoss) {
@@ -3253,11 +3351,12 @@
     function spawnEnemies() {
       const boss = isBossFloor(game.floor);
       const count = boss ? 1 : 2 + Math.floor(Math.random() * 2);
-      game.enemies = Array.from({ length: count }, () => createEnemy(boss));
+      const derived = recalcDerivedStats();
+      game.enemies = Array.from({ length: count }, () => createEnemy(boss, derived));
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
       game.awaitingInput = true;
-      updateUI();
+      updateUI(derived);
       promptPlayerTurn();
     }
 
@@ -3874,6 +3973,7 @@
         { label: "バリア", value: derived.barrier.total },
         { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
         { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
+        { label: "ネームド遭遇率", value: derived.namedRate.total, unit: "%" },
         { label: "称号付与率UP", value: derived.titleChance.total, unit: "%" },
         { label: "ゴールド確率", value: derived.goldChance.total, unit: "%" },
       ];
