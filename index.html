@@ -5572,6 +5572,14 @@ function generateId(prefix = "id") {
       updateSkillSummaryVisibility();
     }
 
+    function renderSkills() {
+      updateSkillStepButton();
+      renderActiveSkillLoadout();
+      renderSkillDetailList();
+      renderSkillSummary();
+      updateSkillViewVisibility();
+    }
+
     function isItemEquipped(item) {
       if (!item) return false;
       if (item.type === "potion" && item.potion?.id) {
