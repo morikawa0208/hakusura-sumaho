@@ -1240,7 +1240,7 @@
       if (window.__HAKUSURA_BOOTED__) return;
       window.__HAKUSURA_BOOTED__ = true;
 
-      const STATUS_DEFINITIONS = {
+    const STATUS_DEFINITIONS = {
         stun: { name: "スタン", short: "STN", category: "control", description: "行動完全不能（通常攻撃・スキル不可）" },
         sleep: { name: "睡眠", short: "SLP", category: "control", description: "行動不能。被ダメージで解除 (DoT除く)" },
         confusion: { name: "混乱", short: "CNF", category: "control", description: "攻撃対象がランダム化。味方を攻撃する可能性も" },
@@ -1265,6 +1265,14 @@
       dot: "dot",
       debuff: "debuff",
     };
+
+    function generateId(prefix = "id") {
+      const uuidFn = typeof globalThis !== "undefined" ? globalThis.crypto?.randomUUID : null;
+      const uuid = typeof uuidFn === "function"
+        ? uuidFn()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      return prefix ? `${prefix}-${uuid}` : uuid;
+    }
 
     const POTION_REFILL_ON_KILL = 12;
     const INVENTORY_FILTER_OPTIONS = [
@@ -2610,7 +2618,7 @@
         : null;
 
       return ensureAcquiredOrder({
-        id: crypto.randomUUID ? `eq-${crypto.randomUUID()}` : `eq-${Date.now()}-${Math.random()}`,
+        id: generateId("eq"),
         type: "equipment",
         slot,
         name,
@@ -3552,7 +3560,7 @@
       const baseProfile = !isBoss ? pickEnemyBaseProfile(game.floor) : null;
       const archetypeRoll = !isBoss ? rollArchetype(game.floor, derived) : null;
       const enemy = {
-        id: crypto.randomUUID(),
+        id: generateId("enemy"),
         name: baseName,
         hp: base + (isBoss ? 30 : 0),
         maxHp: base + (isBoss ? 30 : 0),
