@@ -2737,9 +2737,16 @@
       };
     }
 
-    // グローバル再評価時の再宣言エラーを避けるため var を使用
-    var SKILL_MAX_LEVEL = typeof SKILL_MAX_LEVEL === "undefined" ? 50 : SKILL_MAX_LEVEL;
-    var ACTIVE_SKILL_SLOT_LIMIT = typeof ACTIVE_SKILL_SLOT_LIMIT === "undefined" ? 4 : ACTIVE_SKILL_SLOT_LIMIT;
+      // グローバル再評価時でも再宣言エラーを出さないよう、グローバルオブジェクト経由で初期化
+      if (typeof globalThis.SKILL_MAX_LEVEL === "undefined") {
+        globalThis.SKILL_MAX_LEVEL = 50;
+      }
+      if (typeof globalThis.ACTIVE_SKILL_SLOT_LIMIT === "undefined") {
+        globalThis.ACTIVE_SKILL_SLOT_LIMIT = 4;
+      }
+
+      const SKILL_MAX_LEVEL = globalThis.SKILL_MAX_LEVEL;
+      const ACTIVE_SKILL_SLOT_LIMIT = globalThis.ACTIVE_SKILL_SLOT_LIMIT;
 
     const player = {
       name: "プレイヤー",
