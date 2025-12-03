@@ -1266,13 +1266,24 @@
       debuff: "debuff",
     };
 
-    function generateId(prefix = "id") {
-      const uuidFn = typeof globalThis !== "undefined" ? globalThis.crypto?.randomUUID : null;
-      const uuid = typeof uuidFn === "function"
-        ? uuidFn()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      return prefix ? `${prefix}-${uuid}` : uuid;
-    }
+function generateId(prefix = "id") {
+  let uuid;
+
+  // crypto.randomUUID が使える環境ならそのまま呼び出す
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    uuid = globalThis.crypto.randomUUID();
+  } else {
+    // フォールバック（簡易ID）
+    uuid = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  return prefix ? `${prefix}-${uuid}` : uuid;
+}
+
 
     const POTION_REFILL_ON_KILL = 12;
     const INVENTORY_FILTER_OPTIONS = [
