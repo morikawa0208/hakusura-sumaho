@@ -2725,8 +2725,9 @@
       };
     }
 
-    const SKILL_MAX_LEVEL = 50;
-    const ACTIVE_SKILL_SLOT_LIMIT = 4;
+    // グローバル再評価時の再宣言エラーを避けるため var を使用
+    var SKILL_MAX_LEVEL = typeof SKILL_MAX_LEVEL === "undefined" ? 50 : SKILL_MAX_LEVEL;
+    var ACTIVE_SKILL_SLOT_LIMIT = typeof ACTIVE_SKILL_SLOT_LIMIT === "undefined" ? 4 : ACTIVE_SKILL_SLOT_LIMIT;
 
     const player = {
       name: "プレイヤー",
