@@ -7,6 +7,10 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   />
   <title>縦持ちハクスラ試作</title>
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' ry='12' fill='%23111827'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-size='44'%3E⚔️%3C/text%3E%3C/svg%3E"
+  />
   <style>
     :root {
       --bg: #0b0e14;
@@ -1126,7 +1130,8 @@
         <div class="pill">スキルP: <span id="skill-points-skill"></span></div>
         <button id="reset-skills" class="help-icon" aria-label="スキルをリセット">↺</button>
       </div>
-    <div id="skills" style="margin-top: 6px;"></div>
+      <div id="active-skill-loadout" class="help-panel" style="margin-bottom: 6px;"></div>
+      <div id="skills" style="margin-top: 6px;"></div>
     </div>
   </div>
 
@@ -1153,11 +1158,15 @@
         </div>
         <button id="inventory-item-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div id="inventory-item-desc" class="body" style="margin-top: 6px;"></div>
-      <div id="inventory-item-meta" class="subtle" style="margin: 8px 0 4px;"></div>
-      <div id="inventory-item-detail" class="stats" style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px;"></div>
-      <div id="inventory-compare-result" class="equipment-option-list" style="margin-top: 8px; display: none;"></div>
-      <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
+        <div id="inventory-item-desc" class="body" style="margin-top: 6px;"></div>
+        <div id="inventory-item-meta" class="subtle" style="margin: 8px 0 4px;"></div>
+        <div
+          id="inventory-item-detail"
+          class="stats"
+          style="grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 6px;"
+        ></div>
+        <div id="inventory-compare-result" class="equipment-option-list" style="margin-top: 8px; display: none;"></div>
+        <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
     </div>
   </div>
 
@@ -1227,10 +1236,14 @@
   </div>
 
   <script>
+    (() => {
+      if (window.__HAKUSURA_BOOTED__) return;
+      window.__HAKUSURA_BOOTED__ = true;
+
     const STATUS_DEFINITIONS = {
-      stun: { name: "スタン", short: "STN", category: "control", description: "行動完全不能（通常攻撃・スキル不可）" },
-      sleep: { name: "睡眠", short: "SLP", category: "control", description: "行動不能。被ダメージで解除 (DoT除く)" },
-      confusion: { name: "混乱", short: "CNF", category: "control", description: "攻撃対象がランダム化。味方を攻撃する可能性も" },
+        stun: { name: "スタン", short: "STN", category: "control", description: "行動完全不能（通常攻撃・スキル不可）" },
+        sleep: { name: "睡眠", short: "SLP", category: "control", description: "行動不能。被ダメージで解除 (DoT除く)" },
+        confusion: { name: "混乱", short: "CNF", category: "control", description: "攻撃対象がランダム化。味方を攻撃する可能性も" },
       silence: { name: "沈黙", short: "SIL", category: "control", description: "スキル使用不可（通常攻撃のみ可能）" },
       knockdown: { name: "転倒", short: "KD", category: "control", description: "次ターンの行動順が最後になる（行動遅延）" },
       seal: { name: "封印", short: "SEAL", category: "control", description: "パッシブや常時効果を無効化する" },
@@ -1252,6 +1265,14 @@
       dot: "dot",
       debuff: "debuff",
     };
+
+    function generateId(prefix = "id") {
+      const uuidFn = typeof globalThis !== "undefined" ? globalThis.crypto?.randomUUID : null;
+      const uuid = typeof uuidFn === "function"
+        ? uuidFn()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      return prefix ? `${prefix}-${uuid}` : uuid;
+    }
 
     const POTION_REFILL_ON_KILL = 12;
     const INVENTORY_FILTER_OPTIONS = [
@@ -2597,7 +2618,7 @@
         : null;
 
       return ensureAcquiredOrder({
-        id: crypto.randomUUID ? `eq-${crypto.randomUUID()}` : `eq-${Date.now()}-${Math.random()}`,
+        id: generateId("eq"),
         type: "equipment",
         slot,
         name,
@@ -2715,6 +2736,10 @@
         potion: { ...potion },
       };
     }
+
+    // グローバル再評価時の再宣言エラーを避けるため var を使用
+    var SKILL_MAX_LEVEL = typeof SKILL_MAX_LEVEL === "undefined" ? 50 : SKILL_MAX_LEVEL;
+    var ACTIVE_SKILL_SLOT_LIMIT = typeof ACTIVE_SKILL_SLOT_LIMIT === "undefined" ? 4 : ACTIVE_SKILL_SLOT_LIMIT;
 
     const player = {
       name: "プレイヤー",
@@ -2841,6 +2866,7 @@
           icon: "🔮",
         },
       ],
+      activeSkillSlots: Array.from({ length: ACTIVE_SKILL_SLOT_LIMIT }, () => ({ skillKey: null, cooldownRemaining: 0 })),
     };
 
     const game = {
@@ -2852,28 +2878,169 @@
     };
 
     const skills = {
-      sharpEdge: {
-        name: "鋭刃",
-        desc: "物理攻撃+2 (最大3)",
+      bladeDiscipline: {
+        name: "剣技鍛錬",
+        desc: "剣士の基礎訓練。物理攻撃と速度を地道に底上げする。",
+        category: "剣士",
+        type: "passive",
         level: 0,
-        max: 3,
-        apply: () => (player.baseBonus.physAtk += 2),
-      },
-      quickStep: {
-        name: "疾駆",
-        desc: "速度+2 (最大2)",
-        level: 0,
-        max: 2,
-        apply: () => (player.baseBonus.speed += 2),
+        max: SKILL_MAX_LEVEL,
+        scaling: {
+          perLevel: { physAtk: 1, speed: 0.2 },
+        },
+        thresholds: [
+          { level: 10, bonus: { critRate: 2 }, effect: "閾値10: クリティカル率+2%" },
+          { level: 30, bonus: { physPen: 4, speed: 1 }, effect: "閾値30: 物理貫通+4%、速度+1" },
+          { level: 50, bonus: { critDamage: 8 }, effect: "閾値50: クリティカルダメージ+8%" },
+        ],
       },
       arcaneFlow: {
         name: "魔力循環",
-        desc: "最大MP+2 (最大2)",
+        desc: "魔法の流れを整え、MPと魔力の巡りを改善する。",
+        category: "魔法",
+        type: "active",
         level: 0,
-        max: 2,
-        apply: () => (player.baseBonus.mp += 2),
+        max: SKILL_MAX_LEVEL,
+        scaling: {
+          perLevel: { mp: 1, magAtk: 0.6 },
+        },
+        thresholds: [
+          { level: 10, bonus: { cooldown: 1 }, effect: "閾値10: クールタイム短縮+1%" },
+          { level: 30, bonus: { magPen: 3 }, effect: "閾値30: 魔法貫通+3%" },
+          { level: 50, bonus: { rarity: 5, dropRate: 5 }, effect: "閾値50: 魔具のドロップ/レア率+5%" },
+        ],
+        activation: {
+          cooldown: 4,
+          effect: "MPを即時回復し、次の魔法ダメージを強化",
+          slotCost: 1,
+        },
+      },
+      sacredWard: {
+        name: "聖域の守護",
+        desc: "聖職者の祈り。防御と再生力を高めて前線を支える。",
+        category: "聖職",
+        type: "passive",
+        level: 0,
+        max: SKILL_MAX_LEVEL,
+        scaling: {
+          perLevel: { hp: 1.4, magDef: 0.6, hpRegen: 0.04 },
+        },
+        thresholds: [
+          { level: 10, bonus: { damageReduction: 2 }, effect: "閾値10: 被ダメージ-2%" },
+          { level: 30, bonus: { barrier: 8 }, effect: "閾値30: バリア値+8" },
+          { level: 50, bonus: { controlResist: 6 }, effect: "閾値50: 行動阻害耐性+6%" },
+        ],
+      },
+      bloodPact: {
+        name: "血の盟約",
+        desc: "吸血の理を極め、攻防を同時に成立させる秘術。",
+        category: "吸血",
+        type: "active",
+        level: 0,
+        max: SKILL_MAX_LEVEL,
+        scaling: {
+          perLevel: { physAtk: 0.8, lifeSteal: 0.08 },
+        },
+        thresholds: [
+          { level: 10, bonus: { hp: 10 }, effect: "閾値10: 最大HP+10" },
+          { level: 30, bonus: { damageReduction: 2, hpRegen: 0.3 }, effect: "閾値30: 被ダメ-2%、HP再生+0.3" },
+          { level: 50, bonus: { dropRate: 5 }, effect: "閾値50: 吸血鬼の財宝感知でドロップ率+5%" },
+        ],
+        activation: {
+          cooldown: 5,
+          effect: "HPを消費して高倍率の一撃と吸血を発動",
+          slotCost: 1,
+        },
       },
     };
+
+    function addBonus(target, bonus = {}, multiplier = 1) {
+      if (!target || !bonus) return;
+      Object.entries(bonus).forEach(([key, value]) => {
+        if (typeof value !== "number") return;
+        target[key] = (target[key] ?? 0) + value * multiplier;
+      });
+    }
+
+    function calculateSkillBonuses() {
+      const aggregated = createEmptyBonus();
+      Object.values(skills).forEach((skill) => {
+        const level = skill.level ?? 0;
+        const reached = [];
+        if (level > 0) {
+          if (skill.scaling?.perLevel) {
+            addBonus(aggregated, skill.scaling.perLevel, level);
+          }
+          (skill.thresholds || []).forEach((threshold) => {
+            if (level >= threshold.level) {
+              addBonus(aggregated, threshold.bonus);
+              reached.push(threshold);
+            }
+          });
+        }
+        skill.reachedThresholds = reached;
+      });
+      player.baseBonus = aggregated;
+      return aggregated;
+    }
+
+    function formatSkillBonusText(bonus = {}) {
+      const labels = {
+        hp: "最大HP",
+        mp: "最大MP",
+        physAtk: "物理攻撃",
+        magAtk: "魔法攻撃",
+        physDef: "物理防御",
+        magDef: "魔法防御",
+        speed: "行動速度",
+        critRate: "クリ率",
+        critDamage: "クリダメ",
+        physPen: "物理貫通",
+        magPen: "魔法貫通",
+        damageReduction: "被ダメ軽減",
+        block: "ブロック",
+        controlResist: "行動阻害耐性",
+        dotResist: "DoT耐性",
+        debuffResist: "弱体耐性",
+        cooldown: "CT短縮",
+        hpRegen: "HP再生",
+        lifeSteal: "HP吸収",
+        barrier: "バリア",
+        dropRate: "ドロップ率",
+        rarity: "レア率",
+        goldChance: "ゴールド率",
+        titleChance: "称号率",
+        namedRate: "ネームド率",
+      };
+      const percentKeys = [
+        "critRate",
+        "critDamage",
+        "physPen",
+        "magPen",
+        "damageReduction",
+        "block",
+        "controlResist",
+        "dotResist",
+        "debuffResist",
+        "lifeSteal",
+        "dropRate",
+        "rarity",
+        "goldChance",
+        "titleChance",
+        "namedRate",
+        "cooldown",
+      ];
+      return Object.entries(bonus)
+        .map(([key, value]) => {
+          if (typeof value !== "number") return null;
+          const label = labels[key] || key;
+          const unit = percentKeys.includes(key) ? "%" : "";
+          const formatted = Math.abs(value) >= 1 ? value.toFixed(0) : value.toFixed(2);
+          return `${label}+${formatted}${unit}`;
+        })
+        .filter(Boolean)
+        .join(" / ");
+    }
 
     function log(message, type = "info", options = {}) {
       const { asHtml = false } = options;
@@ -3390,7 +3557,7 @@
       const baseProfile = !isBoss ? pickEnemyBaseProfile(game.floor) : null;
       const archetypeRoll = !isBoss ? rollArchetype(game.floor, derived) : null;
       const enemy = {
-        id: crypto.randomUUID(),
+        id: generateId("enemy"),
         name: baseName,
         hp: base + (isBoss ? 30 : 0),
         maxHp: base + (isBoss ? 30 : 0),
@@ -4170,12 +4337,102 @@
       });
     }
 
+    function getActiveSkillSlotIndex(skillKey) {
+      return player.activeSkillSlots.findIndex((slot) => slot.skillKey === skillKey);
+    }
+
+    function toggleActiveSkillSlot(skillKey) {
+      const skill = skills[skillKey];
+      if (!skill || skill.type !== "active") return;
+      if (skill.level <= 0) {
+        log("スキルを習得してからセットしてください", "warning");
+        return;
+      }
+      const assignedIndex = getActiveSkillSlotIndex(skillKey);
+      if (assignedIndex >= 0) {
+        player.activeSkillSlots[assignedIndex] = { skillKey: null, cooldownRemaining: 0 };
+        log(`🗑 ${skill.name}をスロット${assignedIndex + 1}から解除`, "info");
+        renderActiveSkillLoadout();
+        return;
+      }
+      const emptyIndex = player.activeSkillSlots.findIndex((slot) => !slot.skillKey);
+      if (emptyIndex === -1) {
+        log(`セット枠が空いていません (最大${ACTIVE_SKILL_SLOT_LIMIT}枠)`, "warning");
+        return;
+      }
+      player.activeSkillSlots[emptyIndex] = { skillKey, cooldownRemaining: 0 };
+      log(`✨ ${skill.name}をスロット${emptyIndex + 1}にセット`, "good");
+      renderActiveSkillLoadout();
+    }
+
+    function renderSkillThresholds(skill) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "help-panel";
+      const label = document.createElement("div");
+      label.className = "option-label";
+      label.textContent = "閾値効果 (10 / 30 / 50)";
+      wrapper.appendChild(label);
+
+      (skill.thresholds || []).forEach((threshold) => {
+        const row = document.createElement("div");
+        row.className = "option-value";
+        const reached = (skill.reachedThresholds || []).some((t) => t.level === threshold.level);
+        const detail = threshold.effect || formatSkillBonusText(threshold.bonus);
+        row.textContent = `${threshold.level}Lv: ${detail || "効果未設定"}${reached ? " (達成)" : ""}`;
+        if (reached) row.style.color = "#34d399";
+        wrapper.appendChild(row);
+      });
+
+      return wrapper;
+    }
+
+    function describeSkillScaling(skill) {
+      if (!skill.scaling?.perLevel) return "毎Lv効果なし";
+      const text = formatSkillBonusText(skill.scaling.perLevel);
+      return text ? `毎Lv: ${text}` : "毎Lv効果なし";
+    }
+
+    function renderActiveSkillLoadout() {
+      const container = document.getElementById("active-skill-loadout");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const title = document.createElement("div");
+      title.className = "option-label";
+      title.textContent = `アクティブスキル枠 (${ACTIVE_SKILL_SLOT_LIMIT}枠までセット可)`;
+      container.appendChild(title);
+
+      player.activeSkillSlots.forEach((slot, index) => {
+        const skill = slot.skillKey ? skills[slot.skillKey] : null;
+        const row = document.createElement("div");
+        row.className = "option-value";
+        const cooldownText = skill?.activation?.cooldown ? ` / CT: ${skill.activation.cooldown}T` : "";
+        const remaining = slot.cooldownRemaining ? ` / 残り: ${slot.cooldownRemaining}T` : "";
+        row.textContent = `スロット${index + 1}: ${skill ? skill.name : "未セット"}${skill ? `${cooldownText}${remaining}` : ""}`;
+        if (skill?.activation?.effect) {
+          const detail = document.createElement("div");
+          detail.className = "subtle";
+          detail.textContent = `効果: ${skill.activation.effect}`;
+          row.appendChild(detail);
+        }
+        container.appendChild(row);
+      });
+    }
+
     function renderSkills() {
       const container = document.getElementById("skills");
       container.innerHTML = "";
+      renderActiveSkillLoadout();
+
       Object.entries(skills).forEach(([key, skill]) => {
         const row = document.createElement("div");
+        row.className = "card";
         row.style.marginBottom = "6px";
+
+        const header = document.createElement("div");
+        header.className = "inline-buttons";
+        header.style.justifyContent = "space-between";
+
         const btn = document.createElement("button");
         btn.textContent = `${skill.name} (${skill.level}/${skill.max})`;
         btn.disabled = player.skillPoints <= 0 || skill.level >= skill.max;
@@ -4183,15 +4440,49 @@
           if (player.skillPoints <= 0 || skill.level >= skill.max) return;
           player.skillPoints -= 1;
           skill.level += 1;
-          skill.apply();
+          calculateSkillBonuses();
+          const derived = recalcDerivedStats();
           log(`スキル『${skill.name}』を強化 (${skill.level}/${skill.max})`, "good");
-          updateUI();
+          updateUI(derived);
         };
+
+        const meta = document.createElement("div");
+        meta.className = "pill";
+        meta.textContent = `${skill.category} / ${skill.type === "active" ? "アクティブ" : "パッシブ"}`;
+
+        header.appendChild(btn);
+        header.appendChild(meta);
+        row.appendChild(header);
+
         const desc = document.createElement("div");
         desc.className = "subtle";
         desc.textContent = skill.desc;
-        row.appendChild(btn);
         row.appendChild(desc);
+
+        const scaling = document.createElement("div");
+        scaling.className = "subtle";
+        scaling.textContent = describeSkillScaling(skill);
+        row.appendChild(scaling);
+
+        if (skill.type === "active") {
+          const activation = document.createElement("div");
+          activation.className = "subtle";
+          const cooldownText = skill.activation?.cooldown ? `${skill.activation.cooldown}T` : "--";
+          activation.textContent = `CT: ${cooldownText} / 効果: ${skill.activation?.effect || "未設定"}`;
+          row.appendChild(activation);
+
+          const slotButton = document.createElement("button");
+          slotButton.className = "mini-btn";
+          const assignedIndex = getActiveSkillSlotIndex(key);
+          slotButton.textContent = assignedIndex >= 0 ? `スロット${assignedIndex + 1}解除` : "スロットにセット";
+          slotButton.onclick = () => {
+            toggleActiveSkillSlot(key);
+            renderSkills();
+          };
+          row.appendChild(slotButton);
+        }
+
+        row.appendChild(renderSkillThresholds(skill));
         container.appendChild(row);
       });
     }
@@ -4495,14 +4786,7 @@
     }
 
     function resetSkillBonuses() {
-      Object.keys(player.baseBonus).forEach((key) => {
-        player.baseBonus[key] = 0;
-      });
-      Object.values(skills).forEach((skill) => {
-        for (let i = 0; i < skill.level; i += 1) {
-          skill.apply();
-        }
-      });
+      calculateSkillBonuses();
       recalcDerivedStats();
     }
 
@@ -4515,6 +4799,7 @@
       Object.values(skills).forEach((skill) => {
         skill.level = 0;
       });
+      player.activeSkillSlots = Array.from({ length: ACTIVE_SKILL_SLOT_LIMIT }, () => ({ skillKey: null, cooldownRemaining: 0 }));
       resetSkillBonuses();
       player.skillPoints += spent;
       updateUI();
@@ -5419,11 +5704,12 @@
       if (e.target === archetypeModal) closeArchetypeModal();
     });
 
-    const initialDerived = recalcDerivedStats();
-    renderSecondaryStats(initialDerived);
-    log("=== 挑戦開始 ===", "info");
-    spawnEnemies();
-    updateUI();
+      const initialDerived = recalcDerivedStats();
+      renderSecondaryStats(initialDerived);
+      log("=== 挑戦開始 ===", "info");
+      spawnEnemies();
+      updateUI();
+    })();
   </script>
 </body>
 </html>
