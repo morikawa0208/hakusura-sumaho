@@ -662,6 +662,10 @@
       z-index: 50;
     }
 
+    .hidden {
+      display: none !important;
+    }
+
     .modal.hidden {
       display: none;
     }
@@ -1149,10 +1153,11 @@
         <button id="skill-step" class="step-button" aria-label="スキル増減幅を切り替え">±1</button>
         <button id="reset-skills" class="help-icon" aria-label="スキルをリセット">↺</button>
       </div>
-      <div class="inline-buttons" id="skill-view-switcher" style="margin-bottom: 6px;">
-        <button class="tab-button active" data-skill-view="detail">職業別ビュー</button>
-        <button class="tab-button" data-skill-view="summary">一覧ビュー</button>
+      <div class="inline-buttons" style="margin-bottom: 6px; align-items: center;">
+        <button id="skill-summary-toggle" class="mini-btn" aria-pressed="false">全職業一覧を表示</button>
       </div>
+      <div class="inline-buttons" id="skill-category-tabs" style="margin-bottom: 4px;"></div>
+      <div class="inline-buttons" id="skill-type-tabs" style="margin-bottom: 6px;"></div>
       <div id="skill-detail-view">
         <div id="active-skill-loadout" class="help-panel" style="margin-bottom: 6px;"></div>
         <div id="skills" style="margin-top: 6px;"></div>
@@ -2787,6 +2792,39 @@ function generateId(prefix = "id") {
       const SKILL_MAX_LEVEL = globalThis.SKILL_MAX_LEVEL;
       const ACTIVE_SKILL_SLOT_LIMIT = globalThis.ACTIVE_SKILL_SLOT_LIMIT;
 
+    const ACTIVE_UNLOCK_SCHEDULE = [1, 10, 20, 30, 40];
+    const PASSIVE_UNLOCK_SCHEDULE = [10, 10, 20, 20, 30, 30, 40, 40, 50, 50];
+    const THRESHOLD_MULTIPLIERS = { 10: 1.6, 30: 2, 50: 2.4 };
+
+    function applyUnlockPattern(definitions) {
+      const tracker = {};
+      definitions.forEach((skill) => {
+        const state = tracker[skill.category] || { active: 0, passive: 0 };
+        tracker[skill.category] = state;
+        if (skill.type === "active") {
+          const level = ACTIVE_UNLOCK_SCHEDULE[Math.min(state.active, ACTIVE_UNLOCK_SCHEDULE.length - 1)];
+          skill.unlockLevel = level;
+          state.active += 1;
+        } else {
+          const level = PASSIVE_UNLOCK_SCHEDULE[Math.min(state.passive, PASSIVE_UNLOCK_SCHEDULE.length - 1)];
+          skill.unlockLevel = level;
+          state.passive += 1;
+        }
+      });
+    }
+
+    function amplifyThresholdBonuses(thresholds = []) {
+      return thresholds.map((threshold) => {
+        const multiplier = THRESHOLD_MULTIPLIERS[threshold.level] || 1.8;
+        const bonus = {};
+        Object.entries(threshold.bonus || {}).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          bonus[key] = Number((value * multiplier).toFixed(2));
+        });
+        return { ...threshold, bonus, effect: undefined };
+      });
+    }
+
     const player = {
       name: "プレイヤー",
       level: 1,
@@ -3796,6 +3834,11 @@ function generateId(prefix = "id") {
       },
     ];
 
+    applyUnlockPattern(SKILL_DEFINITIONS);
+    SKILL_DEFINITIONS.forEach((skill) => {
+      skill.thresholds = amplifyThresholdBonuses(skill.thresholds);
+    });
+
     const skills = SKILL_DEFINITIONS.reduce((acc, skill) => {
       acc[skill.key] = { ...skill, level: 0, max: SKILL_MAX_LEVEL };
       return acc;
@@ -3944,7 +3987,9 @@ function generateId(prefix = "id") {
     let currentStepIndex = 0;
     const skillStepOptions = [1, 10, 50];
     let currentSkillStepIndex = 0;
-    let skillViewMode = "detail";
+    let selectedSkillCategory = SKILL_CATEGORIES[0];
+    let selectedSkillType = "active";
+    let skillSummaryVisible = false;
     let pendingResetSpent = 0;
 
     const displayNumber = (num, { isPercent = false } = {}) => {
@@ -5202,6 +5247,12 @@ function generateId(prefix = "id") {
       return player.activeSkillSlots.findIndex((slot) => slot.skillKey === skillKey);
     }
 
+    function isSkillUnlocked(skill) {
+      if (!skill) return false;
+      const required = skill.unlockLevel || 1;
+      return player.level >= required;
+    }
+
     function toggleActiveSkillSlot(skillKey) {
       const skill = skills[skillKey];
       if (!skill || skill.type !== "active") return;
@@ -5226,7 +5277,7 @@ function generateId(prefix = "id") {
       renderActiveSkillLoadout();
     }
 
-    function renderSkillThresholds(skill) {
+    function renderSkillThresholds(skill, { locked = false } = {}) {
       const wrapper = document.createElement("div");
       wrapper.className = "help-panel";
       const label = document.createElement("div");
@@ -5234,20 +5285,28 @@ function generateId(prefix = "id") {
       label.textContent = "閾値効果 (10 / 30 / 50)";
       wrapper.appendChild(label);
 
-      (skill.thresholds || []).forEach((threshold) => {
+      if (locked) {
         const row = document.createElement("div");
         row.className = "option-value";
-        const reached = (skill.reachedThresholds || []).some((t) => t.level === threshold.level);
-        const detail = threshold.effect || formatSkillBonusText(threshold.bonus);
-        row.textContent = `${threshold.level}Lv: ${detail || "効果未設定"}${reached ? " (達成)" : ""}`;
-        if (reached) row.style.color = "#34d399";
+        row.textContent = "？？？";
         wrapper.appendChild(row);
-      });
+      } else {
+        (skill.thresholds || []).forEach((threshold) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          const reached = (skill.reachedThresholds || []).some((t) => t.level === threshold.level);
+          const detail = threshold.effect || formatSkillBonusText(threshold.bonus);
+          row.textContent = `${threshold.level}Lv: ${detail || "効果未設定"}${reached ? " (達成)" : ""}`;
+          if (reached) row.style.color = "#34d399";
+          wrapper.appendChild(row);
+        });
+      }
 
       return wrapper;
     }
 
-    function describeSkillScaling(skill) {
+    function describeSkillScaling(skill, { locked = false } = {}) {
+      if (locked) return "毎Lv: ？？？";
       if (!skill.scaling?.perLevel) return "毎Lv効果なし";
       const text = formatSkillBonusText(skill.scaling.perLevel);
       return text ? `毎Lv: ${text}` : "毎Lv効果なし";
@@ -5257,6 +5316,10 @@ function generateId(prefix = "id") {
       const skill = skills[key];
       if (!skill || delta === 0) return;
       if (delta > 0) {
+        if (!isSkillUnlocked(skill)) {
+          log(`Lv${skill.unlockLevel}で解放されます`, "warning");
+          return;
+        }
         const spendable = Math.min(delta, player.skillPoints, skill.max - skill.level);
         if (spendable <= 0) return;
         player.skillPoints -= spendable;
@@ -5301,103 +5364,152 @@ function generateId(prefix = "id") {
       });
     }
 
+    function renderSkillCategoryTabs() {
+      const container = document.getElementById("skill-category-tabs");
+      if (!container) return;
+      container.innerHTML = "";
+      SKILL_CATEGORIES.forEach((category) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tab-button";
+        const isActive = category === selectedSkillCategory;
+        if (isActive) btn.classList.add("active");
+        btn.textContent = category;
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+        btn.onclick = () => {
+          selectedSkillCategory = category;
+          renderSkills();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderSkillTypeTabs() {
+      const container = document.getElementById("skill-type-tabs");
+      if (!container) return;
+      container.innerHTML = "";
+      [
+        { key: "active", label: "アクティブ" },
+        { key: "passive", label: "パッシブ" },
+      ].forEach((type) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tab-button";
+        const isActive = type.key === selectedSkillType;
+        if (isActive) btn.classList.add("active");
+        btn.textContent = type.label;
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+        btn.onclick = () => {
+          selectedSkillType = type.key;
+          renderSkills();
+        };
+        container.appendChild(btn);
+      });
+    }
+
     function renderSkillDetailList() {
       const container = document.getElementById("skills");
       if (!container) return;
       container.innerHTML = "";
       const step = getSkillAdjustStep();
 
-      SKILL_CATEGORIES.forEach((category) => {
-        const section = document.createElement("div");
-        const header = document.createElement("div");
-        header.className = "section-title";
-        header.textContent = category;
-        section.appendChild(header);
+      const section = document.createElement("div");
+      const header = document.createElement("div");
+      header.className = "section-title";
+      const typeLabel = selectedSkillType === "active" ? "アクティブ" : "パッシブ";
+      header.textContent = `${selectedSkillCategory} / ${typeLabel}`;
+      section.appendChild(header);
 
-        const categorySkills = Object.entries(skills)
-          .filter(([, skill]) => skill.category === category)
-          .sort((a, b) => {
-            if (a[1].type === b[1].type) return (a[1].unlockLevel || 0) - (b[1].unlockLevel || 0);
-            return a[1].type === "active" ? -1 : 1;
-          });
+      const filteredSkills = Object.entries(skills)
+        .filter(([, skill]) => skill.category === selectedSkillCategory && skill.type === selectedSkillType)
+        .sort((a, b) => (a[1].unlockLevel || 0) - (b[1].unlockLevel || 0));
 
-        categorySkills.forEach(([key, skill]) => {
-          const row = document.createElement("div");
-          row.className = "card";
-          row.style.marginBottom = "6px";
+      filteredSkills.forEach(([key, skill]) => {
+        const locked = !isSkillUnlocked(skill);
+        const row = document.createElement("div");
+        row.className = "card";
+        row.style.marginBottom = "6px";
 
-          const headerRow = document.createElement("div");
-          headerRow.className = "inline-buttons";
-          headerRow.style.justifyContent = "space-between";
+        const headerRow = document.createElement("div");
+        headerRow.className = "inline-buttons";
+        headerRow.style.justifyContent = "space-between";
 
-          const name = document.createElement("div");
-          name.className = "stat-label inline";
-          name.textContent = `${skill.name} (${skill.level}/${skill.max})`;
+        const name = document.createElement("div");
+        name.className = "stat-label inline";
+        name.textContent = `${locked ? "？？？" : skill.name} (${skill.level}/${skill.max})`;
 
-          const meta = document.createElement("div");
-          meta.className = "pill";
-          const unlock = skill.unlockLevel ? `Lv${skill.unlockLevel}` : "Lv1";
-          meta.textContent = `${skill.category} / ${skill.type === "active" ? "アクティブ" : "パッシブ"} / 取得${unlock}`;
+        const meta = document.createElement("div");
+        meta.className = "pill";
+        const unlock = skill.unlockLevel ? `Lv${skill.unlockLevel}` : "Lv1";
+        meta.textContent = `${skill.category} / ${skill.type === "active" ? "アクティブ" : "パッシブ"} / 取得${unlock}`;
 
-          headerRow.appendChild(name);
-          headerRow.appendChild(meta);
-          row.appendChild(headerRow);
+        headerRow.appendChild(name);
+        headerRow.appendChild(meta);
+        row.appendChild(headerRow);
 
-          const desc = document.createElement("div");
-          desc.className = "subtle";
-          desc.textContent = skill.desc;
-          row.appendChild(desc);
+        const desc = document.createElement("div");
+        desc.className = "subtle";
+        desc.textContent = locked ? "？？？" : skill.desc;
+        row.appendChild(desc);
 
-          const scaling = document.createElement("div");
-          scaling.className = "subtle";
-          scaling.textContent = describeSkillScaling(skill);
-          row.appendChild(scaling);
+        const scaling = document.createElement("div");
+        scaling.className = "subtle";
+        scaling.textContent = describeSkillScaling(skill, { locked });
+        row.appendChild(scaling);
 
-          if (skill.type === "active") {
-            const activation = document.createElement("div");
-            activation.className = "subtle";
-            const cooldownText = skill.activation?.cooldown ? `${skill.activation.cooldown}T` : "--";
-            activation.textContent = `CT: ${cooldownText} / 効果: ${skill.activation?.effect || "未設定"}`;
-            row.appendChild(activation);
+        if (skill.type === "active") {
+          const activation = document.createElement("div");
+          activation.className = "subtle";
+          const cooldownText = skill.activation?.cooldown ? `${skill.activation.cooldown}T` : "--";
+          const activationDetail = locked ? "発動: ？？？" : `CT: ${cooldownText} / 効果: ${skill.activation?.effect || "未設定"}`;
+          activation.textContent = activationDetail;
+          row.appendChild(activation);
 
-            const slotButton = document.createElement("button");
-            slotButton.className = "mini-btn";
-            const assignedIndex = getActiveSkillSlotIndex(key);
-            slotButton.textContent = assignedIndex >= 0 ? `スロット${assignedIndex + 1}解除` : "スロットにセット";
-            slotButton.onclick = () => {
-              toggleActiveSkillSlot(key);
-              renderSkills();
-            };
-            row.appendChild(slotButton);
-          }
+          const slotButton = document.createElement("button");
+          slotButton.className = "mini-btn";
+          const assignedIndex = getActiveSkillSlotIndex(key);
+          slotButton.textContent = assignedIndex >= 0 ? `スロット${assignedIndex + 1}解除` : "スロットにセット";
+          slotButton.disabled = locked || skill.level <= 0;
+          slotButton.onclick = () => {
+            toggleActiveSkillSlot(key);
+            renderSkills();
+          };
+          row.appendChild(slotButton);
+        }
 
-          row.appendChild(renderSkillThresholds(skill));
+        row.appendChild(renderSkillThresholds(skill, { locked }));
 
-          const controls = document.createElement("div");
-          controls.className = "inline-buttons";
-          controls.style.marginTop = "6px";
+        const controls = document.createElement("div");
+        controls.className = "inline-buttons";
+        controls.style.marginTop = "6px";
 
-          const downBtn = document.createElement("button");
-          downBtn.className = "mini-btn";
-          downBtn.textContent = `-${step}`;
-          downBtn.disabled = skill.level <= 0;
-          downBtn.onclick = () => adjustSkillLevel(key, -step);
+        const downBtn = document.createElement("button");
+        downBtn.className = "mini-btn";
+        downBtn.textContent = `-${step}`;
+        downBtn.disabled = skill.level <= 0;
+        downBtn.onclick = () => adjustSkillLevel(key, -step);
 
-          const upBtn = document.createElement("button");
-          upBtn.className = "mini-btn";
-          upBtn.textContent = `+${step}`;
-          upBtn.disabled = player.skillPoints <= 0 || skill.level >= skill.max;
-          upBtn.onclick = () => adjustSkillLevel(key, step);
+        const upBtn = document.createElement("button");
+        upBtn.className = "mini-btn";
+        upBtn.textContent = `+${step}`;
+        upBtn.disabled = player.skillPoints <= 0 || skill.level >= skill.max || locked;
+        upBtn.onclick = () => adjustSkillLevel(key, step);
 
-          controls.appendChild(downBtn);
-          controls.appendChild(upBtn);
-          row.appendChild(controls);
+        controls.appendChild(downBtn);
+        controls.appendChild(upBtn);
+        row.appendChild(controls);
 
-          section.appendChild(row);
-        });
-
-        container.appendChild(section);
+        section.appendChild(row);
       });
+
+      if (!filteredSkills.length) {
+        const empty = document.createElement("div");
+        empty.className = "option-value";
+        empty.textContent = "スキルが見つかりません";
+        section.appendChild(empty);
+      }
+
+      container.appendChild(section);
     }
 
     function renderSkillSummary() {
@@ -5424,11 +5536,14 @@ function generateId(prefix = "id") {
           .sort((a, b) => (a.unlockLevel || 0) - (b.unlockLevel || 0));
 
         categorySkills.forEach((skill) => {
+          const locked = !isSkillUnlocked(skill);
           const row = document.createElement("div");
           row.className = "option-value";
           const typeLabel = skill.type === "active" ? "Act" : "Pas";
           const unlock = skill.unlockLevel ? `取得Lv${skill.unlockLevel}` : "取得Lv1";
-          row.textContent = `・${skill.name} (${typeLabel}) / ${unlock} / 現在${skill.level}/${skill.max}`;
+          const status = locked ? "未解放" : `現在${skill.level}/${skill.max}`;
+          const name = locked ? "？？？" : skill.name;
+          row.textContent = `・${name} (${typeLabel}) / ${unlock} / ${status}`;
           list.appendChild(row);
         });
 
@@ -5437,19 +5552,24 @@ function generateId(prefix = "id") {
       });
     }
 
-    function updateSkillViewVisibility() {
-      if (skillDetailView) {
-        skillDetailView.classList.toggle("hidden", skillViewMode !== "detail");
-      }
+    function updateSkillSummaryVisibility() {
       if (skillSummaryView) {
-        skillSummaryView.classList.toggle("hidden", skillViewMode !== "summary");
+        skillSummaryView.classList.toggle("hidden", !skillSummaryVisible);
       }
-      skillViewButtons.forEach((btn) => {
-        const view = btn.dataset.skillView;
-        const isActive = view === skillViewMode;
-        btn.classList.toggle("active", isActive);
-        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
-      });
+      if (skillSummaryToggleButton) {
+        skillSummaryToggleButton.textContent = skillSummaryVisible ? "一覧ビューを閉じる" : "全職業一覧を表示";
+        skillSummaryToggleButton.setAttribute("aria-pressed", skillSummaryVisible ? "true" : "false");
+      }
+    }
+
+    function renderSkills() {
+      updateSkillStepButton();
+      renderSkillCategoryTabs();
+      renderSkillTypeTabs();
+      renderActiveSkillLoadout();
+      renderSkillDetailList();
+      renderSkillSummary();
+      updateSkillSummaryVisibility();
     }
 
     function renderSkills() {
@@ -5650,7 +5770,7 @@ function generateId(prefix = "id") {
     const resetButton = document.getElementById("reset-stats");
     const statStepButton = document.getElementById("stat-step");
     const skillStepButton = document.getElementById("skill-step");
-    const skillViewButtons = document.querySelectorAll("[data-skill-view]");
+    const skillSummaryToggleButton = document.getElementById("skill-summary-toggle");
     const skillDetailView = document.getElementById("skill-detail-view");
     const skillSummaryView = document.getElementById("skill-summary-view");
     const resetSkillsButton = document.getElementById("reset-skills");
@@ -5799,6 +5919,8 @@ function generateId(prefix = "id") {
 
     function closeSkillsModal() {
       skillsModal.classList.add("hidden");
+      skillSummaryVisible = false;
+      updateSkillSummaryVisibility();
     }
 
     function openInventoryModal() {
@@ -6626,12 +6748,9 @@ function generateId(prefix = "id") {
       renderSkills();
     });
 
-    skillViewButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const view = btn.dataset.skillView || "detail";
-        skillViewMode = view;
-        updateSkillViewVisibility();
-      });
+    skillSummaryToggleButton?.addEventListener("click", () => {
+      skillSummaryVisible = !skillSummaryVisible;
+      updateSkillSummaryVisibility();
     });
 
     resetButton.addEventListener("click", () => {
