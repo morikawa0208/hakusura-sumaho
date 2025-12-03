@@ -1236,10 +1236,14 @@
   </div>
 
   <script>
-    const STATUS_DEFINITIONS = {
-      stun: { name: "スタン", short: "STN", category: "control", description: "行動完全不能（通常攻撃・スキル不可）" },
-      sleep: { name: "睡眠", short: "SLP", category: "control", description: "行動不能。被ダメージで解除 (DoT除く)" },
-      confusion: { name: "混乱", short: "CNF", category: "control", description: "攻撃対象がランダム化。味方を攻撃する可能性も" },
+    (() => {
+      if (window.__HAKUSURA_BOOTED__) return;
+      window.__HAKUSURA_BOOTED__ = true;
+
+      const STATUS_DEFINITIONS = {
+        stun: { name: "スタン", short: "STN", category: "control", description: "行動完全不能（通常攻撃・スキル不可）" },
+        sleep: { name: "睡眠", short: "SLP", category: "control", description: "行動不能。被ダメージで解除 (DoT除く)" },
+        confusion: { name: "混乱", short: "CNF", category: "control", description: "攻撃対象がランダム化。味方を攻撃する可能性も" },
       silence: { name: "沈黙", short: "SIL", category: "control", description: "スキル使用不可（通常攻撃のみ可能）" },
       knockdown: { name: "転倒", short: "KD", category: "control", description: "次ターンの行動順が最後になる（行動遅延）" },
       seal: { name: "封印", short: "SEAL", category: "control", description: "パッシブや常時効果を無効化する" },
@@ -5695,11 +5699,12 @@
       if (e.target === archetypeModal) closeArchetypeModal();
     });
 
-    const initialDerived = recalcDerivedStats();
-    renderSecondaryStats(initialDerived);
-    log("=== 挑戦開始 ===", "info");
-    spawnEnemies();
-    updateUI();
+      const initialDerived = recalcDerivedStats();
+      renderSecondaryStats(initialDerived);
+      log("=== 挑戦開始 ===", "info");
+      spawnEnemies();
+      updateUI();
+    })();
   </script>
 </body>
 </html>
