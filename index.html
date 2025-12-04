@@ -726,6 +726,11 @@
       gap: 6px;
     }
 
+    .save-slot-card.active {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.24);
+    }
+
     .save-slot-header {
       display: flex;
       justify-content: space-between;
@@ -4354,6 +4359,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave("装備変更");
     }
 
     function unequipItem(slot) {
@@ -4361,6 +4367,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = null;
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave("装備変更");
     }
 
     function isBossFloor(floor) {
@@ -4917,13 +4924,15 @@ function generateId(prefix = "id") {
 
     const SAVE_VERSION = 1;
     const SAVE_SLOTS = [
-      { id: "auto", label: "オートセーブ", description: "一定間隔で自動保存" },
+      { id: "auto", label: "オートセーブ", description: "予備バックアップ用 (手動保存)" },
       { id: "slot1", label: "スロット1" },
       { id: "slot2", label: "スロット2" },
       { id: "slot3", label: "スロット3" },
     ];
-    const AUTO_SAVE_INTERVAL_MS = 15000;
+    const ACTIVE_SAVE_SLOT_KEY = "hakusura-active-slot";
+    const AUTO_SAVE_COOLDOWN_MS = 3000;
     let lastAutoSaveAt = 0;
+    let activeSaveSlotId = "slot1";
 
     function cloneState(data) {
       if (typeof structuredClone === "function") return structuredClone(data);
@@ -5013,6 +5022,36 @@ function generateId(prefix = "id") {
       return def ? def.label : slotId;
     }
 
+    function isPlayableSlot(slotId) {
+      return SAVE_SLOTS.some((s) => s.id === slotId && s.id !== "auto");
+    }
+
+    function setActiveSaveSlot(slotId, { persist = true, announce = false } = {}) {
+      if (!isPlayableSlot(slotId)) return;
+      activeSaveSlotId = slotId;
+      if (persist) localStorage.setItem(ACTIVE_SAVE_SLOT_KEY, slotId);
+      if (announce) log(`🎯 現在のセーブ先: ${getSaveSlotLabel(slotId)}`, "info");
+      renderSaveSlots();
+    }
+
+    function loadActiveSlotPreference() {
+      const stored = localStorage.getItem(ACTIVE_SAVE_SLOT_KEY);
+      if (isPlayableSlot(stored)) {
+        activeSaveSlotId = stored;
+      } else {
+        activeSaveSlotId = "slot1";
+        localStorage.setItem(ACTIVE_SAVE_SLOT_KEY, activeSaveSlotId);
+      }
+    }
+
+    function autoLoadLastActiveSlot() {
+      const { primary, backup } = readSlotPair(activeSaveSlotId);
+      const source = primary || backup;
+      if (!source) return false;
+      applyLoadedState(source, { usedBackup: !primary && !!backup, slotId: activeSaveSlotId });
+      return true;
+    }
+
     function readSlotPair(slotId) {
       return {
         primary: readSave(slotId, "primary"),
@@ -5036,12 +5075,19 @@ function generateId(prefix = "id") {
         const pair = readSlotPair(slot.id);
         const card = document.createElement("div");
         card.className = "save-slot-card";
+        if (slot.id === activeSaveSlotId) card.classList.add("active");
 
         const header = document.createElement("div");
         header.className = "save-slot-header";
         const title = document.createElement("div");
         title.className = "save-slot-title";
         title.textContent = slot.label;
+        if (slot.id === activeSaveSlotId) {
+          const activeBadge = document.createElement("span");
+          activeBadge.className = "save-slot-badge pill";
+          activeBadge.textContent = "プレイ中";
+          title.appendChild(activeBadge);
+        }
         if (slot.description) {
           const badge = document.createElement("span");
           badge.className = "save-slot-badge pill";
@@ -5056,6 +5102,12 @@ function generateId(prefix = "id") {
 
         const actions = document.createElement("div");
         actions.className = "save-slot-actions";
+
+        const activateBtn = document.createElement("button");
+        activateBtn.textContent = "このスロットで遊ぶ";
+        activateBtn.disabled = slot.id === "auto";
+        activateBtn.onclick = () => setActiveSaveSlot(slot.id, { announce: true });
+        actions.appendChild(activateBtn);
 
         const saveBtn = document.createElement("button");
         saveBtn.textContent = "このスロットに保存";
@@ -5105,6 +5157,7 @@ function generateId(prefix = "id") {
       if (!slotId || !action) return;
       if (action === "save") {
         writeSave(slotId, buildSaveState());
+        if (isPlayableSlot(slotId)) setActiveSaveSlot(slotId, { announce: true });
         renderSaveSlots();
       } else if (action === "load") {
         const { primary, backup } = readSlotPair(slotId);
@@ -5114,9 +5167,11 @@ function generateId(prefix = "id") {
           return;
         }
         applyLoadedState(source, { usedBackup: !primary && !!backup, slotId });
+        if (isPlayableSlot(slotId)) setActiveSaveSlot(slotId, { announce: true });
         renderSaveSlots();
       } else if (action === "delete") {
         deleteSave(slotId);
+        if (slotId === activeSaveSlotId) setActiveSaveSlot("slot1", { announce: true });
         renderSaveSlots();
       } else if (action === "export") {
         const { primary, backup } = readSlotPair(slotId);
@@ -5136,11 +5191,12 @@ function generateId(prefix = "id") {
       }
     }
 
-    function maybeAutoSave(reason = "オートセーブ") {
+    function requestAutoSave(reason = "オートセーブ") {
       const now = Date.now();
-      if (now - lastAutoSaveAt < AUTO_SAVE_INTERVAL_MS) return;
+      if (now - lastAutoSaveAt < AUTO_SAVE_COOLDOWN_MS) return;
       lastAutoSaveAt = now;
-      writeSave("auto", buildSaveState(), { silent: true, reason });
+      const targetSlot = isPlayableSlot(activeSaveSlotId) ? activeSaveSlotId : "slot1";
+      writeSave(targetSlot, buildSaveState(), { silent: true, reason });
       renderSaveSlots();
     }
 
@@ -5483,6 +5539,7 @@ function generateId(prefix = "id") {
         log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
       }
       updateUI();
+      requestAutoSave("ステータス調整");
     }
 
     function getAdjustStep() {
@@ -5649,6 +5706,7 @@ function generateId(prefix = "id") {
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave(delta > 0 ? "スキルレベルアップ" : "スキル調整");
     }
 
     function renderActiveSkillLoadout() {
@@ -6210,6 +6268,7 @@ function generateId(prefix = "id") {
       player.skillPoints += spent;
       updateUI();
       log("スキルをリセットしました", "info");
+      requestAutoSave("スキルリセット");
     }
 
     function openPlayerModal() {
@@ -6842,6 +6901,8 @@ function generateId(prefix = "id") {
       log(`↘️ ${reason}で${movementText} (${previousFloor}F → ${game.floor}F)`, tone);
       resetPlayerAfterPenalty();
       spawnEnemies();
+      updateUI();
+      requestAutoSave(`戦闘終了: ${reason}`);
     }
 
     function handlePlayerDefeat() {
@@ -6959,6 +7020,7 @@ function generateId(prefix = "id") {
       game.awaitingInput = false;
       game.turnQueue = [];
       updateUI();
+      requestAutoSave("ステージクリア");
     }
 
     function levelUp() {
@@ -6970,6 +7032,7 @@ function generateId(prefix = "id") {
       player.statPoints += 5;
       player.skillPoints += 1;
       log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
+      requestAutoSave("レベルアップ");
     }
 
     function resetAllocations() {
@@ -6985,6 +7048,7 @@ function generateId(prefix = "id") {
       updateUI();
       log("ステータスをリセットしました", "info");
       pendingResetSpent = 0;
+      requestAutoSave("ステータス振り直し");
     }
 
     function nextFloor() {
@@ -6997,6 +7061,7 @@ function generateId(prefix = "id") {
       game.turnQueue = [];
       spawnEnemies();
       updateUI();
+      requestAutoSave("次の階へ進行");
     }
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
@@ -7135,11 +7200,20 @@ function generateId(prefix = "id") {
       if (e.target === archetypeModal) closeArchetypeModal();
     });
 
+    loadActiveSlotPreference();
+    renderSaveSlots();
+
+    const loadedFromSave = autoLoadLastActiveSlot();
+
+    if (!loadedFromSave) {
       const initialDerived = recalcDerivedStats();
       renderSecondaryStats(initialDerived);
       log("=== 挑戦開始 ===", "info");
       spawnEnemies();
-      updateUI();
+      updateUI(initialDerived);
+    } else {
+      renderSaveSlots();
+    }
     })();
   </script>
 </body>
