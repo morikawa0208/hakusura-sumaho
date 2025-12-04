@@ -1162,7 +1162,19 @@
         <div id="active-skill-loadout" class="help-panel" style="margin-bottom: 6px;"></div>
         <div id="skills" style="margin-top: 6px;"></div>
       </div>
-      <div id="skill-summary-view" class="hidden">
+    </div>
+  </div>
+
+  <div id="skill-summary-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">全職業スキル一覧</div>
+          <div style="font-weight: 700;">取得レベルと習得状況をまとめて確認</div>
+        </div>
+        <button id="skill-summary-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="skill-summary-body">
         <div id="skills-summary" style="margin-top: 6px;"></div>
       </div>
     </div>
@@ -5553,11 +5565,11 @@ function generateId(prefix = "id") {
     }
 
     function updateSkillSummaryVisibility() {
-      if (skillSummaryView) {
-        skillSummaryView.classList.toggle("hidden", !skillSummaryVisible);
+      if (skillSummaryModal) {
+        skillSummaryModal.classList.toggle("hidden", !skillSummaryVisible);
       }
       if (skillSummaryToggleButton) {
-        skillSummaryToggleButton.textContent = skillSummaryVisible ? "一覧ビューを閉じる" : "全職業一覧を表示";
+        skillSummaryToggleButton.textContent = skillSummaryVisible ? "全職業一覧を閉じる" : "全職業一覧を表示";
         skillSummaryToggleButton.setAttribute("aria-pressed", skillSummaryVisible ? "true" : "false");
       }
     }
@@ -5571,16 +5583,6 @@ function generateId(prefix = "id") {
       renderSkillSummary();
       updateSkillSummaryVisibility();
     }
-
-      /*
-    function renderSkills() {
-      updateSkillStepButton();
-      renderActiveSkillLoadout();
-      renderSkillDetailList();
-      renderSkillSummary();
-      updateSkillViewVisibility();
-    }
-    */
 
     function isItemEquipped(item) {
       if (!item) return false;
@@ -5774,7 +5776,8 @@ function generateId(prefix = "id") {
     const skillStepButton = document.getElementById("skill-step");
     const skillSummaryToggleButton = document.getElementById("skill-summary-toggle");
     const skillDetailView = document.getElementById("skill-detail-view");
-    const skillSummaryView = document.getElementById("skill-summary-view");
+    const skillSummaryModal = document.getElementById("skill-summary-modal");
+    const skillSummaryCloseButton = document.getElementById("skill-summary-close");
     const resetSkillsButton = document.getElementById("reset-skills");
     const skillResetModal = document.getElementById("skill-reset-modal");
     const skillResetCloseButton = document.getElementById("skill-reset-close");
@@ -6751,8 +6754,19 @@ function generateId(prefix = "id") {
     });
 
     skillSummaryToggleButton?.addEventListener("click", () => {
+      renderSkillSummary();
       skillSummaryVisible = !skillSummaryVisible;
       updateSkillSummaryVisibility();
+    });
+    skillSummaryCloseButton?.addEventListener("click", () => {
+      skillSummaryVisible = false;
+      updateSkillSummaryVisibility();
+    });
+    skillSummaryModal?.addEventListener("click", (e) => {
+      if (e.target === skillSummaryModal) {
+        skillSummaryVisible = false;
+        updateSkillSummaryVisibility();
+      }
     });
 
     resetButton.addEventListener("click", () => {
