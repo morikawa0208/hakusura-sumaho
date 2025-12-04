@@ -711,6 +711,63 @@
       display: none;
     }
 
+    .save-slot-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .save-slot-card {
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .save-slot-card.active {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.24);
+    }
+
+    .save-slot-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .save-slot-title {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .save-slot-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .save-slot-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .save-slot-actions button {
+      flex: 1;
+      min-width: 120px;
+      font-size: 12px;
+      padding: 8px;
+    }
+
+    .save-slot-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+
     .equipment-option-list {
       display: grid;
       gap: 4px;
@@ -1224,6 +1281,7 @@
       <div class="debug-tabs">
         <button class="debug-tab-button active" data-tab="status">状態異常</button>
         <button class="debug-tab-button" data-tab="equipment">装備生成</button>
+        <button class="debug-tab-button" data-tab="save">セーブ</button>
       </div>
       <div id="debug-tab-status" class="debug-tab-panel">
         <div class="debug-selects">
@@ -1267,6 +1325,19 @@
         <div class="modal-actions">
           <button id="debug-generate-gear">装備品を作成して追加</button>
           <button id="debug-generate-gear-random">ランダム作成</button>
+        </div>
+      </div>
+      <div id="debug-tab-save" class="debug-tab-panel hidden">
+        <div class="help-panel">
+          <div class="option-label">冗長セーブ (ローカル保存 + 自動バックアップ)</div>
+          <div class="option-value">
+            各スロットは保存ごとに最新データとバックアップを2重で記録します。オートセーブ枠は一定間隔で自動保存されます。
+          </div>
+        </div>
+        <div id="save-slot-list" class="save-slot-list"></div>
+        <div class="subtle">
+          <span>バックアップは保存時に自動更新</span>
+          <span>JSONコピーで手動バックアップも可能</span>
         </div>
       </div>
     </div>
@@ -4288,6 +4359,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave("装備変更");
     }
 
     function unequipItem(slot) {
@@ -4295,6 +4367,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = null;
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave("装備変更");
     }
 
     function isBossFloor(floor) {
@@ -4823,23 +4896,307 @@ function generateId(prefix = "id") {
     }
 
     function switchDebugTab(tabKey) {
-      if (!debugTabStatus || !debugTabEquipment) return;
-      const useEquipment = tabKey === "equipment";
-      debugTabStatus.classList.toggle("hidden", useEquipment);
-      debugTabEquipment.classList.toggle("hidden", !useEquipment);
+      const panels = {
+        status: debugTabStatus,
+        equipment: debugTabEquipment,
+        save: debugTabSave,
+      };
+      Object.entries(panels).forEach(([key, panel]) => {
+        panel?.classList.toggle("hidden", key !== tabKey);
+      });
       debugTabButtons.forEach((btn) => {
         const active = btn.dataset.tab === tabKey;
         btn.classList.toggle("active", active);
       });
-      if (useEquipment) {
+      if (tabKey === "equipment") {
         populateDebugGearSelects();
         populateLegendaryTemplateSelect();
         renderDebugGearPreview(lastGeneratedEquipment);
-      } else {
+      } else if (tabKey === "status") {
         populateDebugEnemySelect();
         renderDebugStatusButtons();
         updateDebugTargetState();
+      } else if (tabKey === "save") {
+        renderSaveSlots();
       }
+    }
+
+    const SAVE_VERSION = 1;
+    const SAVE_SLOTS = [
+      { id: "auto", label: "オートセーブ", description: "予備バックアップ用 (手動保存)" },
+      { id: "slot1", label: "スロット1" },
+      { id: "slot2", label: "スロット2" },
+      { id: "slot3", label: "スロット3" },
+    ];
+    const ACTIVE_SAVE_SLOT_KEY = "hakusura-active-slot";
+    const AUTO_SAVE_COOLDOWN_MS = 3000;
+    let lastAutoSaveAt = 0;
+    let activeSaveSlotId = "slot1";
+
+    function cloneState(data) {
+      if (typeof structuredClone === "function") return structuredClone(data);
+      return JSON.parse(JSON.stringify(data));
+    }
+
+    function saveStorageKey(slotId, type = "primary") {
+      return `hakusura-save-${slotId}-${type}`;
+    }
+
+    function readSave(slotId, type = "primary") {
+      try {
+        const raw = localStorage.getItem(saveStorageKey(slotId, type));
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (data?.version !== SAVE_VERSION) return null;
+        return data;
+      } catch (err) {
+        console.warn("save read failed", err);
+        return null;
+      }
+    }
+
+    function writeSave(slotId, state, { silent = false, reason = "手動保存" } = {}) {
+      try {
+        const payload = { ...state, version: SAVE_VERSION, savedAt: Date.now(), reason };
+        const primaryKey = saveStorageKey(slotId, "primary");
+        const backupKey = saveStorageKey(slotId, "backup");
+        const currentPrimary = localStorage.getItem(primaryKey);
+        if (currentPrimary) {
+          localStorage.setItem(backupKey, currentPrimary);
+        }
+        localStorage.setItem(primaryKey, JSON.stringify(payload));
+        if (!silent) {
+          log(`💾 ${getSaveSlotLabel(slotId)} に保存しました`, "good");
+        }
+      } catch (err) {
+        console.error("save failed", err);
+        if (!silent) log("保存に失敗しました (ストレージ使用不可)", "danger");
+      }
+    }
+
+    function deleteSave(slotId) {
+      localStorage.removeItem(saveStorageKey(slotId, "primary"));
+      localStorage.removeItem(saveStorageKey(slotId, "backup"));
+      log(`🗑 ${getSaveSlotLabel(slotId)} を削除しました`, "info");
+    }
+
+    function buildSaveState() {
+      return cloneState({
+        player,
+        game,
+        skills,
+      });
+    }
+
+    function replaceObject(target, source) {
+      Object.keys(target).forEach((key) => delete target[key]);
+      Object.entries(source).forEach(([key, value]) => {
+        target[key] = cloneState(value);
+      });
+    }
+
+    function applyLoadedState(state, { usedBackup = false, slotId } = {}) {
+      if (!state) return false;
+      const payload = cloneState(state);
+      replaceObject(player, payload.player || {});
+      replaceObject(game, payload.game || {});
+      replaceObject(skills, payload.skills || {});
+      calculateSkillBonuses();
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+      renderInventoryFilters();
+      renderInventory();
+      renderSkillSummary();
+      renderActiveSkillLoadout();
+      buildTurnQueue();
+      log(
+        `📂 ${getSaveSlotLabel(slotId)} からロードしました${usedBackup ? " (バックアップから復旧)" : ""}`,
+        "good"
+      );
+      return true;
+    }
+
+    function getSaveSlotLabel(slotId) {
+      const def = SAVE_SLOTS.find((s) => s.id === slotId);
+      return def ? def.label : slotId;
+    }
+
+    function isPlayableSlot(slotId) {
+      return SAVE_SLOTS.some((s) => s.id === slotId && s.id !== "auto");
+    }
+
+    function setActiveSaveSlot(slotId, { persist = true, announce = false } = {}) {
+      if (!isPlayableSlot(slotId)) return;
+      activeSaveSlotId = slotId;
+      if (persist) localStorage.setItem(ACTIVE_SAVE_SLOT_KEY, slotId);
+      if (announce) log(`🎯 現在のセーブ先: ${getSaveSlotLabel(slotId)}`, "info");
+      renderSaveSlots();
+    }
+
+    function loadActiveSlotPreference() {
+      const stored = localStorage.getItem(ACTIVE_SAVE_SLOT_KEY);
+      if (isPlayableSlot(stored)) {
+        activeSaveSlotId = stored;
+      } else {
+        activeSaveSlotId = "slot1";
+        localStorage.setItem(ACTIVE_SAVE_SLOT_KEY, activeSaveSlotId);
+      }
+    }
+
+    function autoLoadLastActiveSlot() {
+      const { primary, backup } = readSlotPair(activeSaveSlotId);
+      const source = primary || backup;
+      if (!source) return false;
+      applyLoadedState(source, { usedBackup: !primary && !!backup, slotId: activeSaveSlotId });
+      return true;
+    }
+
+    function readSlotPair(slotId) {
+      return {
+        primary: readSave(slotId, "primary"),
+        backup: readSave(slotId, "backup"),
+      };
+    }
+
+    function formatSaveMeta(state) {
+      if (!state) return "未保存";
+      const date = state.savedAt ? new Date(state.savedAt) : null;
+      const ts = date ? date.toLocaleString() : "不明な日時";
+      const level = state.player?.level ?? "?";
+      const floor = state.game?.floor ?? "?";
+      return `Lv${level} / ${floor}F @ ${ts}`;
+    }
+
+    function renderSaveSlots() {
+      if (!saveSlotList) return;
+      saveSlotList.innerHTML = "";
+      SAVE_SLOTS.forEach((slot) => {
+        const pair = readSlotPair(slot.id);
+        const card = document.createElement("div");
+        card.className = "save-slot-card";
+        if (slot.id === activeSaveSlotId) card.classList.add("active");
+
+        const header = document.createElement("div");
+        header.className = "save-slot-header";
+        const title = document.createElement("div");
+        title.className = "save-slot-title";
+        title.textContent = slot.label;
+        if (slot.id === activeSaveSlotId) {
+          const activeBadge = document.createElement("span");
+          activeBadge.className = "save-slot-badge pill";
+          activeBadge.textContent = "プレイ中";
+          title.appendChild(activeBadge);
+        }
+        if (slot.description) {
+          const badge = document.createElement("span");
+          badge.className = "save-slot-badge pill";
+          badge.textContent = slot.description;
+          title.appendChild(badge);
+        }
+        const meta = document.createElement("div");
+        meta.className = "save-slot-meta";
+        meta.textContent = formatSaveMeta(pair.primary || pair.backup);
+        header.appendChild(title);
+        header.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "save-slot-actions";
+
+        const activateBtn = document.createElement("button");
+        activateBtn.textContent = "このスロットで遊ぶ";
+        activateBtn.disabled = slot.id === "auto";
+        activateBtn.onclick = () => setActiveSaveSlot(slot.id, { announce: true });
+        actions.appendChild(activateBtn);
+
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "このスロットに保存";
+        saveBtn.dataset.saveAction = "save";
+        saveBtn.dataset.slot = slot.id;
+        actions.appendChild(saveBtn);
+
+        const loadBtn = document.createElement("button");
+        loadBtn.textContent = "ロード";
+        loadBtn.dataset.saveAction = "load";
+        loadBtn.dataset.slot = slot.id;
+        loadBtn.disabled = !pair.primary && !pair.backup;
+        actions.appendChild(loadBtn);
+
+        const exportBtn = document.createElement("button");
+        exportBtn.textContent = "JSONをコピー";
+        exportBtn.dataset.saveAction = "export";
+        exportBtn.dataset.slot = slot.id;
+        exportBtn.disabled = !pair.primary && !pair.backup;
+        actions.appendChild(exportBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "データ削除";
+        deleteBtn.dataset.saveAction = "delete";
+        deleteBtn.dataset.slot = slot.id;
+        deleteBtn.disabled = !pair.primary && !pair.backup;
+        actions.appendChild(deleteBtn);
+
+        const backupRow = document.createElement("div");
+        backupRow.className = "subtle";
+        backupRow.textContent = pair.backup
+          ? "バックアップあり (直前の保存を保持)"
+          : "バックアップ未作成";
+
+        card.appendChild(header);
+        card.appendChild(actions);
+        card.appendChild(backupRow);
+        saveSlotList.appendChild(card);
+      });
+    }
+
+    function handleSaveAction(event) {
+      const btn = event.target.closest("[data-save-action]");
+      if (!btn) return;
+      const slotId = btn.dataset.slot;
+      const action = btn.dataset.saveAction;
+      if (!slotId || !action) return;
+      if (action === "save") {
+        writeSave(slotId, buildSaveState());
+        if (isPlayableSlot(slotId)) setActiveSaveSlot(slotId, { announce: true });
+        renderSaveSlots();
+      } else if (action === "load") {
+        const { primary, backup } = readSlotPair(slotId);
+        const source = primary || backup;
+        if (!source) {
+          log("保存データがありません", "warning");
+          return;
+        }
+        applyLoadedState(source, { usedBackup: !primary && !!backup, slotId });
+        if (isPlayableSlot(slotId)) setActiveSaveSlot(slotId, { announce: true });
+        renderSaveSlots();
+      } else if (action === "delete") {
+        deleteSave(slotId);
+        if (slotId === activeSaveSlotId) setActiveSaveSlot("slot1", { announce: true });
+        renderSaveSlots();
+      } else if (action === "export") {
+        const { primary, backup } = readSlotPair(slotId);
+        const source = primary || backup;
+        if (!source) {
+          log("エクスポートできるデータがありません", "warning");
+          return;
+        }
+        const json = JSON.stringify(source);
+        navigator.clipboard
+          ?.writeText(json)
+          .then(() => log("クリップボードにコピーしました", "info"))
+          .catch(() => {
+            log("コピーできませんでした。手動で選択してください", "warning");
+            prompt("下記をコピーしてください", json);
+          });
+      }
+    }
+
+    function requestAutoSave(reason = "オートセーブ") {
+      const now = Date.now();
+      if (now - lastAutoSaveAt < AUTO_SAVE_COOLDOWN_MS) return;
+      lastAutoSaveAt = now;
+      const targetSlot = isPlayableSlot(activeSaveSlotId) ? activeSaveSlotId : "slot1";
+      writeSave(targetSlot, buildSaveState(), { silent: true, reason });
+      renderSaveSlots();
     }
 
     let lastGeneratedEquipment = null;
@@ -5181,6 +5538,7 @@ function generateId(prefix = "id") {
         log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
       }
       updateUI();
+      requestAutoSave("ステータス調整");
     }
 
     function getAdjustStep() {
@@ -5347,6 +5705,7 @@ function generateId(prefix = "id") {
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       updateUI(derived);
+      requestAutoSave(delta > 0 ? "スキルレベルアップ" : "スキル調整");
     }
 
     function renderActiveSkillLoadout() {
@@ -5793,6 +6152,8 @@ function generateId(prefix = "id") {
     const debugTabButtons = document.querySelectorAll(".debug-tab-button");
     const debugTabStatus = document.getElementById("debug-tab-status");
     const debugTabEquipment = document.getElementById("debug-tab-equipment");
+    const debugTabSave = document.getElementById("debug-tab-save");
+    const saveSlotList = document.getElementById("save-slot-list");
     const debugGearSlotSelect = document.getElementById("debug-gear-slot");
     const debugGearRaritySelect = document.getElementById("debug-gear-rarity");
     const debugLegendaryWrapper = document.getElementById("debug-legendary-wrapper");
@@ -5906,6 +6267,7 @@ function generateId(prefix = "id") {
       player.skillPoints += spent;
       updateUI();
       log("スキルをリセットしました", "info");
+      requestAutoSave("スキルリセット");
     }
 
     function openPlayerModal() {
@@ -6538,6 +6900,8 @@ function generateId(prefix = "id") {
       log(`↘️ ${reason}で${movementText} (${previousFloor}F → ${game.floor}F)`, tone);
       resetPlayerAfterPenalty();
       spawnEnemies();
+      updateUI();
+      requestAutoSave(`戦闘終了: ${reason}`);
     }
 
     function handlePlayerDefeat() {
@@ -6655,6 +7019,7 @@ function generateId(prefix = "id") {
       game.awaitingInput = false;
       game.turnQueue = [];
       updateUI();
+      requestAutoSave("ステージクリア");
     }
 
     function levelUp() {
@@ -6666,6 +7031,7 @@ function generateId(prefix = "id") {
       player.statPoints += 5;
       player.skillPoints += 1;
       log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
+      requestAutoSave("レベルアップ");
     }
 
     function resetAllocations() {
@@ -6681,6 +7047,7 @@ function generateId(prefix = "id") {
       updateUI();
       log("ステータスをリセットしました", "info");
       pendingResetSpent = 0;
+      requestAutoSave("ステータス振り直し");
     }
 
     function nextFloor() {
@@ -6693,6 +7060,7 @@ function generateId(prefix = "id") {
       game.turnQueue = [];
       spawnEnemies();
       updateUI();
+      requestAutoSave("次の階へ進行");
     }
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
@@ -6721,6 +7089,7 @@ function generateId(prefix = "id") {
     debugTabButtons.forEach((btn) => {
       btn.addEventListener("click", () => switchDebugTab(btn.dataset.tab));
     });
+    saveSlotList?.addEventListener("click", handleSaveAction);
     debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
     debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
     debugGenerateGearButton?.addEventListener("click", () => {
@@ -6830,11 +7199,20 @@ function generateId(prefix = "id") {
       if (e.target === archetypeModal) closeArchetypeModal();
     });
 
+    loadActiveSlotPreference();
+    renderSaveSlots();
+
+    const loadedFromSave = autoLoadLastActiveSlot();
+
+    if (!loadedFromSave) {
       const initialDerived = recalcDerivedStats();
       renderSecondaryStats(initialDerived);
       log("=== 挑戦開始 ===", "info");
       spawnEnemies();
-      updateUI();
+      updateUI(initialDerived);
+    } else {
+      renderSaveSlots();
+    }
     })();
   </script>
 </body>
