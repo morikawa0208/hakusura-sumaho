@@ -4733,6 +4733,7 @@ function generateId(prefix = "id") {
       renderPrimaryStats();
       renderSkills();
       renderStatusList(document.getElementById("player-status-list"), player);
+      maybeAutoSave("画面更新");
     }
 
     function renderStatusList(container, entity) {
