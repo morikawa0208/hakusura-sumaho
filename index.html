@@ -4934,6 +4934,22 @@ function generateId(prefix = "id") {
     let lastAutoSaveAt = 0;
     let activeSaveSlotId = "slot1";
 
+function maybeAutoSave(reason = "auto") {
+  // 連打対策用のクールタイム
+  const now = Date.now();
+  if (now - lastAutoSaveAt < AUTO_SAVE_COOLDOWN_MS) {
+    return; // まだクールタイム中なのでスキップ
+  }
+  lastAutoSaveAt = now;
+
+  // 実際の保存処理
+  try {
+    requestAutoSave(reason);
+  } catch (e) {
+    console.error("auto save failed:", e);
+  }
+}
+      
     function cloneState(data) {
       if (typeof structuredClone === "function") return structuredClone(data);
       return JSON.parse(JSON.stringify(data));
