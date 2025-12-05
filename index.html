@@ -525,6 +525,20 @@
       color: #fee2e2;
     }
 
+    .cooldown-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(96, 165, 250, 0.18);
+      border: 1px solid rgba(96, 165, 250, 0.5);
+      color: #dbeafe;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      line-height: 1.2;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .action-button-wrapper {
       position: relative;
     }
@@ -600,6 +614,27 @@
       font-weight: 700;
       background: rgba(255, 255, 255, 0.08);
       flex-shrink: 0;
+    }
+
+    .skill-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .skill-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .skill-name {
+      font-weight: 700;
+      font-size: 13px;
     }
 
     .enemy-top {
@@ -1092,6 +1127,25 @@
       <div class="help-panel" style="margin-top: 10px;">
         敵を倒すと少しずつ補充されます。
       </div>
+    </div>
+  </div>
+
+  <div id="skill-info-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">スキル詳細</div>
+          <div id="skill-info-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="skill-info-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div>種類 <span id="skill-info-type"></span></div>
+        <div>CT <span id="skill-info-cooldown"></span></div>
+        <div>習得状況 <span id="skill-info-level"></span></div>
+        <div>効果 <span id="skill-info-effect"></span></div>
+      </div>
+      <div class="help-panel" id="skill-info-note" style="margin-top: 10px;"></div>
     </div>
   </div>
 
@@ -3044,6 +3098,8 @@ function generateId(prefix = "id") {
       defeatedBosses: 0,
     };
 
+    let lastDerivedStats = null;
+
     const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
     const SKILL_DEFINITIONS = [
@@ -4625,6 +4681,15 @@ function generateId(prefix = "id") {
       });
     }
 
+    function tickSkillCooldowns() {
+      player.activeSkillSlots = player.activeSkillSlots || [];
+      player.activeSkillSlots.forEach((slot) => {
+        if (slot.cooldownRemaining > 0) {
+          slot.cooldownRemaining = Math.max(0, slot.cooldownRemaining - 1);
+        }
+      });
+    }
+
     function buildTurnQueue() {
       const queue = [];
       if (player.hp > 0) {
@@ -4693,6 +4758,9 @@ function generateId(prefix = "id") {
       entity.attacksRemaining = baseAttacks;
       applyDotEffects(entity);
       if (entity.hp <= 0) return { defeated: true, skipTurn: true };
+      if (entity === player) {
+        tickSkillCooldowns();
+      }
       const skipTurn = hasStatus(entity, "stun") || hasStatus(entity, "sleep");
       if (skipTurn) {
         log(`${entity.name} は行動不能…`, "warning");
@@ -4714,6 +4782,7 @@ function generateId(prefix = "id") {
 
     function updateUI(derivedStats = null) {
       const derived = derivedStats || recalcDerivedStats();
+      lastDerivedStats = derived;
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
@@ -5452,6 +5521,76 @@ function maybeAutoSave(reason = "auto") {
         row.appendChild(potionRow);
       });
 
+      (player.activeSkillSlots || []).forEach((slot, index) => {
+        const skill = slot.skillKey ? skills[slot.skillKey] : null;
+        const wrapper = document.createElement("div");
+        wrapper.className = "action-button-wrapper";
+
+        const skillBtn = document.createElement("button");
+        skillBtn.className = "skill-button";
+        const remaining = Math.max(0, slot.cooldownRemaining || 0);
+        const ready = remaining <= 0;
+        const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
+        skillBtn.disabled = skill ? (!canAct || !ready) : false;
+        skillBtn.title = skill
+          ? (skill.activation?.effect
+            ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T`
+            : "セットしたスキル")
+          : "スキル未セット";
+        skillBtn.onclick = () => {
+          if (!skill) {
+            openSkillsModal();
+            return;
+          }
+          useActiveSkill(index);
+        };
+
+        const name = document.createElement("div");
+        name.className = "skill-name";
+        name.textContent = skill ? skill.name : `スキル${index + 1} 未セット`;
+
+        const textWrap = document.createElement("div");
+        textWrap.className = "skill-text";
+        textWrap.appendChild(name);
+
+        const infoBtn = document.createElement("div");
+        infoBtn.className = "potion-info-button";
+        infoBtn.textContent = "i";
+        infoBtn.title = "スキル詳細";
+        infoBtn.tabIndex = 0;
+        infoBtn.setAttribute("role", "button");
+        infoBtn.onclick = (event) => {
+          event.stopPropagation();
+          if (skill) {
+            openSkillInfoModal(skill);
+          } else {
+            openSkillsModal();
+          }
+        };
+        infoBtn.onkeydown = (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (skill) {
+              openSkillInfoModal(skill);
+            } else {
+              openSkillsModal();
+            }
+          }
+        };
+
+        skillBtn.appendChild(textWrap);
+        skillBtn.appendChild(infoBtn);
+
+        const badge = document.createElement("div");
+        badge.className = "cooldown-badge";
+        badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
+
+        wrapper.appendChild(skillBtn);
+        wrapper.appendChild(badge);
+        row.appendChild(wrapper);
+      });
+
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
@@ -5644,6 +5783,7 @@ function maybeAutoSave(reason = "auto") {
         player.activeSkillSlots[assignedIndex] = { skillKey: null, cooldownRemaining: 0 };
         log(`🗑 ${skill.name}をスロット${assignedIndex + 1}から解除`, "info");
         renderActiveSkillLoadout();
+        renderActions();
         return;
       }
       const emptyIndex = player.activeSkillSlots.findIndex((slot) => !slot.skillKey);
@@ -5654,6 +5794,16 @@ function maybeAutoSave(reason = "auto") {
       player.activeSkillSlots[emptyIndex] = { skillKey, cooldownRemaining: 0 };
       log(`✨ ${skill.name}をスロット${emptyIndex + 1}にセット`, "good");
       renderActiveSkillLoadout();
+      renderActions();
+    }
+
+    function getEffectiveSkillCooldown(skill) {
+      const derived = lastDerivedStats || recalcDerivedStats();
+      const baseCooldown = Math.max(0, skill?.activation?.cooldown ?? 0);
+      if (baseCooldown <= 0) return 0;
+      const reduction = Math.max(0, derived?.cooldown?.total ?? 0);
+      const scaled = Math.round(baseCooldown * (1 - reduction / 100));
+      return Math.max(1, scaled);
     }
 
     function renderSkillThresholds(skill, { locked = false } = {}) {
@@ -6110,12 +6260,14 @@ function maybeAutoSave(reason = "auto") {
 
     const enemyModal = document.getElementById("enemy-modal");
     const potionModal = document.getElementById("potion-modal");
+    const skillInfoModal = document.getElementById("skill-info-modal");
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
     const inventoryModal = document.getElementById("inventory-modal");
     const inventoryItemModal = document.getElementById("inventory-item-modal");
     const closeModalButton = document.getElementById("modal-close");
     const potionModalCloseButton = document.getElementById("potion-close");
+    const skillInfoCloseButton = document.getElementById("skill-info-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
     const inventoryModalCloseButton = document.getElementById("inventory-close");
@@ -6127,6 +6279,12 @@ function maybeAutoSave(reason = "auto") {
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
     const potionModalFill = document.getElementById("potion-modal-fill");
+    const skillInfoName = document.getElementById("skill-info-name");
+    const skillInfoType = document.getElementById("skill-info-type");
+    const skillInfoCooldown = document.getElementById("skill-info-cooldown");
+    const skillInfoLevel = document.getElementById("skill-info-level");
+    const skillInfoEffect = document.getElementById("skill-info-effect");
+    const skillInfoNote = document.getElementById("skill-info-note");
     const inventoryItemName = document.getElementById("inventory-item-name");
     const inventoryItemDesc = document.getElementById("inventory-item-desc");
     const inventoryItemMeta = document.getElementById("inventory-item-meta");
@@ -6255,6 +6413,28 @@ function maybeAutoSave(reason = "auto") {
 
     function closePotionModal() {
       potionModal.classList.add("hidden");
+    }
+
+    function openSkillInfoModal(skill) {
+      if (!skill) return;
+      const baseCooldown = skill.activation?.cooldown ?? 0;
+      const effectiveCooldown = baseCooldown > 0 ? getEffectiveSkillCooldown(skill) : 0;
+      const cooldownText = baseCooldown
+        ? `基礎 ${baseCooldown}T / 実効 ${effectiveCooldown}T`
+        : "CTなし";
+      skillInfoName.textContent = skill.name;
+      skillInfoType.textContent = `${skill.type === "active" ? "アクティブ" : "パッシブ"} (${skill.category || "分類不明"})`;
+      skillInfoCooldown.textContent = cooldownText;
+      skillInfoLevel.textContent = `${skill.level || 0} / ${skill.max ?? "--"}`;
+      skillInfoEffect.textContent = skill.activation?.effect || skill.desc || "効果未設定";
+      skillInfoNote.textContent = skill.scaling?.perLevel
+        ? `毎Lv: ${formatSkillBonusText(skill.scaling.perLevel)}`
+        : "詳細はスキル一覧で確認できます";
+      skillInfoModal?.classList.remove("hidden");
+    }
+
+    function closeSkillInfoModal() {
+      skillInfoModal?.classList.add("hidden");
     }
 
     function resetSkillBonuses() {
@@ -6785,6 +6965,58 @@ function maybeAutoSave(reason = "auto") {
       endPlayerTurn();
     }
 
+    function useActiveSkill(slotIndex) {
+      if (!game.awaitingInput) return;
+      if (hasStatus(player, "silence")) {
+        log("沈黙中でスキルが使えない！", "warning");
+        return;
+      }
+
+      const slot = player.activeSkillSlots?.[slotIndex];
+      const skill = slot?.skillKey ? skills[slot.skillKey] : null;
+      if (!skill || skill.type !== "active") {
+        log("この枠にはスキルがセットされていません", "warning");
+        return;
+      }
+      if (skill.level <= 0) {
+        log("スキルを習得してから使用してください", "warning");
+        return;
+      }
+      if (slot.cooldownRemaining > 0) {
+        log(`${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`, "warning");
+        return;
+      }
+
+      const target = chooseTargetForPlayer();
+      if (!target) return;
+
+      const hit = attemptHit(player, target);
+      const effectLabel = skill.activation?.effect ? `: ${skill.activation.effect}` : "";
+      if (!hit) {
+        log(`🌀 ${skill.name}${effectLabel} は外れた…`, "warning");
+        slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+        renderActiveSkillLoadout();
+        updateUI();
+        return;
+      }
+
+      const baseDamage = calcDamage(player, target);
+      const multiplier = 1.1 + skill.level * 0.02;
+      const dmg = Math.round(baseDamage * multiplier);
+      const dealt = applyDamage(target, dmg, { source: skill.name });
+      log(`🌀 ${skill.name}${effectLabel}！ ${target.name} に ${dealt} ダメージ`, "player");
+
+      if (target.hp <= 0) {
+        log(`${target.name} を倒した！`, "good");
+        onEnemyDefeated(target, { cause: skill.name });
+        checkVictory();
+      }
+
+      slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+      renderActiveSkillLoadout();
+      updateUI();
+    }
+
     function powerStrike() {
       if (!game.awaitingInput) return;
       if (hasStatus(player, "silence")) {
@@ -6896,6 +7128,9 @@ function maybeAutoSave(reason = "auto") {
       player.hp = player.maxHp;
       player.mp = player.maxMp;
       player.attacksRemaining = player.attackCount;
+      player.activeSkillSlots.forEach((slot) => {
+        slot.cooldownRemaining = 0;
+      });
       game.enemies = [];
       game.turnQueue = [];
       game.awaitingInput = false;
@@ -7080,6 +7315,7 @@ function maybeAutoSave(reason = "auto") {
     archetypeCloseButton?.addEventListener("click", closeArchetypeModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
     potionModalCloseButton.addEventListener("click", closePotionModal);
+    skillInfoCloseButton?.addEventListener("click", closeSkillInfoModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
     inventoryModalCloseButton?.addEventListener("click", closeInventoryModal);
@@ -7167,6 +7403,9 @@ function maybeAutoSave(reason = "auto") {
     });
     potionModal.addEventListener("click", (e) => {
       if (e.target === potionModal) closePotionModal();
+    });
+    skillInfoModal?.addEventListener("click", (e) => {
+      if (e.target === skillInfoModal) closeSkillInfoModal();
     });
     resetSkillsButton.addEventListener("click", () => {
       const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
