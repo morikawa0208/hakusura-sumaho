@@ -525,6 +525,20 @@
       color: #fee2e2;
     }
 
+    .cooldown-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(96, 165, 250, 0.18);
+      border: 1px solid rgba(96, 165, 250, 0.5);
+      color: #dbeafe;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      line-height: 1.2;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .action-button-wrapper {
       position: relative;
     }
@@ -3044,6 +3058,8 @@ function generateId(prefix = "id") {
       defeatedBosses: 0,
     };
 
+    let lastDerivedStats = null;
+
     const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
     const SKILL_DEFINITIONS = [
@@ -4625,6 +4641,15 @@ function generateId(prefix = "id") {
       });
     }
 
+    function tickSkillCooldowns() {
+      player.activeSkillSlots = player.activeSkillSlots || [];
+      player.activeSkillSlots.forEach((slot) => {
+        if (slot.cooldownRemaining > 0) {
+          slot.cooldownRemaining = Math.max(0, slot.cooldownRemaining - 1);
+        }
+      });
+    }
+
     function buildTurnQueue() {
       const queue = [];
       if (player.hp > 0) {
@@ -4693,6 +4718,9 @@ function generateId(prefix = "id") {
       entity.attacksRemaining = baseAttacks;
       applyDotEffects(entity);
       if (entity.hp <= 0) return { defeated: true, skipTurn: true };
+      if (entity === player) {
+        tickSkillCooldowns();
+      }
       const skipTurn = hasStatus(entity, "stun") || hasStatus(entity, "sleep");
       if (skipTurn) {
         log(`${entity.name} は行動不能…`, "warning");
@@ -4714,6 +4742,7 @@ function generateId(prefix = "id") {
 
     function updateUI(derivedStats = null) {
       const derived = derivedStats || recalcDerivedStats();
+      lastDerivedStats = derived;
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
@@ -5452,6 +5481,32 @@ function maybeAutoSave(reason = "auto") {
         row.appendChild(potionRow);
       });
 
+      (player.activeSkillSlots || []).forEach((slot, index) => {
+        const skill = slot.skillKey ? skills[slot.skillKey] : null;
+        if (!skill) return;
+        const wrapper = document.createElement("div");
+        wrapper.className = "action-button-wrapper";
+
+        const skillBtn = document.createElement("button");
+        const remaining = Math.max(0, slot.cooldownRemaining || 0);
+        const ready = remaining <= 0;
+        skillBtn.textContent = ready ? skill.name : `${skill.name} (${remaining}T)`;
+        skillBtn.disabled = !canAct || !ready;
+        skillBtn.title = skill.activation?.effect
+          ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T`
+          : "セットしたスキル";
+        skillBtn.onclick = () => useActiveSkill(index);
+
+        const badge = document.createElement("div");
+        badge.className = "cooldown-badge";
+        const baseCooldown = getEffectiveSkillCooldown(skill);
+        badge.textContent = ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`;
+
+        wrapper.appendChild(skillBtn);
+        wrapper.appendChild(badge);
+        row.appendChild(wrapper);
+      });
+
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
@@ -5654,6 +5709,15 @@ function maybeAutoSave(reason = "auto") {
       player.activeSkillSlots[emptyIndex] = { skillKey, cooldownRemaining: 0 };
       log(`✨ ${skill.name}をスロット${emptyIndex + 1}にセット`, "good");
       renderActiveSkillLoadout();
+    }
+
+    function getEffectiveSkillCooldown(skill) {
+      const derived = lastDerivedStats || recalcDerivedStats();
+      const baseCooldown = Math.max(0, skill?.activation?.cooldown ?? 0);
+      if (baseCooldown <= 0) return 0;
+      const reduction = Math.max(0, derived?.cooldown?.total ?? 0);
+      const scaled = Math.round(baseCooldown * (1 - reduction / 100));
+      return Math.max(1, scaled);
     }
 
     function renderSkillThresholds(skill, { locked = false } = {}) {
@@ -6785,6 +6849,60 @@ function maybeAutoSave(reason = "auto") {
       endPlayerTurn();
     }
 
+    function useActiveSkill(slotIndex) {
+      if (!game.awaitingInput) return;
+      if (hasStatus(player, "silence")) {
+        log("沈黙中でスキルが使えない！", "warning");
+        return;
+      }
+
+      const slot = player.activeSkillSlots?.[slotIndex];
+      const skill = slot?.skillKey ? skills[slot.skillKey] : null;
+      if (!skill || skill.type !== "active") {
+        log("この枠にはスキルがセットされていません", "warning");
+        return;
+      }
+      if (skill.level <= 0) {
+        log("スキルを習得してから使用してください", "warning");
+        return;
+      }
+      if (slot.cooldownRemaining > 0) {
+        log(`${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`, "warning");
+        return;
+      }
+
+      const target = chooseTargetForPlayer();
+      if (!target) return;
+
+      const hit = attemptHit(player, target);
+      const effectLabel = skill.activation?.effect ? `: ${skill.activation.effect}` : "";
+      if (!hit) {
+        log(`🌀 ${skill.name}${effectLabel} は外れた…`, "warning");
+        slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+        renderActiveSkillLoadout();
+        updateUI();
+        endPlayerTurn();
+        return;
+      }
+
+      const baseDamage = calcDamage(player, target);
+      const multiplier = 1.1 + skill.level * 0.02;
+      const dmg = Math.round(baseDamage * multiplier);
+      const dealt = applyDamage(target, dmg, { source: skill.name });
+      log(`🌀 ${skill.name}${effectLabel}！ ${target.name} に ${dealt} ダメージ`, "player");
+
+      if (target.hp <= 0) {
+        log(`${target.name} を倒した！`, "good");
+        onEnemyDefeated(target, { cause: skill.name });
+        checkVictory();
+      }
+
+      slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+      renderActiveSkillLoadout();
+      updateUI();
+      endPlayerTurn();
+    }
+
     function powerStrike() {
       if (!game.awaitingInput) return;
       if (hasStatus(player, "silence")) {
@@ -6896,6 +7014,9 @@ function maybeAutoSave(reason = "auto") {
       player.hp = player.maxHp;
       player.mp = player.maxMp;
       player.attacksRemaining = player.attackCount;
+      player.activeSkillSlots.forEach((slot) => {
+        slot.cooldownRemaining = 0;
+      });
       game.enemies = [];
       game.turnQueue = [];
       game.awaitingInput = false;
