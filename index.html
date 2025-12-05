@@ -637,15 +637,6 @@
       font-size: 13px;
     }
 
-    .skill-meta {
-      font-size: 12px;
-      color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
     .enemy-top {
       display: flex;
       align-items: center;
@@ -5532,7 +5523,6 @@ function maybeAutoSave(reason = "auto") {
 
       (player.activeSkillSlots || []).forEach((slot, index) => {
         const skill = slot.skillKey ? skills[slot.skillKey] : null;
-        if (!skill) return;
         const wrapper = document.createElement("div");
         wrapper.className = "action-button-wrapper";
 
@@ -5540,27 +5530,28 @@ function maybeAutoSave(reason = "auto") {
         skillBtn.className = "skill-button";
         const remaining = Math.max(0, slot.cooldownRemaining || 0);
         const ready = remaining <= 0;
-        skillBtn.disabled = !canAct || !ready;
-        skillBtn.title = skill.activation?.effect
-          ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T`
-          : "セットしたスキル";
-        skillBtn.onclick = () => useActiveSkill(index);
+        const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
+        skillBtn.disabled = skill ? (!canAct || !ready) : false;
+        skillBtn.title = skill
+          ? (skill.activation?.effect
+            ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T`
+            : "セットしたスキル")
+          : "スキル未セット";
+        skillBtn.onclick = () => {
+          if (!skill) {
+            openSkillsModal();
+            return;
+          }
+          useActiveSkill(index);
+        };
 
         const name = document.createElement("div");
         name.className = "skill-name";
-        name.textContent = skill.name;
-
-        const meta = document.createElement("div");
-        meta.className = "skill-meta";
-        const baseCooldown = getEffectiveSkillCooldown(skill);
-        const cooldownText = ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`;
-        const effectText = skill.activation?.effect ? `効果: ${skill.activation.effect}` : "効果: 未設定";
-        meta.textContent = `${cooldownText} / ${effectText}`;
+        name.textContent = skill ? skill.name : `スキル${index + 1} 未セット`;
 
         const textWrap = document.createElement("div");
         textWrap.className = "skill-text";
         textWrap.appendChild(name);
-        textWrap.appendChild(meta);
 
         const infoBtn = document.createElement("div");
         infoBtn.className = "potion-info-button";
@@ -5570,13 +5561,21 @@ function maybeAutoSave(reason = "auto") {
         infoBtn.setAttribute("role", "button");
         infoBtn.onclick = (event) => {
           event.stopPropagation();
-          openSkillInfoModal(skill);
+          if (skill) {
+            openSkillInfoModal(skill);
+          } else {
+            openSkillsModal();
+          }
         };
         infoBtn.onkeydown = (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             event.stopPropagation();
-            openSkillInfoModal(skill);
+            if (skill) {
+              openSkillInfoModal(skill);
+            } else {
+              openSkillsModal();
+            }
           }
         };
 
@@ -5585,7 +5584,7 @@ function maybeAutoSave(reason = "auto") {
 
         const badge = document.createElement("div");
         badge.className = "cooldown-badge";
-        badge.textContent = ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`;
+        badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
 
         wrapper.appendChild(skillBtn);
         wrapper.appendChild(badge);
@@ -5796,15 +5795,6 @@ function maybeAutoSave(reason = "auto") {
       log(`✨ ${skill.name}をスロット${emptyIndex + 1}にセット`, "good");
       renderActiveSkillLoadout();
       renderActions();
-    }
-
-    function getEffectiveSkillCooldown(skill) {
-      const derived = lastDerivedStats || recalcDerivedStats();
-      const baseCooldown = Math.max(0, skill?.activation?.cooldown ?? 0);
-      if (baseCooldown <= 0) return 0;
-      const reduction = Math.max(0, derived?.cooldown?.total ?? 0);
-      const scaled = Math.round(baseCooldown * (1 - reduction / 100));
-      return Math.max(1, scaled);
     }
 
     function getEffectiveSkillCooldown(skill) {
@@ -7007,7 +6997,6 @@ function maybeAutoSave(reason = "auto") {
         slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
         renderActiveSkillLoadout();
         updateUI();
-        endPlayerTurn();
         return;
       }
 
@@ -7026,7 +7015,6 @@ function maybeAutoSave(reason = "auto") {
       slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
       renderActiveSkillLoadout();
       updateUI();
-      endPlayerTurn();
     }
 
     function powerStrike() {
