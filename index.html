@@ -5807,6 +5807,15 @@ function maybeAutoSave(reason = "auto") {
       return Math.max(1, scaled);
     }
 
+    function getEffectiveSkillCooldown(skill) {
+      const derived = lastDerivedStats || recalcDerivedStats();
+      const baseCooldown = Math.max(0, skill?.activation?.cooldown ?? 0);
+      if (baseCooldown <= 0) return 0;
+      const reduction = Math.max(0, derived?.cooldown?.total ?? 0);
+      const scaled = Math.round(baseCooldown * (1 - reduction / 100));
+      return Math.max(1, scaled);
+    }
+
     function renderSkillThresholds(skill, { locked = false } = {}) {
       const wrapper = document.createElement("div");
       wrapper.className = "help-panel";
