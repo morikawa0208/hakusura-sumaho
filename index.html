@@ -525,6 +525,20 @@
       color: #fee2e2;
     }
 
+    .cooldown-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(96, 165, 250, 0.18);
+      border: 1px solid rgba(96, 165, 250, 0.5);
+      color: #dbeafe;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      line-height: 1.2;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
     .action-button-wrapper {
       position: relative;
     }
@@ -600,6 +614,27 @@
       font-weight: 700;
       background: rgba(255, 255, 255, 0.08);
       flex-shrink: 0;
+    }
+
+    .skill-button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .skill-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .skill-name {
+      font-weight: 700;
+      font-size: 13px;
     }
 
     .enemy-top {
@@ -1092,6 +1127,25 @@
       <div class="help-panel" style="margin-top: 10px;">
         敵を倒すと少しずつ補充されます。
       </div>
+    </div>
+  </div>
+
+  <div id="skill-info-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">スキル詳細</div>
+          <div id="skill-info-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="skill-info-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div>種類 <span id="skill-info-type"></span></div>
+        <div>CT <span id="skill-info-cooldown"></span></div>
+        <div>習得状況 <span id="skill-info-level"></span></div>
+        <div>効果 <span id="skill-info-effect"></span></div>
+      </div>
+      <div class="help-panel" id="skill-info-note" style="margin-top: 10px;"></div>
     </div>
   </div>
 
@@ -3044,6 +3098,8 @@ function generateId(prefix = "id") {
       defeatedBosses: 0,
     };
 
+    let lastDerivedStats = null;
+
     const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
     const SKILL_DEFINITIONS = [
@@ -3061,7 +3117,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { speed: 1.5 }, effect: "閾値30: 行動速度+1.5" },
           { level: 50, bonus: { critDamage: 10 }, effect: "閾値50: クリダメ+10%" },
         ],
-        activation: { cooldown: 4, effect: "2連撃を行い、与ダメに吸収を付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 5, effect: "2連撃を行い、与ダメに吸収を付与", slotCost: 1 },
       },
       {
         key: "guardStance",
@@ -3076,7 +3132,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 12 }, effect: "閾値30: バリア+12" },
           { level: 50, bonus: { damageReduction: 4 }, effect: "閾値50: 被ダメ-4%" },
         ],
-        activation: { cooldown: 5, effect: "次の受けるダメージを大幅軽減し、反撃を準備", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 6, effect: "次の受けるダメージを大幅軽減し、反撃を準備", slotCost: 1 },
       },
       {
         key: "skyBreaker",
@@ -3091,7 +3147,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { physPen: 6 }, effect: "閾値30: 物理貫通+6%" },
           { level: 50, bonus: { critRate: 3 }, effect: "閾値50: クリ率+3%" },
         ],
-        activation: { cooldown: 3, effect: "突進して防御を無視した一撃", slotCost: 1 },
+        activation: { cooldown: 3, mpCost: 4, effect: "突進して防御を無視した一撃", slotCost: 1 },
       },
       {
         key: "drawTechnique",
@@ -3106,7 +3162,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { speed: 2 }, effect: "閾値30: 行動速度+2" },
           { level: 50, bonus: { physPen: 5 }, effect: "閾値50: 物理貫通+5%" },
         ],
-        activation: { cooldown: 6, effect: "初手クリティカル率が大幅上昇する高速斬撃", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 7, effect: "初手クリティカル率が大幅上昇する高速斬撃", slotCost: 1 },
       },
       {
         key: "galeDance",
@@ -3121,7 +3177,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { damageReduction: 3 }, effect: "閾値50: 被ダメ-3%" },
         ],
-        activation: { cooldown: 4, effect: "周囲の敵へ3ヒットの斬撃を放つ", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "周囲の敵へ3ヒットの斬撃を放つ", slotCost: 1 },
       },
       // 剣士（パッシブ）
       {
@@ -3278,7 +3334,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 3 }, effect: "閾値30: 魔法貫通+3%" },
           { level: 50, bonus: { rarity: 5, dropRate: 5 }, effect: "閾値50: レア/ドロップ率+5%" },
         ],
-        activation: { cooldown: 4, effect: "MPを即時回復し、次の魔法ダメージ強化", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 3, effect: "MPを即時回復し、次の魔法ダメージ強化", slotCost: 1 },
       },
       {
         key: "frostNova",
@@ -3293,7 +3349,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { dotResist: 3 }, effect: "閾値50: DoT耐性+3%" },
         ],
-        activation: { cooldown: 4, effect: "範囲氷ダメ+鈍足付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 7, effect: "範囲氷ダメ+鈍足付与", slotCost: 1 },
       },
       {
         key: "meteorCall",
@@ -3308,7 +3364,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 5 }, effect: "閾値30: 魔法貫通+5%" },
           { level: 50, bonus: { critRate: 3 }, effect: "閾値50: クリ率+3%" },
         ],
-        activation: { cooldown: 6, effect: "高倍率の火球を落とし追加で燃焼", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 10, effect: "高倍率の火球を落とし追加で燃焼", slotCost: 1 },
       },
       {
         key: "runeBarrier",
@@ -3323,7 +3379,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { hpRegen: 0.25 }, effect: "閾値30: HP再生+0.25" },
           { level: 50, bonus: { block: 2 }, effect: "閾値50: ブロック+2%" },
         ],
-        activation: { cooldown: 5, effect: "数ターンバリアと魔防上昇", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 6, effect: "数ターンバリアと魔防上昇", slotCost: 1 },
       },
       {
         key: "chronoBoost",
@@ -3338,7 +3394,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { controlResist: 4 }, effect: "閾値30: 行動阻害耐性+4%" },
           { level: 50, bonus: { rarity: 4 }, effect: "閾値50: レア率+4%" },
         ],
-        activation: { cooldown: 5, effect: "味方全体の速度とCT短縮を付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 8, effect: "味方全体の速度とCT短縮を付与", slotCost: 1 },
       },
       // 魔法（パッシブ）
       {
@@ -3495,7 +3551,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 8 }, effect: "閾値30: バリア+8" },
           { level: 50, bonus: { controlResist: 6 }, effect: "閾値50: 行動阻害耐性+6%" },
         ],
-        activation: { cooldown: 4, effect: "味方全体にバリアと回復を付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "味方全体にバリアと回復を付与", slotCost: 1 },
       },
       {
         key: "holySmite",
@@ -3510,7 +3566,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { dropRate: 3 }, effect: "閾値50: ドロップ率+3%" },
         ],
-        activation: { cooldown: 3, effect: "聖属性ダメ+浄化", slotCost: 1 },
+        activation: { cooldown: 3, mpCost: 5, effect: "聖属性ダメ+浄化", slotCost: 1 },
       },
       {
         key: "benediction",
@@ -3525,7 +3581,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 10 }, effect: "閾値30: バリア+10" },
           { level: 50, bonus: { controlResist: 5 }, effect: "閾値50: 行動阻害耐性+5%" },
         ],
-        activation: { cooldown: 5, effect: "徐々に回復する再生と軽減付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 7, effect: "徐々に回復する再生と軽減付与", slotCost: 1 },
       },
       {
         key: "aegisChant",
@@ -3540,7 +3596,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 2 }, effect: "閾値30: 魔法貫通+2%" },
           { level: 50, bonus: { damageReduction: 3 }, effect: "閾値50: 被ダメ-3%" },
         ],
-        activation: { cooldown: 4, effect: "味方にバリアとブロック強化", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "味方にバリアとブロック強化", slotCost: 1 },
       },
       {
         key: "judgmentRay",
@@ -3555,7 +3611,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 4 }, effect: "閾値30: 魔法貫通+4%" },
           { level: 50, bonus: { rarity: 3 }, effect: "閾値50: レア率+3%" },
         ],
-        activation: { cooldown: 5, effect: "高威力の光ダメ+弱体解除", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 9, effect: "高威力の光ダメ+弱体解除", slotCost: 1 },
       },
       // 聖職（パッシブ）
       {
@@ -3712,7 +3768,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { damageReduction: 2, hpRegen: 0.3 }, effect: "閾値30: 被ダメ-2%、HP再生+0.3" },
           { level: 50, bonus: { dropRate: 5 }, effect: "閾値50: ドロップ率+5%" },
         ],
-        activation: { cooldown: 5, effect: "HPを消費しつつ高倍率の一撃と吸血", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 5, effect: "HPを消費しつつ高倍率の一撃と吸血", slotCost: 1 },
       },
       {
         key: "scarletRush",
@@ -3727,7 +3783,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { critRate: 2 }, effect: "閾値30: クリ率+2%" },
           { level: 50, bonus: { critDamage: 6 }, effect: "閾値50: クリダメ+6%" },
         ],
-        activation: { cooldown: 4, effect: "移動しながら斬撃し、吸収の付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "移動しながら斬撃し、吸収の付与", slotCost: 1 },
       },
       {
         key: "midnightFeast",
@@ -3742,7 +3798,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { damageReduction: 2 }, effect: "閾値30: 被ダメ-2%" },
           { level: 50, bonus: { hp: 24 }, effect: "閾値50: 最大HP+24" },
         ],
-        activation: { cooldown: 5, effect: "割合吸血+再生を付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 8, effect: "割合吸血+再生を付与", slotCost: 1 },
       },
       {
         key: "batSwarm",
@@ -3757,7 +3813,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { controlResist: 3 }, effect: "閾値30: 行動阻害耐性+3%" },
           { level: 50, bonus: { cooldown: 2 }, effect: "閾値50: CT短縮+2%" },
         ],
-        activation: { cooldown: 4, effect: "回避率の代わりに被ダメ軽減と吸収", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 5, effect: "回避率の代わりに被ダメ軽減と吸収", slotCost: 1 },
       },
       {
         key: "crimsonMoon",
@@ -3772,7 +3828,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { physPen: 4 }, effect: "閾値30: 物理貫通+4%" },
           { level: 50, bonus: { rarity: 3 }, effect: "閾値50: レア率+3%" },
         ],
-        activation: { cooldown: 6, effect: "一定ターン攻撃強化と吸血量上昇", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 9, effect: "一定ターン攻撃強化と吸血量上昇", slotCost: 1 },
       },
       // 吸血（パッシブ）
       {
@@ -3922,10 +3978,52 @@ function generateId(prefix = "id") {
       skill.thresholds = amplifyThresholdBonuses(skill.thresholds);
     });
 
+    const SKILL_DEFINITION_MAP = SKILL_DEFINITIONS.reduce((acc, skill) => {
+      acc[skill.key] = skill;
+      return acc;
+    }, {});
+
     const skills = SKILL_DEFINITIONS.reduce((acc, skill) => {
       acc[skill.key] = { ...skill, level: 0, max: SKILL_MAX_LEVEL };
       return acc;
     }, {});
+
+    function mergeSkillsFromSave(savedSkills = {}) {
+      Object.values(skills).forEach((skill) => {
+        const base = SKILL_DEFINITION_MAP[skill.key] || {};
+        const saved = savedSkills[skill.key] || {};
+        const level = saved.level ?? 0;
+        const max = saved.max ?? SKILL_MAX_LEVEL;
+        Object.assign(skill, base, { level, max });
+      });
+    }
+
+    function computeSkillBonusAtLevel(skill, level = 0) {
+      const target = {};
+      const effectiveLevel = Math.max(0, level || 0);
+      if (!skill || effectiveLevel <= 0) return target;
+      if (skill.scaling?.perLevel) addBonus(target, skill.scaling.perLevel, effectiveLevel);
+      (skill.thresholds || []).forEach((threshold) => {
+        if (effectiveLevel >= threshold.level) addBonus(target, threshold.bonus);
+      });
+      return target;
+    }
+
+    function describeSkillBonusAtLevel(skill, level, { locked = false, label = "現在効果" } = {}) {
+      if (locked) return `${label}: ？？？`;
+      if (!level || level <= 0) return `${label}: 未習得`;
+      const summary = formatSkillBonusText(computeSkillBonusAtLevel(skill, level));
+      return `${label}: ${summary || "効果なし"}`;
+    }
+
+    function describeSkillNextBonus(skill, { locked = false } = {}) {
+      if (locked) return "次Lv合計: ？？？";
+      const maxLevel = skill.max ?? SKILL_MAX_LEVEL;
+      if ((skill.level ?? 0) >= maxLevel) return "次Lv合計: 最大Lvに到達";
+      const nextLevel = Math.min((skill.level ?? 0) + 1, maxLevel);
+      const summary = formatSkillBonusText(computeSkillBonusAtLevel(skill, nextLevel));
+      return `次Lv合計: ${summary || "追加効果なし"}`;
+    }
 
     function addBonus(target, bonus = {}, multiplier = 1) {
       if (!target || !bonus) return;
@@ -4625,6 +4723,15 @@ function generateId(prefix = "id") {
       });
     }
 
+    function tickSkillCooldowns() {
+      player.activeSkillSlots = player.activeSkillSlots || [];
+      player.activeSkillSlots.forEach((slot) => {
+        if (slot.cooldownRemaining > 0) {
+          slot.cooldownRemaining = Math.max(0, slot.cooldownRemaining - 1);
+        }
+      });
+    }
+
     function buildTurnQueue() {
       const queue = [];
       if (player.hp > 0) {
@@ -4693,6 +4800,9 @@ function generateId(prefix = "id") {
       entity.attacksRemaining = baseAttacks;
       applyDotEffects(entity);
       if (entity.hp <= 0) return { defeated: true, skipTurn: true };
+      if (entity === player) {
+        tickSkillCooldowns();
+      }
       const skipTurn = hasStatus(entity, "stun") || hasStatus(entity, "sleep");
       if (skipTurn) {
         log(`${entity.name} は行動不能…`, "warning");
@@ -4714,6 +4824,7 @@ function generateId(prefix = "id") {
 
     function updateUI(derivedStats = null) {
       const derived = derivedStats || recalcDerivedStats();
+      lastDerivedStats = derived;
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
       document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
@@ -5009,7 +5120,7 @@ function maybeAutoSave(reason = "auto") {
       const payload = cloneState(state);
       replaceObject(player, payload.player || {});
       replaceObject(game, payload.game || {});
-      replaceObject(skills, payload.skills || {});
+      mergeSkillsFromSave(payload.skills || {});
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -5056,8 +5167,14 @@ function maybeAutoSave(reason = "auto") {
       const { primary, backup } = readSlotPair(activeSaveSlotId);
       const source = primary || backup;
       if (!source) return false;
-      applyLoadedState(source, { usedBackup: !primary && !!backup, slotId: activeSaveSlotId });
-      return true;
+      try {
+        applyLoadedState(source, { usedBackup: !primary && !!backup, slotId: activeSaveSlotId });
+        return true;
+      } catch (err) {
+        console.error("failed to load save", err);
+        log("セーブデータ読み込み中にエラーが発生したため、新しく開始します", "warning");
+        return false;
+      }
     }
 
     function readSlotPair(slotId) {
@@ -5452,6 +5569,77 @@ function maybeAutoSave(reason = "auto") {
         row.appendChild(potionRow);
       });
 
+      (player.activeSkillSlots || []).forEach((slot, index) => {
+        const skill = slot.skillKey ? skills[slot.skillKey] : null;
+        const wrapper = document.createElement("div");
+        wrapper.className = "action-button-wrapper";
+
+        const skillBtn = document.createElement("button");
+        skillBtn.className = "skill-button";
+        const remaining = Math.max(0, slot.cooldownRemaining || 0);
+        const ready = remaining <= 0;
+        const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
+        const mpCost = skill?.activation?.mpCost ?? 0;
+        skillBtn.disabled = skill ? (!canAct || !ready) : false;
+        skillBtn.title = skill
+          ? (skill.activation?.effect
+            ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T / MP: ${mpCost}`
+            : "セットしたスキル")
+          : "スキル未セット";
+        skillBtn.onclick = () => {
+          if (!skill) {
+            openSkillsModal();
+            return;
+          }
+          useActiveSkill(index);
+        };
+
+        const name = document.createElement("div");
+        name.className = "skill-name";
+        name.textContent = skill ? `${skill.name} (MP${mpCost})` : `スキル${index + 1} 未セット`;
+
+        const textWrap = document.createElement("div");
+        textWrap.className = "skill-text";
+        textWrap.appendChild(name);
+
+        const infoBtn = document.createElement("div");
+        infoBtn.className = "potion-info-button";
+        infoBtn.textContent = "i";
+        infoBtn.title = "スキル詳細";
+        infoBtn.tabIndex = 0;
+        infoBtn.setAttribute("role", "button");
+        infoBtn.onclick = (event) => {
+          event.stopPropagation();
+          if (skill) {
+            openSkillInfoModal(skill);
+          } else {
+            openSkillsModal();
+          }
+        };
+        infoBtn.onkeydown = (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (skill) {
+              openSkillInfoModal(skill);
+            } else {
+              openSkillsModal();
+            }
+          }
+        };
+
+        skillBtn.appendChild(textWrap);
+        skillBtn.appendChild(infoBtn);
+
+        const badge = document.createElement("div");
+        badge.className = "cooldown-badge";
+        badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
+
+        wrapper.appendChild(skillBtn);
+        wrapper.appendChild(badge);
+        row.appendChild(wrapper);
+      });
+
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
@@ -5644,6 +5832,7 @@ function maybeAutoSave(reason = "auto") {
         player.activeSkillSlots[assignedIndex] = { skillKey: null, cooldownRemaining: 0 };
         log(`🗑 ${skill.name}をスロット${assignedIndex + 1}から解除`, "info");
         renderActiveSkillLoadout();
+        renderActions();
         return;
       }
       const emptyIndex = player.activeSkillSlots.findIndex((slot) => !slot.skillKey);
@@ -5654,6 +5843,16 @@ function maybeAutoSave(reason = "auto") {
       player.activeSkillSlots[emptyIndex] = { skillKey, cooldownRemaining: 0 };
       log(`✨ ${skill.name}をスロット${emptyIndex + 1}にセット`, "good");
       renderActiveSkillLoadout();
+      renderActions();
+    }
+
+    function getEffectiveSkillCooldown(skill) {
+      const derived = lastDerivedStats || recalcDerivedStats();
+      const baseCooldown = Math.max(0, skill?.activation?.cooldown ?? 0);
+      if (baseCooldown <= 0) return 0;
+      const reduction = Math.max(0, derived?.cooldown?.total ?? 0);
+      const scaled = Math.round(baseCooldown * (1 - reduction / 100));
+      return Math.max(1, scaled);
     }
 
     function renderSkillThresholds(skill, { locked = false } = {}) {
@@ -5837,11 +6036,24 @@ function maybeAutoSave(reason = "auto") {
         scaling.textContent = describeSkillScaling(skill, { locked });
         row.appendChild(scaling);
 
+        const currentBonus = document.createElement("div");
+        currentBonus.className = "subtle";
+        currentBonus.textContent = describeSkillBonusAtLevel(skill, skill.level, { locked });
+        row.appendChild(currentBonus);
+
+        const nextBonus = document.createElement("div");
+        nextBonus.className = "subtle";
+        nextBonus.textContent = describeSkillNextBonus(skill, { locked });
+        row.appendChild(nextBonus);
+
         if (skill.type === "active") {
           const activation = document.createElement("div");
           activation.className = "subtle";
           const cooldownText = skill.activation?.cooldown ? `${skill.activation.cooldown}T` : "--";
-          const activationDetail = locked ? "発動: ？？？" : `CT: ${cooldownText} / 効果: ${skill.activation?.effect || "未設定"}`;
+          const mpCostText = skill.activation?.mpCost != null ? `MP${skill.activation.mpCost}` : "MP--";
+          const activationDetail = locked
+            ? "発動: ？？？"
+            : `CT: ${cooldownText} / 消費: ${mpCostText} / 効果: ${skill.activation?.effect || "未設定"}`;
           activation.textContent = activationDetail;
           row.appendChild(activation);
 
@@ -6110,12 +6322,14 @@ function maybeAutoSave(reason = "auto") {
 
     const enemyModal = document.getElementById("enemy-modal");
     const potionModal = document.getElementById("potion-modal");
+    const skillInfoModal = document.getElementById("skill-info-modal");
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
     const inventoryModal = document.getElementById("inventory-modal");
     const inventoryItemModal = document.getElementById("inventory-item-modal");
     const closeModalButton = document.getElementById("modal-close");
     const potionModalCloseButton = document.getElementById("potion-close");
+    const skillInfoCloseButton = document.getElementById("skill-info-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
     const inventoryModalCloseButton = document.getElementById("inventory-close");
@@ -6127,6 +6341,12 @@ function maybeAutoSave(reason = "auto") {
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
     const potionModalFill = document.getElementById("potion-modal-fill");
+    const skillInfoName = document.getElementById("skill-info-name");
+    const skillInfoType = document.getElementById("skill-info-type");
+    const skillInfoCooldown = document.getElementById("skill-info-cooldown");
+    const skillInfoLevel = document.getElementById("skill-info-level");
+    const skillInfoEffect = document.getElementById("skill-info-effect");
+    const skillInfoNote = document.getElementById("skill-info-note");
     const inventoryItemName = document.getElementById("inventory-item-name");
     const inventoryItemDesc = document.getElementById("inventory-item-desc");
     const inventoryItemMeta = document.getElementById("inventory-item-meta");
@@ -6257,6 +6477,34 @@ function maybeAutoSave(reason = "auto") {
       potionModal.classList.add("hidden");
     }
 
+    function openSkillInfoModal(skill) {
+      if (!skill) return;
+      const baseCooldown = skill.activation?.cooldown ?? 0;
+      const effectiveCooldown = baseCooldown > 0 ? getEffectiveSkillCooldown(skill) : 0;
+      const cooldownText = baseCooldown
+        ? `基礎 ${baseCooldown}T / 実効 ${effectiveCooldown}T`
+        : "CTなし";
+      const mpCost = skill.activation?.mpCost ?? 0;
+      const mpCostText = mpCost > 0 ? `MP${mpCost}` : "MP消費なし";
+      const locked = !isSkillUnlocked(skill);
+      skillInfoName.textContent = skill.name;
+      skillInfoType.textContent = `${skill.type === "active" ? "アクティブ" : "パッシブ"} (${skill.category || "分類不明"})`;
+      skillInfoCooldown.textContent = `${cooldownText} / 消費: ${mpCostText}`;
+      skillInfoLevel.textContent = `${skill.level || 0} / ${skill.max ?? "--"}`;
+      skillInfoEffect.textContent = skill.activation?.effect || skill.desc || "効果未設定";
+      const perLevelText = skill.scaling?.perLevel
+        ? `毎Lv: ${formatSkillBonusText(skill.scaling.perLevel)}`
+        : "毎Lv効果なし";
+      const currentText = describeSkillBonusAtLevel(skill, skill.level, { locked, label: "現在合計" });
+      const nextText = describeSkillNextBonus(skill, { locked });
+      skillInfoNote.innerHTML = `<div>${perLevelText}</div><div>${currentText}</div><div>${nextText}</div>`;
+      skillInfoModal?.classList.remove("hidden");
+    }
+
+    function closeSkillInfoModal() {
+      skillInfoModal?.classList.add("hidden");
+    }
+
     function resetSkillBonuses() {
       calculateSkillBonuses();
       recalcDerivedStats();
@@ -6275,6 +6523,8 @@ function maybeAutoSave(reason = "auto") {
       resetSkillBonuses();
       player.skillPoints += spent;
       updateUI();
+      renderActiveSkillLoadout();
+      renderSkillSummary();
       log("スキルをリセットしました", "info");
       maybeAutoSave("スキルリセット");
     }
@@ -6785,6 +7035,65 @@ function maybeAutoSave(reason = "auto") {
       endPlayerTurn();
     }
 
+    function useActiveSkill(slotIndex) {
+      if (!game.awaitingInput) return;
+      if (hasStatus(player, "silence")) {
+        log("沈黙中でスキルが使えない！", "warning");
+        return;
+      }
+
+      const slot = player.activeSkillSlots?.[slotIndex];
+      const skill = slot?.skillKey ? skills[slot.skillKey] : null;
+      if (!skill || skill.type !== "active") {
+        log("この枠にはスキルがセットされていません", "warning");
+        return;
+      }
+      if (skill.level <= 0) {
+        log("スキルを習得してから使用してください", "warning");
+        return;
+      }
+      if (slot.cooldownRemaining > 0) {
+        log(`${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`, "warning");
+        return;
+      }
+
+      const target = chooseTargetForPlayer();
+      if (!target) return;
+
+      const mpCost = skill.activation?.mpCost ?? 0;
+      if (player.mp < mpCost) {
+        log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
+        return;
+      }
+      player.mp -= mpCost;
+
+      const hit = attemptHit(player, target);
+      const effectLabel = skill.activation?.effect ? `: ${skill.activation.effect}` : "";
+      if (!hit) {
+        log(`🌀 ${skill.name}${effectLabel} は外れた…`, "warning");
+        slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+        renderActiveSkillLoadout();
+        updateUI();
+        return;
+      }
+
+      const baseDamage = calcDamage(player, target);
+      const multiplier = 1.1 + skill.level * 0.02;
+      const dmg = Math.round(baseDamage * multiplier);
+      const dealt = applyDamage(target, dmg, { source: skill.name });
+      log(`🌀 ${skill.name}${effectLabel}！ ${target.name} に ${dealt} ダメージ`, "player");
+
+      if (target.hp <= 0) {
+        log(`${target.name} を倒した！`, "good");
+        onEnemyDefeated(target, { cause: skill.name });
+        checkVictory();
+      }
+
+      slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
+      renderActiveSkillLoadout();
+      updateUI();
+    }
+
     function powerStrike() {
       if (!game.awaitingInput) return;
       if (hasStatus(player, "silence")) {
@@ -6896,6 +7205,9 @@ function maybeAutoSave(reason = "auto") {
       player.hp = player.maxHp;
       player.mp = player.maxMp;
       player.attacksRemaining = player.attackCount;
+      player.activeSkillSlots.forEach((slot) => {
+        slot.cooldownRemaining = 0;
+      });
       game.enemies = [];
       game.turnQueue = [];
       game.awaitingInput = false;
@@ -7080,6 +7392,7 @@ function maybeAutoSave(reason = "auto") {
     archetypeCloseButton?.addEventListener("click", closeArchetypeModal);
     closeModalButton.addEventListener("click", closeEnemyModal);
     potionModalCloseButton.addEventListener("click", closePotionModal);
+    skillInfoCloseButton?.addEventListener("click", closeSkillInfoModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
     inventoryModalCloseButton?.addEventListener("click", closeInventoryModal);
@@ -7167,6 +7480,9 @@ function maybeAutoSave(reason = "auto") {
     });
     potionModal.addEventListener("click", (e) => {
       if (e.target === potionModal) closePotionModal();
+    });
+    skillInfoModal?.addEventListener("click", (e) => {
+      if (e.target === skillInfoModal) closeSkillInfoModal();
     });
     resetSkillsButton.addEventListener("click", () => {
       const spent = Object.values(skills).reduce((sum, skill) => sum + skill.level, 0);
