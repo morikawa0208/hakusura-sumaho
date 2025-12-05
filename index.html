@@ -4941,15 +4941,6 @@ function maybeAutoSave(reason = "auto") {
     console.error("auto save failed:", e);
   }
 }
-  lastAutoSaveAt = now;
-
-  // 実際の保存処理
-  try {
-    requestAutoSave(reason);
-  } catch (e) {
-    console.error("auto save failed:", e);
-  }
-}
       
     function cloneState(data) {
       if (typeof structuredClone === "function") return structuredClone(data);
