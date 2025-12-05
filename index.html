@@ -1384,9 +1384,7 @@
       <div id="debug-tab-save" class="debug-tab-panel hidden">
         <div class="help-panel">
           <div class="option-label">冗長セーブ (ローカル保存 + 自動バックアップ)</div>
-          <div class="option-value">
-            各スロットは保存ごとに最新データとバックアップを2重で記録します。オートセーブ枠は一定間隔で自動保存されます。
-          </div>
+          <div class="option-value">各スロットは保存ごとに最新データとバックアップを2重で記録します。</div>
         </div>
         <div id="save-slot-list" class="save-slot-list"></div>
         <div class="subtle">
@@ -5035,7 +5033,6 @@ function generateId(prefix = "id") {
 
     const SAVE_VERSION = 1;
     const SAVE_SLOTS = [
-      { id: "auto", label: "オートセーブ", description: "予備バックアップ用 (手動保存)" },
       { id: "slot1", label: "スロット1" },
       { id: "slot2", label: "スロット2" },
       { id: "slot3", label: "スロット3" },
@@ -5044,6 +5041,8 @@ function generateId(prefix = "id") {
     const AUTO_SAVE_COOLDOWN_MS = 3000;
     let lastAutoSaveAt = 0;
     let activeSaveSlotId = "slot1";
+
+    const INITIAL_SAVE_STATE = buildSaveState();
 
 function maybeAutoSave(reason = "auto") {
   try {
@@ -5115,7 +5114,7 @@ function maybeAutoSave(reason = "auto") {
       });
     }
 
-    function applyLoadedState(state, { usedBackup = false, slotId } = {}) {
+    function applyLoadedState(state, { usedBackup = false, slotId, suppressLog = false } = {}) {
       if (!state) return false;
       const payload = cloneState(state);
       replaceObject(player, payload.player || {});
@@ -5129,10 +5128,12 @@ function maybeAutoSave(reason = "auto") {
       renderSkillSummary();
       renderActiveSkillLoadout();
       buildTurnQueue();
-      log(
-        `📂 ${getSaveSlotLabel(slotId)} からロードしました${usedBackup ? " (バックアップから復旧)" : ""}`,
-        "good"
-      );
+      if (!suppressLog) {
+        log(
+          `📂 ${getSaveSlotLabel(slotId)} からロードしました${usedBackup ? " (バックアップから復旧)" : ""}`,
+          "good"
+        );
+      }
       return true;
     }
 
@@ -5142,7 +5143,7 @@ function maybeAutoSave(reason = "auto") {
     }
 
     function isPlayableSlot(slotId) {
-      return SAVE_SLOTS.some((s) => s.id === slotId && s.id !== "auto");
+      return SAVE_SLOTS.some((s) => s.id === slotId);
     }
 
     function setActiveSaveSlot(slotId, { persist = true, announce = false } = {}) {
@@ -5151,6 +5152,25 @@ function maybeAutoSave(reason = "auto") {
       if (persist) localStorage.setItem(ACTIVE_SAVE_SLOT_KEY, slotId);
       if (announce) log(`🎯 現在のセーブ先: ${getSaveSlotLabel(slotId)}`, "info");
       renderSaveSlots();
+    }
+
+    function startNewRun(slotId) {
+      applyLoadedState(INITIAL_SAVE_STATE, { slotId, suppressLog: true });
+      spawnEnemies();
+      setActiveSaveSlot(slotId, { announce: true });
+      log("=== 新しく挑戦を開始 ===", "info");
+    }
+
+    function activateSaveSlot(slotId) {
+      if (!isPlayableSlot(slotId)) return;
+      const { primary, backup } = readSlotPair(slotId);
+      const source = primary || backup;
+      if (source) {
+        applyLoadedState(source, { usedBackup: !primary && !!backup, slotId });
+        setActiveSaveSlot(slotId, { announce: true });
+        return;
+      }
+      startNewRun(slotId);
     }
 
     function loadActiveSlotPreference() {
@@ -5230,8 +5250,7 @@ function maybeAutoSave(reason = "auto") {
 
         const activateBtn = document.createElement("button");
         activateBtn.textContent = "このスロットで遊ぶ";
-        activateBtn.disabled = slot.id === "auto";
-        activateBtn.onclick = () => setActiveSaveSlot(slot.id, { announce: true });
+        activateBtn.onclick = () => activateSaveSlot(slot.id);
         actions.appendChild(activateBtn);
 
         const saveBtn = document.createElement("button");
@@ -5296,8 +5315,11 @@ function maybeAutoSave(reason = "auto") {
         renderSaveSlots();
       } else if (action === "delete") {
         deleteSave(slotId);
-        if (slotId === activeSaveSlotId) setActiveSaveSlot("slot1", { announce: true });
-        renderSaveSlots();
+        if (slotId === activeSaveSlotId) {
+          startNewRun(slotId);
+        } else {
+          renderSaveSlots();
+        }
       } else if (action === "export") {
         const { primary, backup } = readSlotPair(slotId);
         const source = primary || backup;
