@@ -3117,7 +3117,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { speed: 1.5 }, effect: "閾値30: 行動速度+1.5" },
           { level: 50, bonus: { critDamage: 10 }, effect: "閾値50: クリダメ+10%" },
         ],
-        activation: { cooldown: 4, effect: "2連撃を行い、与ダメに吸収を付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 5, effect: "2連撃を行い、与ダメに吸収を付与", slotCost: 1 },
       },
       {
         key: "guardStance",
@@ -3132,7 +3132,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 12 }, effect: "閾値30: バリア+12" },
           { level: 50, bonus: { damageReduction: 4 }, effect: "閾値50: 被ダメ-4%" },
         ],
-        activation: { cooldown: 5, effect: "次の受けるダメージを大幅軽減し、反撃を準備", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 6, effect: "次の受けるダメージを大幅軽減し、反撃を準備", slotCost: 1 },
       },
       {
         key: "skyBreaker",
@@ -3147,7 +3147,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { physPen: 6 }, effect: "閾値30: 物理貫通+6%" },
           { level: 50, bonus: { critRate: 3 }, effect: "閾値50: クリ率+3%" },
         ],
-        activation: { cooldown: 3, effect: "突進して防御を無視した一撃", slotCost: 1 },
+        activation: { cooldown: 3, mpCost: 4, effect: "突進して防御を無視した一撃", slotCost: 1 },
       },
       {
         key: "drawTechnique",
@@ -3162,7 +3162,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { speed: 2 }, effect: "閾値30: 行動速度+2" },
           { level: 50, bonus: { physPen: 5 }, effect: "閾値50: 物理貫通+5%" },
         ],
-        activation: { cooldown: 6, effect: "初手クリティカル率が大幅上昇する高速斬撃", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 7, effect: "初手クリティカル率が大幅上昇する高速斬撃", slotCost: 1 },
       },
       {
         key: "galeDance",
@@ -3177,7 +3177,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { damageReduction: 3 }, effect: "閾値50: 被ダメ-3%" },
         ],
-        activation: { cooldown: 4, effect: "周囲の敵へ3ヒットの斬撃を放つ", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "周囲の敵へ3ヒットの斬撃を放つ", slotCost: 1 },
       },
       // 剣士（パッシブ）
       {
@@ -3334,7 +3334,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 3 }, effect: "閾値30: 魔法貫通+3%" },
           { level: 50, bonus: { rarity: 5, dropRate: 5 }, effect: "閾値50: レア/ドロップ率+5%" },
         ],
-        activation: { cooldown: 4, effect: "MPを即時回復し、次の魔法ダメージ強化", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 3, effect: "MPを即時回復し、次の魔法ダメージ強化", slotCost: 1 },
       },
       {
         key: "frostNova",
@@ -3349,7 +3349,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { dotResist: 3 }, effect: "閾値50: DoT耐性+3%" },
         ],
-        activation: { cooldown: 4, effect: "範囲氷ダメ+鈍足付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 7, effect: "範囲氷ダメ+鈍足付与", slotCost: 1 },
       },
       {
         key: "meteorCall",
@@ -3364,7 +3364,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 5 }, effect: "閾値30: 魔法貫通+5%" },
           { level: 50, bonus: { critRate: 3 }, effect: "閾値50: クリ率+3%" },
         ],
-        activation: { cooldown: 6, effect: "高倍率の火球を落とし追加で燃焼", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 10, effect: "高倍率の火球を落とし追加で燃焼", slotCost: 1 },
       },
       {
         key: "runeBarrier",
@@ -3379,7 +3379,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { hpRegen: 0.25 }, effect: "閾値30: HP再生+0.25" },
           { level: 50, bonus: { block: 2 }, effect: "閾値50: ブロック+2%" },
         ],
-        activation: { cooldown: 5, effect: "数ターンバリアと魔防上昇", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 6, effect: "数ターンバリアと魔防上昇", slotCost: 1 },
       },
       {
         key: "chronoBoost",
@@ -3394,7 +3394,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { controlResist: 4 }, effect: "閾値30: 行動阻害耐性+4%" },
           { level: 50, bonus: { rarity: 4 }, effect: "閾値50: レア率+4%" },
         ],
-        activation: { cooldown: 5, effect: "味方全体の速度とCT短縮を付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 8, effect: "味方全体の速度とCT短縮を付与", slotCost: 1 },
       },
       // 魔法（パッシブ）
       {
@@ -3551,7 +3551,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 8 }, effect: "閾値30: バリア+8" },
           { level: 50, bonus: { controlResist: 6 }, effect: "閾値50: 行動阻害耐性+6%" },
         ],
-        activation: { cooldown: 4, effect: "味方全体にバリアと回復を付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "味方全体にバリアと回復を付与", slotCost: 1 },
       },
       {
         key: "holySmite",
@@ -3566,7 +3566,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { cooldown: 2 }, effect: "閾値30: CT短縮+2%" },
           { level: 50, bonus: { dropRate: 3 }, effect: "閾値50: ドロップ率+3%" },
         ],
-        activation: { cooldown: 3, effect: "聖属性ダメ+浄化", slotCost: 1 },
+        activation: { cooldown: 3, mpCost: 5, effect: "聖属性ダメ+浄化", slotCost: 1 },
       },
       {
         key: "benediction",
@@ -3581,7 +3581,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { barrier: 10 }, effect: "閾値30: バリア+10" },
           { level: 50, bonus: { controlResist: 5 }, effect: "閾値50: 行動阻害耐性+5%" },
         ],
-        activation: { cooldown: 5, effect: "徐々に回復する再生と軽減付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 7, effect: "徐々に回復する再生と軽減付与", slotCost: 1 },
       },
       {
         key: "aegisChant",
@@ -3596,7 +3596,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 2 }, effect: "閾値30: 魔法貫通+2%" },
           { level: 50, bonus: { damageReduction: 3 }, effect: "閾値50: 被ダメ-3%" },
         ],
-        activation: { cooldown: 4, effect: "味方にバリアとブロック強化", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "味方にバリアとブロック強化", slotCost: 1 },
       },
       {
         key: "judgmentRay",
@@ -3611,7 +3611,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { magPen: 4 }, effect: "閾値30: 魔法貫通+4%" },
           { level: 50, bonus: { rarity: 3 }, effect: "閾値50: レア率+3%" },
         ],
-        activation: { cooldown: 5, effect: "高威力の光ダメ+弱体解除", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 9, effect: "高威力の光ダメ+弱体解除", slotCost: 1 },
       },
       // 聖職（パッシブ）
       {
@@ -3768,7 +3768,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { damageReduction: 2, hpRegen: 0.3 }, effect: "閾値30: 被ダメ-2%、HP再生+0.3" },
           { level: 50, bonus: { dropRate: 5 }, effect: "閾値50: ドロップ率+5%" },
         ],
-        activation: { cooldown: 5, effect: "HPを消費しつつ高倍率の一撃と吸血", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 5, effect: "HPを消費しつつ高倍率の一撃と吸血", slotCost: 1 },
       },
       {
         key: "scarletRush",
@@ -3783,7 +3783,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { critRate: 2 }, effect: "閾値30: クリ率+2%" },
           { level: 50, bonus: { critDamage: 6 }, effect: "閾値50: クリダメ+6%" },
         ],
-        activation: { cooldown: 4, effect: "移動しながら斬撃し、吸収の付与", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 6, effect: "移動しながら斬撃し、吸収の付与", slotCost: 1 },
       },
       {
         key: "midnightFeast",
@@ -3798,7 +3798,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { damageReduction: 2 }, effect: "閾値30: 被ダメ-2%" },
           { level: 50, bonus: { hp: 24 }, effect: "閾値50: 最大HP+24" },
         ],
-        activation: { cooldown: 5, effect: "割合吸血+再生を付与", slotCost: 1 },
+        activation: { cooldown: 5, mpCost: 8, effect: "割合吸血+再生を付与", slotCost: 1 },
       },
       {
         key: "batSwarm",
@@ -3813,7 +3813,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { controlResist: 3 }, effect: "閾値30: 行動阻害耐性+3%" },
           { level: 50, bonus: { cooldown: 2 }, effect: "閾値50: CT短縮+2%" },
         ],
-        activation: { cooldown: 4, effect: "回避率の代わりに被ダメ軽減と吸収", slotCost: 1 },
+        activation: { cooldown: 4, mpCost: 5, effect: "回避率の代わりに被ダメ軽減と吸収", slotCost: 1 },
       },
       {
         key: "crimsonMoon",
@@ -3828,7 +3828,7 @@ function generateId(prefix = "id") {
           { level: 30, bonus: { physPen: 4 }, effect: "閾値30: 物理貫通+4%" },
           { level: 50, bonus: { rarity: 3 }, effect: "閾値50: レア率+3%" },
         ],
-        activation: { cooldown: 6, effect: "一定ターン攻撃強化と吸血量上昇", slotCost: 1 },
+        activation: { cooldown: 6, mpCost: 9, effect: "一定ターン攻撃強化と吸血量上昇", slotCost: 1 },
       },
       // 吸血（パッシブ）
       {
@@ -5531,10 +5531,11 @@ function maybeAutoSave(reason = "auto") {
         const remaining = Math.max(0, slot.cooldownRemaining || 0);
         const ready = remaining <= 0;
         const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
+        const mpCost = skill?.activation?.mpCost ?? 0;
         skillBtn.disabled = skill ? (!canAct || !ready) : false;
         skillBtn.title = skill
           ? (skill.activation?.effect
-            ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T`
+            ? `${skill.activation.effect} / CT: ${skill.activation.cooldown || "--"}T / MP: ${mpCost}`
             : "セットしたスキル")
           : "スキル未セット";
         skillBtn.onclick = () => {
@@ -5547,7 +5548,7 @@ function maybeAutoSave(reason = "auto") {
 
         const name = document.createElement("div");
         name.className = "skill-name";
-        name.textContent = skill ? skill.name : `スキル${index + 1} 未セット`;
+        name.textContent = skill ? `${skill.name} (MP${mpCost})` : `スキル${index + 1} 未セット`;
 
         const textWrap = document.createElement("div");
         textWrap.className = "skill-text";
@@ -5991,7 +5992,10 @@ function maybeAutoSave(reason = "auto") {
           const activation = document.createElement("div");
           activation.className = "subtle";
           const cooldownText = skill.activation?.cooldown ? `${skill.activation.cooldown}T` : "--";
-          const activationDetail = locked ? "発動: ？？？" : `CT: ${cooldownText} / 効果: ${skill.activation?.effect || "未設定"}`;
+          const mpCostText = skill.activation?.mpCost != null ? `MP${skill.activation.mpCost}` : "MP--";
+          const activationDetail = locked
+            ? "発動: ？？？"
+            : `CT: ${cooldownText} / 消費: ${mpCostText} / 効果: ${skill.activation?.effect || "未設定"}`;
           activation.textContent = activationDetail;
           row.appendChild(activation);
 
@@ -6422,9 +6426,11 @@ function maybeAutoSave(reason = "auto") {
       const cooldownText = baseCooldown
         ? `基礎 ${baseCooldown}T / 実効 ${effectiveCooldown}T`
         : "CTなし";
+      const mpCost = skill.activation?.mpCost ?? 0;
+      const mpCostText = mpCost > 0 ? `MP${mpCost}` : "MP消費なし";
       skillInfoName.textContent = skill.name;
       skillInfoType.textContent = `${skill.type === "active" ? "アクティブ" : "パッシブ"} (${skill.category || "分類不明"})`;
-      skillInfoCooldown.textContent = cooldownText;
+      skillInfoCooldown.textContent = `${cooldownText} / 消費: ${mpCostText}`;
       skillInfoLevel.textContent = `${skill.level || 0} / ${skill.max ?? "--"}`;
       skillInfoEffect.textContent = skill.activation?.effect || skill.desc || "効果未設定";
       skillInfoNote.textContent = skill.scaling?.perLevel
@@ -6989,6 +6995,13 @@ function maybeAutoSave(reason = "auto") {
 
       const target = chooseTargetForPlayer();
       if (!target) return;
+
+      const mpCost = skill.activation?.mpCost ?? 0;
+      if (player.mp < mpCost) {
+        log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
+        return;
+      }
+      player.mp -= mpCost;
 
       const hit = attemptHit(player, target);
       const effectLabel = skill.activation?.effect ? `: ${skill.activation.effect}` : "";
