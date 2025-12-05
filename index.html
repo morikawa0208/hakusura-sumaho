@@ -3978,10 +3978,52 @@ function generateId(prefix = "id") {
       skill.thresholds = amplifyThresholdBonuses(skill.thresholds);
     });
 
+    const SKILL_DEFINITION_MAP = SKILL_DEFINITIONS.reduce((acc, skill) => {
+      acc[skill.key] = skill;
+      return acc;
+    }, {});
+
     const skills = SKILL_DEFINITIONS.reduce((acc, skill) => {
       acc[skill.key] = { ...skill, level: 0, max: SKILL_MAX_LEVEL };
       return acc;
     }, {});
+
+    function mergeSkillsFromSave(savedSkills = {}) {
+      Object.values(skills).forEach((skill) => {
+        const base = SKILL_DEFINITION_MAP[skill.key] || {};
+        const saved = savedSkills[skill.key] || {};
+        const level = saved.level ?? 0;
+        const max = saved.max ?? SKILL_MAX_LEVEL;
+        Object.assign(skill, base, { level, max });
+      });
+    }
+
+    function computeSkillBonusAtLevel(skill, level = 0) {
+      const target = {};
+      const effectiveLevel = Math.max(0, level || 0);
+      if (!skill || effectiveLevel <= 0) return target;
+      if (skill.scaling?.perLevel) addBonus(target, skill.scaling.perLevel, effectiveLevel);
+      (skill.thresholds || []).forEach((threshold) => {
+        if (effectiveLevel >= threshold.level) addBonus(target, threshold.bonus);
+      });
+      return target;
+    }
+
+    function describeSkillBonusAtLevel(skill, level, { locked = false, label = "現在効果" } = {}) {
+      if (locked) return `${label}: ？？？`;
+      if (!level || level <= 0) return `${label}: 未習得`;
+      const summary = formatSkillBonusText(computeSkillBonusAtLevel(skill, level));
+      return `${label}: ${summary || "効果なし"}`;
+    }
+
+    function describeSkillNextBonus(skill, { locked = false } = {}) {
+      if (locked) return "次Lv合計: ？？？";
+      const maxLevel = skill.max ?? SKILL_MAX_LEVEL;
+      if ((skill.level ?? 0) >= maxLevel) return "次Lv合計: 最大Lvに到達";
+      const nextLevel = Math.min((skill.level ?? 0) + 1, maxLevel);
+      const summary = formatSkillBonusText(computeSkillBonusAtLevel(skill, nextLevel));
+      return `次Lv合計: ${summary || "追加効果なし"}`;
+    }
 
     function addBonus(target, bonus = {}, multiplier = 1) {
       if (!target || !bonus) return;
@@ -5078,7 +5120,7 @@ function maybeAutoSave(reason = "auto") {
       const payload = cloneState(state);
       replaceObject(player, payload.player || {});
       replaceObject(game, payload.game || {});
-      replaceObject(skills, payload.skills || {});
+      mergeSkillsFromSave(payload.skills || {});
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -5988,6 +6030,16 @@ function maybeAutoSave(reason = "auto") {
         scaling.textContent = describeSkillScaling(skill, { locked });
         row.appendChild(scaling);
 
+        const currentBonus = document.createElement("div");
+        currentBonus.className = "subtle";
+        currentBonus.textContent = describeSkillBonusAtLevel(skill, skill.level, { locked });
+        row.appendChild(currentBonus);
+
+        const nextBonus = document.createElement("div");
+        nextBonus.className = "subtle";
+        nextBonus.textContent = describeSkillNextBonus(skill, { locked });
+        row.appendChild(nextBonus);
+
         if (skill.type === "active") {
           const activation = document.createElement("div");
           activation.className = "subtle";
@@ -6428,14 +6480,18 @@ function maybeAutoSave(reason = "auto") {
         : "CTなし";
       const mpCost = skill.activation?.mpCost ?? 0;
       const mpCostText = mpCost > 0 ? `MP${mpCost}` : "MP消費なし";
+      const locked = !isSkillUnlocked(skill);
       skillInfoName.textContent = skill.name;
       skillInfoType.textContent = `${skill.type === "active" ? "アクティブ" : "パッシブ"} (${skill.category || "分類不明"})`;
       skillInfoCooldown.textContent = `${cooldownText} / 消費: ${mpCostText}`;
       skillInfoLevel.textContent = `${skill.level || 0} / ${skill.max ?? "--"}`;
       skillInfoEffect.textContent = skill.activation?.effect || skill.desc || "効果未設定";
-      skillInfoNote.textContent = skill.scaling?.perLevel
+      const perLevelText = skill.scaling?.perLevel
         ? `毎Lv: ${formatSkillBonusText(skill.scaling.perLevel)}`
-        : "詳細はスキル一覧で確認できます";
+        : "毎Lv効果なし";
+      const currentText = describeSkillBonusAtLevel(skill, skill.level, { locked, label: "現在合計" });
+      const nextText = describeSkillNextBonus(skill, { locked });
+      skillInfoNote.innerHTML = `<div>${perLevelText}</div><div>${currentText}</div><div>${nextText}</div>`;
       skillInfoModal?.classList.remove("hidden");
     }
 
