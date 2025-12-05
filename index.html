@@ -4359,7 +4359,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
       updateUI(derived);
-      requestAutoSave("装備変更");
+      maybeAutoSave("装備変更");
     }
 
     function unequipItem(slot) {
@@ -4367,7 +4367,7 @@ function generateId(prefix = "id") {
       player.equipment[slot] = null;
       const derived = recalcDerivedStats();
       updateUI(derived);
-      requestAutoSave("装備変更");
+      maybeAutoSave("装備変更");
     }
 
     function isBossFloor(floor) {
@@ -4935,11 +4935,12 @@ function generateId(prefix = "id") {
     let activeSaveSlotId = "slot1";
 
 function maybeAutoSave(reason = "auto") {
-  // 連打対策用のクールタイム
-  const now = Date.now();
-  if (now - lastAutoSaveAt < AUTO_SAVE_COOLDOWN_MS) {
-    return; // まだクールタイム中なのでスキップ
+  try {
+    requestAutoSave(reason); // クールタイムも含めて中でやってもらう
+  } catch (e) {
+    console.error("auto save failed:", e);
   }
+}
   lastAutoSaveAt = now;
 
   // 実際の保存処理
@@ -5555,7 +5556,7 @@ function maybeAutoSave(reason = "auto") {
         log(`能力Pを返却: ${player.primary[key].label} -${giveBack}`, "info");
       }
       updateUI();
-      requestAutoSave("ステータス調整");
+      maybeAutoSave("ステータス調整");
     }
 
     function getAdjustStep() {
@@ -5722,7 +5723,7 @@ function maybeAutoSave(reason = "auto") {
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       updateUI(derived);
-      requestAutoSave(delta > 0 ? "スキルレベルアップ" : "スキル調整");
+      maybeAutoSave(delta > 0 ? "スキルレベルアップ" : "スキル調整");
     }
 
     function renderActiveSkillLoadout() {
@@ -6284,7 +6285,7 @@ function maybeAutoSave(reason = "auto") {
       player.skillPoints += spent;
       updateUI();
       log("スキルをリセットしました", "info");
-      requestAutoSave("スキルリセット");
+      maybeAutoSave("スキルリセット");
     }
 
     function openPlayerModal() {
@@ -6918,7 +6919,7 @@ function maybeAutoSave(reason = "auto") {
       resetPlayerAfterPenalty();
       spawnEnemies();
       updateUI();
-      requestAutoSave(`戦闘終了: ${reason}`);
+      maybeAutoSave(`戦闘終了: ${reason}`);
     }
 
     function handlePlayerDefeat() {
@@ -7036,7 +7037,7 @@ function maybeAutoSave(reason = "auto") {
       game.awaitingInput = false;
       game.turnQueue = [];
       updateUI();
-      requestAutoSave("ステージクリア");
+      maybeAutoSave("ステージクリア");
     }
 
     function levelUp() {
@@ -7048,7 +7049,7 @@ function maybeAutoSave(reason = "auto") {
       player.statPoints += 5;
       player.skillPoints += 1;
       log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
-      requestAutoSave("レベルアップ");
+      maybeAutoSave("レベルアップ");
     }
 
     function resetAllocations() {
@@ -7064,7 +7065,7 @@ function maybeAutoSave(reason = "auto") {
       updateUI();
       log("ステータスをリセットしました", "info");
       pendingResetSpent = 0;
-      requestAutoSave("ステータス振り直し");
+      maybeAutoSave("ステータス振り直し");
     }
 
     function nextFloor() {
@@ -7077,7 +7078,7 @@ function maybeAutoSave(reason = "auto") {
       game.turnQueue = [];
       spawnEnemies();
       updateUI();
-      requestAutoSave("次の階へ進行");
+      maybeAutoSave("次の階へ進行");
     }
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
