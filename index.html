@@ -5688,7 +5688,7 @@ function maybeAutoSave(reason = "auto") {
       if (player.hp <= 0) {
         btn.textContent = "戦闘不能";
         btn.disabled = true;
-      } else if (victoryAchieved) {
+      } else if (!enemiesAlive) {
         btn.textContent = "次の階層へ";
         btn.onclick = nextFloor;
       } else {
