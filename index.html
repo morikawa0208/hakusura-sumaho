@@ -5684,6 +5684,8 @@ function maybeAutoSave(reason = "auto") {
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
+      const playerAttacks = Math.max(0, player.attacksRemaining ?? player.attackCount ?? 0);
+
       if (player.hp <= 0) {
         btn.textContent = "戦闘不能";
         btn.disabled = true;
@@ -5699,7 +5701,6 @@ function maybeAutoSave(reason = "auto") {
       if (player.hp > 0 && enemiesAlive) {
         const attackBadge = document.createElement("div");
         attackBadge.className = "attack-badge";
-        const playerAttacks = Math.max(0, player.attacksRemaining ?? player.attackCount ?? 0);
         attackBadge.textContent = `x${playerAttacks}`;
         attackBadge.title = "1ターンあたりの攻撃回数";
         wrapper.appendChild(attackBadge);
