@@ -88,6 +88,15 @@
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
+    @keyframes barPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(252, 165, 165, 0.6);
+      }
+      100% {
+        box-shadow: 0 0 0 12px rgba(252, 165, 165, 0);
+      }
+    }
+
     .gold-pill {
       margin-left: auto;
       background: rgba(234, 179, 8, 0.14);
@@ -105,6 +114,11 @@
       inset: 0;
       width: 50%;
       border-radius: 999px;
+      transition: width 0.28s ease;
+    }
+
+    .bar.flash {
+      animation: barPulse 0.5s ease;
     }
 
     .bar .label {
@@ -157,6 +171,7 @@
       padding: 4px 6px;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.03);
+      animation: logEnter 0.26s ease;
     }
 
     #log .entry.info {
@@ -181,6 +196,17 @@
 
     #log .entry.danger {
       color: #fb7185;
+    }
+
+    @keyframes logEnter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     #actions {
@@ -494,6 +520,7 @@
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       min-width: 0;
       position: relative;
+      overflow: hidden;
     }
 
     .enemy-card:active {
@@ -517,6 +544,40 @@
       border-radius: 999px;
       line-height: 1.2;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    @keyframes enemyEnter {
+      from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes enemyHit {
+      0% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 0 rgba(252, 165, 165, 0.65);
+      }
+      40% {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 18px rgba(252, 165, 165, 0.25);
+      }
+      100% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 0 rgba(252, 165, 165, 0);
+      }
+    }
+
+    .enemy-card.enter {
+      animation: enemyEnter 0.32s ease;
+    }
+
+    .enemy-card.hit {
+      animation: enemyHit 0.4s ease;
     }
 
     .attack-badge.enemy {
@@ -673,6 +734,7 @@
       background: linear-gradient(90deg, #ef4444, #f87171);
       width: 50%;
       border-radius: 999px;
+      transition: width 0.28s ease;
     }
 
     .enemy-bar .label {
@@ -4121,6 +4183,7 @@ function generateId(prefix = "id") {
       const logBox = document.getElementById("log");
       const entry = document.createElement("div");
       entry.className = `entry ${type}`;
+      entry.classList.add("log-enter");
       if (asHtml) {
         entry.innerHTML = message;
       } else {
@@ -4825,6 +4888,38 @@ function generateId(prefix = "id") {
       bar.className = cls;
     }
 
+    function flashBar(spanId) {
+      const fill = document.getElementById(spanId);
+      const bar = fill?.parentElement;
+      if (!bar) return;
+      bar.classList.remove("flash");
+      // 強制再計測でアニメーションを繰り返し適用
+      void bar.offsetWidth;
+      bar.classList.add("flash");
+    }
+
+    function findEnemyCard(enemy) {
+      return document.querySelector(`.enemy-card[data-enemy-id="${enemy?.id}"]`);
+    }
+
+    function triggerEnemyHit(enemy) {
+      const card = findEnemyCard(enemy);
+      if (!card) return;
+      card.classList.remove("hit");
+      void card.offsetWidth;
+      card.classList.add("hit");
+    }
+
+    function updateEnemyCardHp(enemy) {
+      const card = findEnemyCard(enemy);
+      if (!card) return;
+      const fill = card.querySelector(".enemy-bar .fill");
+      const label = card.querySelector(".enemy-bar .label");
+      const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+      if (fill) fill.style.width = `${hpPct}%`;
+      if (label) label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+    }
+
     function updateUI(derivedStats = null) {
       const derived = derivedStats || recalcDerivedStats();
       lastDerivedStats = derived;
@@ -5464,8 +5559,14 @@ function maybeAutoSave(reason = "auto") {
       game.enemies.forEach((enemy, index) => {
         const card = document.createElement("div");
         card.className = "enemy-card";
+        card.dataset.enemyId = enemy.id;
         card.setAttribute("role", "button");
         card.setAttribute("aria-label", `${enemy.name} の詳細`);
+        card.addEventListener("animationend", (event) => {
+          if (event.animationName === "enemyHit") card.classList.remove("hit");
+          if (event.animationName === "enemyEnter") card.classList.remove("enter");
+        });
+        requestAnimationFrame(() => card.classList.add("enter"));
         card.onclick = () => openEnemyModal(enemy);
 
         const top = document.createElement("div");
@@ -6968,6 +7069,12 @@ function maybeAutoSave(reason = "auto") {
       if (!isDot && final > 0 && hasStatus(target, "sleep")) {
         removeStatus(target, "sleep");
         log(`${target.name} は攻撃を受けて目を覚ました`, "info");
+      }
+      if (target === player) {
+        flashBar("hp-bar");
+      } else {
+        triggerEnemyHit(target);
+        updateEnemyCardHp(target);
       }
       return final;
     }
