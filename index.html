@@ -5637,11 +5637,6 @@ function maybeAutoSave(reason = "auto") {
       const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
       wrapper.style.setProperty("--enemy-columns", enemyColumns);
 
-      const existing = new Map(
-        [...wrapper.querySelectorAll(".enemy-card")].map((card) => [Number(card.dataset.enemyId), card]),
-      );
-      const used = new Set();
-
       function createEnemyCard(enemy) {
         const card = document.createElement("div");
         card.className = "enemy-card";
@@ -5731,11 +5726,9 @@ function maybeAutoSave(reason = "auto") {
         }
       }
 
+      wrapper.innerHTML = "";
       game.enemies.forEach((enemy, index) => {
-        let card = existing.get(enemy.id);
-        if (!card) {
-          card = createEnemyCard(enemy);
-        }
+        const card = createEnemyCard(enemy);
         updateEnemyCard(card, enemy, index);
         wrapper.appendChild(card);
         used.add(enemy.id);
