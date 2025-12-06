@@ -1145,6 +1145,15 @@
       gap: 4px;
     }
 
+    .debug-selects input {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 6px;
+      color: var(--text);
+      width: 96px;
+    }
+
     .debug-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -1474,6 +1483,7 @@
       <div class="debug-tabs">
         <button class="debug-tab-button active" data-tab="status">状態異常</button>
         <button class="debug-tab-button" data-tab="equipment">装備生成</button>
+        <button class="debug-tab-button" data-tab="adjust">数値</button>
         <button class="debug-tab-button" data-tab="save">セーブ</button>
       </div>
       <div id="debug-tab-status" class="debug-tab-panel">
@@ -1518,6 +1528,38 @@
         <div class="modal-actions">
           <button id="debug-generate-gear">装備品を作成して追加</button>
           <button id="debug-generate-gear-random">ランダム作成</button>
+        </div>
+      </div>
+      <div id="debug-tab-adjust" class="debug-tab-panel hidden">
+        <div class="debug-section">
+          <h4>プレイヤー調整</h4>
+          <div class="debug-selects">
+            <label>
+              レベル:
+              <input id="debug-level-input" type="number" min="1" step="1" inputmode="numeric" />
+            </label>
+            <button id="debug-apply-level">反映</button>
+          </div>
+          <div class="debug-selects">
+            <label>
+              HP:
+              <input id="debug-hp-input" type="number" min="0" step="1" inputmode="numeric" />
+            </label>
+            <button id="debug-apply-hp">反映</button>
+          </div>
+        </div>
+        <div class="debug-section">
+          <h4>階層調整</h4>
+          <div class="debug-selects">
+            <label>
+              階層:
+              <input id="debug-floor-input" type="number" min="1" step="1" inputmode="numeric" />
+            </label>
+            <button id="debug-apply-floor">移動</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="debug-new-run">新しく始める</button>
         </div>
       </div>
       <div id="debug-tab-save" class="debug-tab-panel hidden">
@@ -5204,6 +5246,7 @@ function generateId(prefix = "id") {
       const panels = {
         status: debugTabStatus,
         equipment: debugTabEquipment,
+        adjust: debugTabAdjust,
         save: debugTabSave,
       };
       Object.entries(panels).forEach(([key, panel]) => {
@@ -5221,8 +5264,74 @@ function generateId(prefix = "id") {
         populateDebugEnemySelect();
         renderDebugStatusButtons();
         updateDebugTargetState();
+      } else if (tabKey === "adjust") {
+        syncDebugAdjustInputs();
       } else if (tabKey === "save") {
         renderSaveSlots();
+      }
+    }
+
+    function calcExpToNextLevel(targetLevel) {
+      let req = 20;
+      for (let level = 1; level < targetLevel; level += 1) {
+        req = Math.round(req * 1.18);
+      }
+      return req;
+    }
+
+    function syncDebugAdjustInputs() {
+      if (debugLevelInput) debugLevelInput.value = player.level;
+      if (debugHpInput) debugHpInput.value = Math.round(player.hp);
+      if (debugFloorInput) debugFloorInput.value = game.floor;
+    }
+
+    function applyDebugLevelChange() {
+      if (!debugLevelInput) return;
+      const requested = Number(debugLevelInput.value);
+      if (Number.isNaN(requested)) return;
+      const nextLevel = Math.max(1, Math.floor(requested));
+      const delta = nextLevel - player.level;
+      if (delta === 0) {
+        log("レベルは既に指定値です", "info");
+        return;
+      }
+
+      player.level = nextLevel;
+      player.exp = 0;
+      player.expToLevel = calcExpToNextLevel(nextLevel);
+      player.statPoints = Math.max(0, player.statPoints + delta * 5);
+      player.skillPoints = Math.max(0, player.skillPoints + delta);
+
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+      log(`🔧 Lv${nextLevel} に変更 (能力P${delta >= 0 ? "+" : ""}${delta * 5} / スキルP${delta >= 0 ? "+" : ""}${delta})`, "info");
+      maybeAutoSave("デバッグ:レベル変更");
+    }
+
+    function applyDebugHpChange() {
+      if (!debugHpInput) return;
+      const requested = Number(debugHpInput.value);
+      if (Number.isNaN(requested)) return;
+      const nextHp = Math.max(0, Math.floor(requested));
+      player.hp = Math.min(nextHp, Math.round(player.maxHp));
+      updateUI();
+      log(`💚 HPを ${player.hp} に設定`, "info");
+      maybeAutoSave("デバッグ:HP調整");
+    }
+
+    function applyDebugFloorChange() {
+      if (!debugFloorInput) return;
+      const requested = Number(debugFloorInput.value);
+      if (Number.isNaN(requested)) return;
+      const nextFloor = Math.max(1, Math.floor(requested));
+      if (nextFloor !== game.floor) {
+        game.floor = nextFloor;
+        game.turnQueue = [];
+        spawnEnemies();
+        log(`🌀 ${nextFloor}F へジャンプ`, "info");
+        maybeAutoSave("デバッグ:階層変更");
+      } else {
+        log("現在の階層と同じです", "info");
       }
     }
 
@@ -6695,6 +6804,7 @@ function maybeAutoSave(reason = "auto") {
     const debugTabButtons = document.querySelectorAll(".debug-tab-button");
     const debugTabStatus = document.getElementById("debug-tab-status");
     const debugTabEquipment = document.getElementById("debug-tab-equipment");
+    const debugTabAdjust = document.getElementById("debug-tab-adjust");
     const debugTabSave = document.getElementById("debug-tab-save");
     const saveSlotList = document.getElementById("save-slot-list");
     const debugGearSlotSelect = document.getElementById("debug-gear-slot");
@@ -6704,6 +6814,13 @@ function maybeAutoSave(reason = "auto") {
     const debugGearPreview = document.getElementById("debug-gear-preview");
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
+    const debugLevelInput = document.getElementById("debug-level-input");
+    const debugHpInput = document.getElementById("debug-hp-input");
+    const debugFloorInput = document.getElementById("debug-floor-input");
+    const debugApplyLevelButton = document.getElementById("debug-apply-level");
+    const debugApplyHpButton = document.getElementById("debug-apply-hp");
+    const debugApplyFloorButton = document.getElementById("debug-apply-floor");
+    const debugNewRunButton = document.getElementById("debug-new-run");
     const inventoryOpenButton = document.getElementById("btn-inventory");
     const archetypeModal = document.getElementById("archetype-modal");
     const archetypeModalName = document.getElementById("archetype-modal-name");
@@ -7754,6 +7871,11 @@ function handlePlayerDefeat() {
     debugTabButtons.forEach((btn) => {
       btn.addEventListener("click", () => switchDebugTab(btn.dataset.tab));
     });
+
+    debugApplyLevelButton?.addEventListener("click", applyDebugLevelChange);
+    debugApplyHpButton?.addEventListener("click", applyDebugHpChange);
+    debugApplyFloorButton?.addEventListener("click", applyDebugFloorChange);
+    debugNewRunButton?.addEventListener("click", () => startNewRun(activeSaveSlotId));
     saveSlotList?.addEventListener("click", handleSaveAction);
     debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
     debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
