@@ -58,20 +58,33 @@
       position: relative;
     }
 
-    .phone.player-down::after {
-      content: "戦闘不能";
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      font-size: 32px;
-      color: rgba(248, 113, 113, 0.8);
-      background: radial-gradient(circle, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.92));
-      text-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
-      pointer-events: none;
-      animation: barPulse 0.9s ease;
-    }
+.phone.player-down::after {
+  content: "戦闘不能";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 32px;
+  color: rgba(248, 113, 113, 0.8);
+  background: radial-gradient(circle, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.92));
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+
+  /* ★ここだけ変更：短めのフェードイン */
+  animation: playerDownOverlay 0.6s ease-out forwards;
+}
+@keyframes playerDownOverlay {
+  0% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 
     .card {
       background: rgba(255, 255, 255, 0.03);
