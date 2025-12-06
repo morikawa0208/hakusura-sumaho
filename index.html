@@ -5119,6 +5119,14 @@ function maybeAutoSave(reason = "auto") {
       });
     }
 
+    function restoreAttackCounts() {
+      player.attacksRemaining = Math.max(0, Math.floor(player.attackCount || 0));
+      game.enemies = game.enemies || [];
+      game.enemies.forEach((enemy) => {
+        enemy.attacksRemaining = Math.max(0, Math.floor(enemy.attackCount || 0));
+      });
+    }
+
     function applyLoadedState(state, { usedBackup = false, slotId, suppressLog = false } = {}) {
       if (!state) return false;
       const payload = cloneState(state);
@@ -5127,6 +5135,9 @@ function maybeAutoSave(reason = "auto") {
       mergeSkillsFromSave(payload.skills || {});
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
+      if (game.awaitingInput) {
+        restoreAttackCounts();
+      }
       updateUI(derived);
       renderInventoryFilters();
       renderInventory();
@@ -6871,6 +6882,7 @@ function maybeAutoSave(reason = "auto") {
     }
 
     function promptPlayerTurn() {
+      restoreAttackCounts();
       game.awaitingInput = true;
       renderActions();
     }
