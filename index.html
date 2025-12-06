@@ -7551,9 +7551,26 @@ function maybeAutoSave(reason = "auto") {
       maybeAutoSave(`戦闘終了: ${reason}`);
     }
 
-    function handlePlayerDefeat() {
-      retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
-    }
+function handlePlayerDefeat() {
+  // 連続で呼ばれないようにガードを入れておく
+  if (game.playerDefeatInProgress) return;
+  game.playerDefeatInProgress = true;
+
+  // もう入力は受け付けない
+  game.awaitingInput = false;
+
+  // ★ この時点では HP は 0 のままなので、
+  // updateUI を呼ぶと .player-down クラスが付き、
+  // 「戦闘不能」オーバーレイが表示される
+  updateUI();
+
+  // 少し待ってから階層ペナルティ＆HP全回復＆再開
+  setTimeout(() => {
+    retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
+    game.playerDefeatInProgress = false;
+  }, 450); // 演出時間に合わせて調整（0.4〜0.6秒くらいお好みで）
+}
+
 
     function attemptEscape() {
       if (!game.awaitingInput) return;
