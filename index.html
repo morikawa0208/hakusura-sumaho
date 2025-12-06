@@ -5535,6 +5535,7 @@ function maybeAutoSave(reason = "auto") {
       const container = document.getElementById("actions");
       container.innerHTML = "";
       const enemiesAlive = game.enemies.some(e => e.hp > 0);
+      const inBattle = game.awaitingInput || enemiesAlive;
       const canAct = game.awaitingInput && enemiesAlive && player.hp > 0;
 
       const row = document.createElement("div");
@@ -5686,7 +5687,7 @@ function maybeAutoSave(reason = "auto") {
       if (player.hp <= 0) {
         btn.textContent = "戦闘不能";
         btn.disabled = true;
-      } else if (!enemiesAlive) {
+      } else if (!enemiesAlive && !inBattle) {
         btn.textContent = "次の階層へ";
         btn.onclick = nextFloor;
       } else if (playerAttacks <= 0) {
