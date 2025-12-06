@@ -5633,66 +5633,108 @@ function maybeAutoSave(reason = "auto") {
     }
 
     function renderEnemies() {
-      const wrapper = document.getElementById("enemies");
-      const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
-      wrapper.style.setProperty("--enemy-columns", enemyColumns);
+  const wrapper = document.getElementById("enemies");
+  if (!wrapper) return;
 
-      function createEnemyCard(enemy) {
-        const card = document.createElement("div");
-        card.className = "enemy-card";
-        card.dataset.enemyId = enemy.id;
-        card.setAttribute("role", "button");
-        card.setAttribute("aria-label", `${enemy.name} の詳細`);
+  // 列数の設定
+  const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
+  wrapper.style.setProperty("--enemy-columns", enemyColumns);
 
-        const top = document.createElement("div");
-        top.className = "enemy-top";
+  // いったん全部消す
+  wrapper.innerHTML = "";
 
-        const name = document.createElement("div");
-        name.className = "enemy-name";
-        const titleLabel = document.createElement("span");
+  game.enemies.forEach((enemy, index) => {
+    const card = document.createElement("div");
+    card.className = "enemy-card";
+    card.dataset.enemyId = enemy.id;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `${enemy.name} の詳細`);
+    card.onclick = () => openEnemyModal(enemy);
+    if (enemy.hp <= 0) card.classList.add("defeated");
 
-        const meta = document.createElement("div");
-        meta.className = "enemy-meta";
-        const order = document.createElement("span");
-        const archetype = document.createElement("span");
-        archetype.className = "tag clickable";
-        const statusList = document.createElement("div");
-        statusList.className = "status-list";
-        meta.appendChild(order);
-        meta.appendChild(archetype);
-        meta.appendChild(statusList);
+    // ── 上部（名前・ラベル等） ─────────────────
+    const top = document.createElement("div");
+    top.className = "enemy-top";
 
-        name.appendChild(titleLabel);
-        name.appendChild(meta);
-        top.appendChild(name);
+    const name = document.createElement("div");
+    name.className = "enemy-name";
 
-        const tag = document.createElement("div");
-        tag.className = "pill";
-        tag.textContent = "BOSS";
-        top.appendChild(tag);
+    const titleLabel = document.createElement("span");
+    titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
 
-        const bar = document.createElement("div");
-        bar.className = "enemy-bar";
-        bar.addEventListener("animationend", (event) => {
-          if (event.animationName === "barPulse") bar.classList.remove("pulse");
-        });
-        const fill = document.createElement("span");
-        fill.className = "fill";
-        const hpLabel = document.createElement("span");
-        hpLabel.className = "label";
-        bar.appendChild(fill);
-        bar.appendChild(hpLabel);
+    const meta = document.createElement("div");
+    meta.className = "enemy-meta";
 
-        const attackBadge = document.createElement("div");
-        attackBadge.className = "attack-badge enemy";
-        attackBadge.title = "1ターンあたりの攻撃回数";
+    const order = document.createElement("span");
+    order.textContent = `#${index + 1}`;
 
-        card.appendChild(top);
-        card.appendChild(bar);
-        card.appendChild(attackBadge);
-        card._refs = { titleLabel, order, archetype, statusList, tag, bar, fill, hpLabel, attackBadge };
-        return card;
-      }
+    const archetype = document.createElement("span");
+    archetype.className = "tag clickable";
+    const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
+    if (hasArchetype) {
+      archetype.textContent = enemy.archetypeLabel;
+      archetype.onclick = (event) => {
+        event.stopPropagation();
+        openArchetypeModal(enemy);
+      };
+    } else {
+      archetype.style.display = "none";
+    }
+
+    const statusList = document.createElement("div");
+    statusList.className = "status-list";
+    renderStatusList(statusList, enemy);
+
+    meta.appendChild(order);
+    meta.appendChild(archetype);
+    meta.appendChild(statusList);
+
+    name.appendChild(titleLabel);
+    name.appendChild(meta);
+    top.appendChild(name);
+
+    const tag = document.createElement("div");
+    tag.className = "pill";
+    tag.textContent = "BOSS";
+    tag.style.display = enemy.isBoss ? "inline-flex" : "none";
+    top.appendChild(tag);
+
+    // ── HPバー ────────────────────────────────
+    const bar = document.createElement("div");
+    bar.className = "enemy-bar";
+    bar.addEventListener("animationend", (event) => {
+      if (event.animationName === "barPulse") bar.classList.remove("pulse");
+    });
+
+    const fill = document.createElement("span");
+    fill.className = "fill";
+
+    const hpLabel = document.createElement("span");
+    hpLabel.className = "label";
+
+    const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+    fill.style.width = `${hpPct}%`;
+    hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+
+    bar.appendChild(fill);
+    bar.appendChild(hpLabel);
+
+    // ── 攻撃回数バッジ ─────────────────────────
+    const attackBadge = document.createElement("div");
+    attackBadge.className = "attack-badge enemy";
+    attackBadge.title = "1ターンあたりの攻撃回数";
+    const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
+    attackBadge.textContent = `x${enemyAttacks}`;
+
+    // ── カードに詰める ────────────────────────
+    card.appendChild(top);
+    card.appendChild(bar);
+    card.appendChild(attackBadge);
+
+    wrapper.appendChild(card);
+  });
+}
+
 
       function updateEnemyCard(card, enemy, index) {
         const refs = card._refs || {};
