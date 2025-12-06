@@ -5633,116 +5633,81 @@ function maybeAutoSave(reason = "auto") {
     }
 
     function renderEnemies() {
-  const wrapper = document.getElementById("enemies");
-  if (!wrapper) return;
+      const wrapper = document.getElementById("enemies");
+      const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
+      wrapper.style.setProperty("--enemy-columns", enemyColumns);
 
-  // 列数の設定
-  const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
-  wrapper.style.setProperty("--enemy-columns", enemyColumns);
+      function createEnemyCard(enemy) {
+        const card = document.createElement("div");
+        card.className = "enemy-card";
+        card.dataset.enemyId = enemy.id;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `${enemy.name} の詳細`);
 
-  // いったん全部消す
-  wrapper.innerHTML = "";
+        const top = document.createElement("div");
+        top.className = "enemy-top";
 
-  game.enemies.forEach((enemy, index) => {
-    const card = document.createElement("div");
-    card.className = "enemy-card";
-    card.dataset.enemyId = enemy.id;
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${enemy.name} の詳細`);
-    card.onclick = () => openEnemyModal(enemy);
-    if (enemy.hp <= 0) card.classList.add("defeated");
+        const name = document.createElement("div");
+        name.className = "enemy-name";
+        const titleLabel = document.createElement("span");
 
-    // ── 上部（名前・ラベル等） ─────────────────
-    const top = document.createElement("div");
-    top.className = "enemy-top";
+        const meta = document.createElement("div");
+        meta.className = "enemy-meta";
+        const order = document.createElement("span");
+        const archetype = document.createElement("span");
+        archetype.className = "tag clickable";
+        const statusList = document.createElement("div");
+        statusList.className = "status-list";
+        meta.appendChild(order);
+        meta.appendChild(archetype);
+        meta.appendChild(statusList);
 
-    const name = document.createElement("div");
-    name.className = "enemy-name";
+        name.appendChild(titleLabel);
+        name.appendChild(meta);
+        top.appendChild(name);
 
-    const titleLabel = document.createElement("span");
-    titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
+        const tag = document.createElement("div");
+        tag.className = "pill";
+        tag.textContent = "BOSS";
+        top.appendChild(tag);
 
-    const meta = document.createElement("div");
-    meta.className = "enemy-meta";
+        const bar = document.createElement("div");
+        bar.className = "enemy-bar";
+        bar.addEventListener("animationend", (event) => {
+          if (event.animationName === "barPulse") bar.classList.remove("pulse");
+        });
+        const fill = document.createElement("span");
+        fill.className = "fill";
+        const hpLabel = document.createElement("span");
+        hpLabel.className = "label";
+        bar.appendChild(fill);
+        bar.appendChild(hpLabel);
 
-    const order = document.createElement("span");
-    order.textContent = `#${index + 1}`;
+        const attackBadge = document.createElement("div");
+        attackBadge.className = "attack-badge enemy";
+        attackBadge.title = "1ターンあたりの攻撃回数";
 
-    const archetype = document.createElement("span");
-    archetype.className = "tag clickable";
-    const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
-    if (hasArchetype) {
-      archetype.textContent = enemy.archetypeLabel;
-      archetype.onclick = (event) => {
-        event.stopPropagation();
-        openArchetypeModal(enemy);
-      };
-    } else {
-      archetype.style.display = "none";
-    }
+        card.appendChild(top);
+        card.appendChild(bar);
+        card.appendChild(attackBadge);
 
-    const statusList = document.createElement("div");
-    statusList.className = "status-list";
-    renderStatusList(statusList, enemy);
-
-    meta.appendChild(order);
-    meta.appendChild(archetype);
-    meta.appendChild(statusList);
-
-    name.appendChild(titleLabel);
-    name.appendChild(meta);
-    top.appendChild(name);
-
-    const tag = document.createElement("div");
-    tag.className = "pill";
-    tag.textContent = "BOSS";
-    tag.style.display = enemy.isBoss ? "inline-flex" : "none";
-    top.appendChild(tag);
-
-    // ── HPバー ────────────────────────────────
-    const bar = document.createElement("div");
-    bar.className = "enemy-bar";
-    bar.addEventListener("animationend", (event) => {
-      if (event.animationName === "barPulse") bar.classList.remove("pulse");
-    });
-
-    const fill = document.createElement("span");
-    fill.className = "fill";
-
-    const hpLabel = document.createElement("span");
-    hpLabel.className = "label";
-
-    const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
-    fill.style.width = `${hpPct}%`;
-    hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
-
-    bar.appendChild(fill);
-    bar.appendChild(hpLabel);
-
-    // ── 攻撃回数バッジ ─────────────────────────
-    const attackBadge = document.createElement("div");
-    attackBadge.className = "attack-badge enemy";
-    attackBadge.title = "1ターンあたりの攻撃回数";
-    const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
-    attackBadge.textContent = `x${enemyAttacks}`;
-
-    // ── カードに詰める ────────────────────────
-    card.appendChild(top);
-    card.appendChild(bar);
-    card.appendChild(attackBadge);
-
-    wrapper.appendChild(card);
-  });
-}
-
+        card._refs = { titleLabel, order, archetype, statusList, tag, bar, fill, hpLabel, attackBadge };
+        return card;
+      }
 
       function updateEnemyCard(card, enemy, index) {
         const refs = card._refs || {};
         card.dataset.enemyId = enemy.id;
         card.onclick = () => openEnemyModal(enemy);
         card.classList.toggle("defeated", enemy.hp <= 0);
-        if (refs.titleLabel) refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
-        if (refs.order) refs.order.textContent = `#${index + 1}`;
+
+        if (refs.titleLabel) {
+          refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
+        }
+        if (refs.order) {
+          refs.order.textContent = `#${index + 1}`;
+        }
+
         if (refs.archetype) {
           const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
           refs.archetype.style.display = hasArchetype ? "inline-flex" : "none";
@@ -5750,34 +5715,43 @@ function maybeAutoSave(reason = "auto") {
           refs.archetype.onclick = hasArchetype
             ? (event) => {
                 event.stopPropagation();
-                openArchetypeModal(enemy);
+                log(`敵タイプ: ${enemy.archetypeLabel} / ${enemy.flavor || ""}`, "info");
               }
             : null;
         }
-        if (refs.statusList) {
-          refs.statusList.innerHTML = "";
-          renderStatusList(refs.statusList, enemy);
+
+        if (refs.tag) {
+          refs.tag.textContent = enemy.isBoss ? "BOSS" : "ENEMY";
+          refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
         }
-        if (refs.tag) refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
-        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
-        if (refs.fill) refs.fill.style.width = `${hpPct}%`;
-        if (refs.hpLabel) refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+
+        const hpPct = enemy.maxHp > 0 ? Math.round((enemy.hp / enemy.maxHp) * 100) : 0;
+        if (refs.bar) {
+          if (hpPct <= 30 && enemy.hp > 0) {
+            refs.bar.classList.add("pulse");
+          } else {
+            refs.bar.classList.remove("pulse");
+          }
+        }
+        if (refs.fill) {
+          refs.fill.style.width = `${hpPct}%`;
+        }
+        if (refs.hpLabel) {
+          refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+        }
+
         if (refs.attackBadge) {
           const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
           refs.attackBadge.textContent = `x${enemyAttacks}`;
         }
       }
 
+      // ★ ここで一旦全部消してから作り直すだけにする
       wrapper.innerHTML = "";
       game.enemies.forEach((enemy, index) => {
         const card = createEnemyCard(enemy);
         updateEnemyCard(card, enemy, index);
         wrapper.appendChild(card);
-        /*used.add(enemy.id);*/
-      });
-
-      existing.forEach((card, id) => {
-        if (!used.has(id)) card.remove();
       });
     }
 
