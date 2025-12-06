@@ -5583,6 +5583,11 @@ function maybeAutoSave(reason = "auto") {
         card.dataset.enemyId = enemy.id;
         card.setAttribute("role", "button");
         card.setAttribute("aria-label", `${enemy.name} の詳細`);
+        card.addEventListener("animationend", (event) => {
+          if (event.animationName === "enemyHit") card.classList.remove("hit");
+          if (event.animationName === "enemyEnter") card.classList.remove("enter");
+        });
+        requestAnimationFrame(() => card.classList.add("enter"));
         card.onclick = () => openEnemyModal(enemy);
 
         const top = document.createElement("div");
