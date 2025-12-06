@@ -55,6 +55,22 @@
       box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
       overflow-y: auto;
       overscroll-behavior-y: contain;
+      position: relative;
+    }
+
+    .phone.player-down::after {
+      content: "戦闘不能";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 32px;
+      color: rgba(248, 113, 113, 0.8);
+      background: radial-gradient(circle, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.92));
+      text-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+      animation: barPulse 0.9s ease;
     }
 
     .card {
@@ -88,6 +104,15 @@
       border: 1px solid rgba(255, 255, 255, 0.06);
     }
 
+    @keyframes barPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(252, 165, 165, 0.6);
+      }
+      100% {
+        box-shadow: 0 0 0 12px rgba(252, 165, 165, 0);
+      }
+    }
+
     .gold-pill {
       margin-left: auto;
       background: rgba(234, 179, 8, 0.14);
@@ -105,6 +130,11 @@
       inset: 0;
       width: 50%;
       border-radius: 999px;
+      transition: width 0.28s ease;
+    }
+
+    .bar.flash {
+      animation: barPulse 0.5s ease;
     }
 
     .bar .label {
@@ -157,6 +187,7 @@
       padding: 4px 6px;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.03);
+      animation: logEnter 0.26s ease;
     }
 
     #log .entry.info {
@@ -181,6 +212,17 @@
 
     #log .entry.danger {
       color: #fb7185;
+    }
+
+    @keyframes logEnter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     #actions {
@@ -494,6 +536,7 @@
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       min-width: 0;
       position: relative;
+      overflow: hidden;
     }
 
     .enemy-card:active {
@@ -519,10 +562,85 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
 
+    .enemy-bar.pulse {
+      animation: barPulse 0.5s ease;
+    }
+
     .attack-badge.enemy {
       background: rgba(248, 113, 113, 0.15);
       border-color: rgba(248, 113, 113, 0.4);
       color: #fee2e2;
+    }
+
+    .damage-popup {
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      transform: translate(-50%, 0);
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 0.01em;
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      animation: damageFloat 0.8s ease forwards;
+      z-index: 5;
+    }
+
+    .damage-popup.player {
+      color: #fecdd3;
+    }
+
+    .damage-popup.enemy {
+      color: #bbf7d0;
+    }
+
+    .damage-popup.mp {
+      color: #bfdbfe;
+    }
+
+    @keyframes damageFloat {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 6px) scale(0.95);
+      }
+      25% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -16px) scale(1.04);
+      }
+    }
+
+    @keyframes enemyDefeated {
+      from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      to {
+        opacity: 0.45;
+        transform: translateY(4px) scale(0.97);
+      }
+    }
+
+    .enemy-card.defeated {
+      filter: grayscale(0.75);
+      position: relative;
+      animation: enemyDefeated 0.5s ease forwards;
+    }
+
+    .enemy-card.defeated::after {
+      content: "✖";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 48px;
+      color: rgba(248, 113, 113, 0.6);
+      pointer-events: none;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
     }
 
     .cooldown-badge {
@@ -673,6 +791,7 @@
       background: linear-gradient(90deg, #ef4444, #f87171);
       width: 50%;
       border-radius: 999px;
+      transition: width 0.28s ease;
     }
 
     .enemy-bar .label {
@@ -4121,6 +4240,7 @@ function generateId(prefix = "id") {
       const logBox = document.getElementById("log");
       const entry = document.createElement("div");
       entry.className = `entry ${type}`;
+      entry.classList.add("log-enter");
       if (asHtml) {
         entry.innerHTML = message;
       } else {
@@ -4825,6 +4945,60 @@ function generateId(prefix = "id") {
       bar.className = cls;
     }
 
+    function flashBar(spanId) {
+      const fill = document.getElementById(spanId);
+      const bar = fill?.parentElement;
+      if (!bar) return;
+      bar.classList.remove("flash");
+      // 強制再計測でアニメーションを繰り返し適用
+      void bar.offsetWidth;
+      bar.classList.add("flash");
+    }
+
+    function showDamagePopup(container, amount, variant = "enemy") {
+      if (!container) return;
+      const popup = document.createElement("div");
+      popup.className = `damage-popup ${variant}`;
+      const numeric = Math.abs(amount);
+      popup.textContent = amount >= 0 ? `-${numeric}` : `+${numeric}`;
+      container.appendChild(popup);
+      popup.addEventListener("animationend", () => popup.remove());
+    }
+
+    function consumeMp(cost) {
+      if (!cost || cost <= 0) return;
+      player.mp = Math.max(0, player.mp - cost);
+      flashBar("mp-bar");
+      const mpBar = document.getElementById("mp-bar")?.parentElement;
+      showDamagePopup(mpBar, cost, "mp");
+    }
+
+    function findEnemyCard(enemy) {
+      return document.querySelector(`.enemy-card[data-enemy-id="${enemy?.id}"]`);
+    }
+
+    function triggerEnemyHit(enemy, amount = 0) {
+      const card = findEnemyCard(enemy);
+      if (!card) return;
+      const bar = card.querySelector(".enemy-bar");
+      if (bar) {
+        bar.classList.remove("pulse");
+        void bar.offsetWidth;
+        bar.classList.add("pulse");
+      }
+      showDamagePopup(card, amount, "enemy");
+    }
+
+    function updateEnemyCardHp(enemy) {
+      const card = findEnemyCard(enemy);
+      if (!card) return;
+      const fill = card.querySelector(".enemy-bar .fill");
+      const label = card.querySelector(".enemy-bar .label");
+      const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+      if (fill) fill.style.width = `${hpPct}%`;
+      if (label) label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+    }
+
     function updateUI(derivedStats = null) {
       const derived = derivedStats || recalcDerivedStats();
       lastDerivedStats = derived;
@@ -4840,6 +5014,8 @@ function generateId(prefix = "id") {
       updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
       updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
       updateBars("exp-bar", player.exp, player.expToLevel, "exp");
+      const phone = document.querySelector(".phone");
+      phone?.classList.toggle("player-down", player.hp <= 0);
 
       renderEnemies();
       renderActions();
@@ -5458,15 +5634,15 @@ function maybeAutoSave(reason = "auto") {
 
     function renderEnemies() {
       const wrapper = document.getElementById("enemies");
-      wrapper.innerHTML = "";
       const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
       wrapper.style.setProperty("--enemy-columns", enemyColumns);
-      game.enemies.forEach((enemy, index) => {
+
+      function createEnemyCard(enemy) {
         const card = document.createElement("div");
         card.className = "enemy-card";
+        card.dataset.enemyId = enemy.id;
         card.setAttribute("role", "button");
         card.setAttribute("aria-label", `${enemy.name} の詳細`);
-        card.onclick = () => openEnemyModal(enemy);
 
         const top = document.createElement("div");
         top.className = "enemy-top";
@@ -5474,26 +5650,16 @@ function maybeAutoSave(reason = "auto") {
         const name = document.createElement("div");
         name.className = "enemy-name";
         const titleLabel = document.createElement("span");
-        titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
 
         const meta = document.createElement("div");
         meta.className = "enemy-meta";
         const order = document.createElement("span");
-        order.textContent = `#${index + 1}`;
+        const archetype = document.createElement("span");
+        archetype.className = "tag clickable";
         const statusList = document.createElement("div");
         statusList.className = "status-list";
-        renderStatusList(statusList, enemy);
         meta.appendChild(order);
-        if (enemy.archetypeLabel && !enemy.isBoss) {
-          const archetype = document.createElement("span");
-          archetype.className = "tag clickable";
-          archetype.textContent = enemy.archetypeLabel;
-          archetype.onclick = (event) => {
-            event.stopPropagation();
-            openArchetypeModal(enemy);
-          };
-          meta.appendChild(archetype);
-        }
+        meta.appendChild(archetype);
         meta.appendChild(statusList);
 
         name.appendChild(titleLabel);
@@ -5502,31 +5668,68 @@ function maybeAutoSave(reason = "auto") {
 
         const tag = document.createElement("div");
         tag.className = "pill";
-        tag.style.display = enemy.isBoss ? "inline-flex" : "none";
         tag.textContent = "BOSS";
         top.appendChild(tag);
 
         const bar = document.createElement("div");
         bar.className = "enemy-bar";
+        bar.addEventListener("animationend", (event) => {
+          if (event.animationName === "barPulse") bar.classList.remove("pulse");
+        });
         const fill = document.createElement("span");
         fill.className = "fill";
-        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
-        fill.style.width = `${hpPct}%`;
         const hpLabel = document.createElement("span");
         hpLabel.className = "label";
-        hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
         bar.appendChild(fill);
         bar.appendChild(hpLabel);
 
         const attackBadge = document.createElement("div");
         attackBadge.className = "attack-badge enemy";
-        const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
-        attackBadge.textContent = `x${enemyAttacks}`;
         attackBadge.title = "1ターンあたりの攻撃回数";
 
         card.appendChild(top);
         card.appendChild(bar);
         card.appendChild(attackBadge);
+        card._refs = { titleLabel, order, archetype, statusList, tag, bar, fill, hpLabel, attackBadge };
+        return card;
+      }
+
+      function updateEnemyCard(card, enemy, index) {
+        const refs = card._refs || {};
+        card.dataset.enemyId = enemy.id;
+        card.onclick = () => openEnemyModal(enemy);
+        card.classList.toggle("defeated", enemy.hp <= 0);
+        if (refs.titleLabel) refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
+        if (refs.order) refs.order.textContent = `#${index + 1}`;
+        if (refs.archetype) {
+          const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
+          refs.archetype.style.display = hasArchetype ? "inline-flex" : "none";
+          refs.archetype.textContent = hasArchetype ? enemy.archetypeLabel : "";
+          refs.archetype.onclick = hasArchetype
+            ? (event) => {
+                event.stopPropagation();
+                openArchetypeModal(enemy);
+              }
+            : null;
+        }
+        if (refs.statusList) {
+          refs.statusList.innerHTML = "";
+          renderStatusList(refs.statusList, enemy);
+        }
+        if (refs.tag) refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
+        const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+        if (refs.fill) refs.fill.style.width = `${hpPct}%`;
+        if (refs.hpLabel) refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+        if (refs.attackBadge) {
+          const enemyAttacks = Math.max(0, enemy.attacksRemaining ?? enemy.attackCount ?? 0);
+          refs.attackBadge.textContent = `x${enemyAttacks}`;
+        }
+      }
+
+      wrapper.innerHTML = "";
+      game.enemies.forEach((enemy, index) => {
+        const card = createEnemyCard(enemy);
+        updateEnemyCard(card, enemy, index);
         wrapper.appendChild(card);
       });
     }
@@ -6969,6 +7172,16 @@ function maybeAutoSave(reason = "auto") {
         removeStatus(target, "sleep");
         log(`${target.name} は攻撃を受けて目を覚ました`, "info");
       }
+      if (target === player) {
+        flashBar("hp-bar");
+        if (final > 0) {
+          const playerBar = document.getElementById("hp-bar")?.parentElement;
+          showDamagePopup(playerBar, final, "player");
+        }
+      } else {
+        if (final > 0) triggerEnemyHit(target, final);
+        updateEnemyCardHp(target);
+      }
       return final;
     }
 
@@ -7108,7 +7321,7 @@ function maybeAutoSave(reason = "auto") {
         log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
         return;
       }
-      player.mp -= mpCost;
+      consumeMp(mpCost);
 
       const hit = attemptHit(player, target);
       const effectLabel = skill.activation?.effect ? `: ${skill.activation.effect}` : "";
@@ -7147,7 +7360,7 @@ function maybeAutoSave(reason = "auto") {
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 5;
+      consumeMp(5);
       const target = chooseTargetForPlayer();
       if (!target) return;
       const hit = attemptHit(player, target);
@@ -7182,7 +7395,7 @@ function maybeAutoSave(reason = "auto") {
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 4;
+      consumeMp(4);
       const healAmount = Math.max(6, Math.round(player.maxHp * 0.12 + (player.buffs.focus ? 5 : 0)));
       player.hp = Math.min(player.maxHp, player.hp + healAmount);
       log(`✨ ヒール！ HPが ${healAmount} 回復`, "good");
@@ -7200,7 +7413,7 @@ function maybeAutoSave(reason = "auto") {
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 2;
+      consumeMp(2);
       player.buffs.guard = 2;
       log("🛡️ 守りを固めた！ 次の2ターン被ダメ軽減", "good");
       updateUI();
@@ -7217,7 +7430,7 @@ function maybeAutoSave(reason = "auto") {
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 2;
+      consumeMp(2);
       player.buffs.haste = 2;
       log("💨 ブースト！ 次の2ターン行動速度アップ", "good");
       updateUI();
@@ -7234,7 +7447,7 @@ function maybeAutoSave(reason = "auto") {
         log("MPが足りない！", "warning");
         return;
       }
-      player.mp -= 3;
+      consumeMp(3);
       player.buffs.focus = 2;
       log("🎯 フォーカス！ クリティカル率アップ", "good");
       updateUI();
