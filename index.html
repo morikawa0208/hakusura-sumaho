@@ -5731,6 +5731,11 @@ function maybeAutoSave(reason = "auto") {
         const card = createEnemyCard(enemy);
         updateEnemyCard(card, enemy, index);
         wrapper.appendChild(card);
+        used.add(enemy.id);
+      });
+
+      existing.forEach((card, id) => {
+        if (!used.has(id)) card.remove();
       });
     }
 
