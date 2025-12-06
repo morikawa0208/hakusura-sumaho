@@ -7241,11 +7241,11 @@ function maybeAutoSave(reason = "auto") {
       endPlayerTurn();
     }
 
-    function resetPlayerAfterPenalty() {
+    function resetPlayerAfterPenalty({ restoreHp = true } = {}) {
       player.statuses = [];
       player.buffs = { guard: 0, haste: 0, focus: 0 };
       recalcDerivedStats();
-      player.hp = player.maxHp;
+      player.hp = restoreHp ? player.maxHp : Math.min(player.hp, player.maxHp);
       player.mp = player.maxMp;
       player.attacksRemaining = player.attackCount;
       player.activeSkillSlots.forEach((slot) => {
@@ -7256,13 +7256,13 @@ function maybeAutoSave(reason = "auto") {
       game.awaitingInput = false;
     }
 
-    function retreatLowerFloors(drop, { reason = "撤退", tone = "warning" } = {}) {
+    function retreatLowerFloors(drop, { reason = "撤退", tone = "warning", restoreHp = true } = {}) {
       const previousFloor = game.floor;
       game.floor = Math.max(1, game.floor - drop);
       const moved = previousFloor - game.floor;
       const movementText = moved > 0 ? `${moved}階さがる` : "これ以上下がれない";
       log(`↘️ ${reason}で${movementText} (${previousFloor}F → ${game.floor}F)`, tone);
-      resetPlayerAfterPenalty();
+      resetPlayerAfterPenalty({ restoreHp });
       spawnEnemies();
       updateUI();
       maybeAutoSave(`戦闘終了: ${reason}`);
@@ -7279,7 +7279,7 @@ function maybeAutoSave(reason = "auto") {
         log("逃げる相手がいない", "info");
         return;
       }
-      retreatLowerFloors(5, { reason: "にげだした", tone: "warning" });
+      retreatLowerFloors(5, { reason: "にげだした", tone: "warning", restoreHp: false });
     }
 
     function enemyAction(enemy) {
