@@ -4636,6 +4636,12 @@ function generateId(prefix = "id") {
       return merged;
     }
 
+    function calcExpRewardForEnemy({ floor, enemyCount = 1, isBoss = false } = {}) {
+      const base = 10 + floor * 3 + (floor % 5 === 0 ? 10 : 0);
+      const adjusted = isBoss ? Math.round(base * 1.12) : base;
+      return Math.max(1, Math.round(adjusted / Math.max(1, enemyCount)));
+    }
+
     function getGoldMultiplier() {
       const derived = recalcDerivedStats();
       const chance = derived.goldChance?.total ?? 100;
@@ -4653,6 +4659,19 @@ function generateId(prefix = "id") {
       player.gold += gained;
       const prefix = source ? `${source}: ` : "";
       log(`💰 ${prefix}${formatGold(gained)}Gを獲得`, "good");
+      return gained;
+    }
+
+    function grantExp(amount, { source = "" } = {}) {
+      const gained = Math.max(0, Math.round(amount || 0));
+      if (gained <= 0) return 0;
+      player.exp += gained;
+      const prefix = source ? `${source}: ` : "";
+      log(`🎁 ${prefix}${gained} EXPを獲得`, "good");
+      while (player.exp >= player.expToLevel) {
+        player.exp -= player.expToLevel;
+        levelUp();
+      }
       return gained;
     }
 
@@ -5023,7 +5042,12 @@ function generateId(prefix = "id") {
       const boss = isBossFloor(game.floor);
       const count = boss ? 1 : 2 + Math.floor(Math.random() * 2);
       const derived = recalcDerivedStats();
-      game.enemies = Array.from({ length: count }, () => createEnemy(boss, derived));
+      const expReward = calcExpRewardForEnemy({ floor: game.floor, enemyCount: count, isBoss: boss });
+      game.enemies = Array.from({ length: count }, () => {
+        const enemy = createEnemy(boss, derived);
+        enemy.expReward = expReward;
+        return enemy;
+      });
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
       game.awaitingInput = true;
@@ -7533,6 +7557,9 @@ function maybeAutoSave(reason = "auto") {
       enemy.defeated = true;
       const baseGold = Math.max(1, Math.round(5 + game.floor * 2 + (enemy.isBoss ? 20 : 0)));
       grantGold(baseGold, { source: cause || "撃破" });
+      if (enemy.expReward) {
+        grantExp(enemy.expReward, { source: cause || enemy.name });
+      }
       attemptEnemyDrop(enemy);
       refillPotionsOnKill();
       updateUI();
@@ -7945,14 +7972,9 @@ function handlePlayerDefeat() {
 
     function checkVictory() {
       if (game.enemies.some(e => e.hp > 0)) return;
-      const gained = 10 + game.floor * 3 + (game.floor % 5 === 0 ? 10 : 0);
-      player.exp += gained;
-      log(`🎁 ${gained} EXP と少量のMPを得た`, "good");
-      player.mp = Math.min(player.maxMp, player.mp + 3 + skills.arcaneFlow.level * 2);
-      while (player.exp >= player.expToLevel) {
-        player.exp -= player.expToLevel;
-        levelUp();
-      }
+      const mpGain = 3 + skills.arcaneFlow.level * 2;
+      player.mp = Math.min(player.maxMp, player.mp + mpGain);
+      log(`✨ 戦闘に勝利し、MPを ${mpGain} 回復した`, "good");
       game.awaitingInput = false;
       game.turnQueue = [];
       updateUI();
