@@ -223,7 +223,7 @@
     }
 
     .drop-celebration .drop-backdrop {
-      position: fixed;
+      position: absolute;
       inset: 0;
       background: radial-gradient(circle at 50% 40%, rgba(var(--drop-highlight-rgb), 0.16), transparent 45%),
         radial-gradient(circle at 70% 30%, rgba(var(--drop-primary-rgb), 0.14), transparent 40%),
@@ -234,124 +234,139 @@
     }
 
     .drop-celebration .drop-core {
-  position: relative;
-  padding: 18px 26px;
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-  min-width: 280px;
-  transform: translateY(-6px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+      position: relative;
+      isolation: isolate;
+      padding: 18px 26px;
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      min-width: 280px;
+      transform: translateY(-6px);
+    }
 
-/* ↓ 背景＆光エフェクトは全部「下のレイヤー」にまとめる */
-.drop-celebration .drop-backdrop,
-.drop-celebration .drop-core::before,
-.drop-celebration .drop-core::after,
-.drop-rings,
-.drop-rays,
-.drop-sparkles {
-  position: absolute;
-  z-index: 0;
-}
+    .drop-celebration .drop-core::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(
+        from 140deg,
+        rgba(var(--drop-highlight-rgb), 0.06),
+        rgba(var(--drop-highlight-rgb), 0.22),
+        rgba(var(--drop-highlight-rgb), 0.06)
+      );
+      filter: blur(18px);
+      animation: dropRays 3s linear infinite;
+      z-index: 0;
+    }
 
-/* 背景ぼかし */
-.drop-celebration .drop-backdrop {
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 40%, rgba(var(--drop-primary-rgb), 0.35), transparent 55%),
-    radial-gradient(circle at 70% 30%, rgba(var(--drop-secondary-rgb), 0.25), transparent 45%),
-    radial-gradient(circle at 30% 60%, rgba(var(--drop-highlight-rgb), 0.25), transparent 50%);
-  backdrop-filter: blur(4px);
-  opacity: 0;
-  animation: dropBackdrop 2.6s ease-out forwards;
-}
+    .drop-celebration .drop-core::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(var(--drop-highlight-rgb), 0.16), transparent 55%);
+      opacity: 0;
+      animation: dropSweep 2.2s ease-out forwards;
+      z-index: 1;
+    }
 
-/* 輪っか */
-.drop-rings {
-  inset: -12px;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(var(--drop-primary-rgb), 0.42), transparent 55%),
-    radial-gradient(circle at 50% 20%, rgba(var(--drop-secondary-rgb), 0.28), transparent 60%);
-  filter: blur(10px);
-  opacity: 0.85;
-  animation: dropRings 2.4s ease-out forwards;
-}
+    .drop-rings {
+      position: absolute;
+      inset: -12px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 50% 50%, rgba(var(--drop-primary-rgb), 0.42), transparent 55%),
+        conic-gradient(
+          from 200deg,
+          rgba(var(--drop-highlight-rgb), 0.24),
+          transparent 35%,
+          rgba(var(--drop-secondary-rgb), 0.3)
+        );
+      filter: blur(10px);
+      opacity: 0.75;
+      animation: dropRings 2.4s ease-out forwards;
+      z-index: 2;
+    }
 
-/* 光の筋 */
-.drop-rays {
-  inset: -16px;
-  background:
-    conic-gradient(
-      from 0deg,
-      rgba(var(--drop-highlight-rgb), 0.25),
-      rgba(var(--drop-secondary-rgb), 0.07),
-      rgba(var(--drop-highlight-rgb), 0.25),
-      rgba(var(--drop-secondary-rgb), 0.07)
-    );
-  mix-blend-mode: screen;
-  opacity: 0.75;
-  animation: dropRays 3s linear infinite;
-}
+    .drop-rays {
+      position: absolute;
+      inset: -16px;
+      background: conic-gradient(
+          from 0deg,
+          rgba(var(--drop-highlight-rgb), 0.25),
+          rgba(var(--drop-secondary-rgb), 0.06),
+          rgba(var(--drop-highlight-rgb), 0.24),
+          rgba(var(--drop-primary-rgb), 0.08)
+        ),
+        repeating-conic-gradient(
+          from 0deg,
+          rgba(var(--drop-primary-rgb), 0.22) 0deg,
+          rgba(var(--drop-highlight-rgb), 0.06) 6deg,
+          rgba(var(--drop-secondary-rgb), 0.2) 12deg,
+          rgba(var(--drop-highlight-rgb), 0.05) 18deg
+        );
+      mix-blend-mode: screen;
+      opacity: 0.75;
+      animation: dropRays 3s linear infinite;
+      z-index: 3;
+    }
 
-/* きらきら */
-.drop-sparkles {
-  inset: 10%;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(var(--drop-primary-rgb), 0.32), transparent 25%),
-    radial-gradient(circle at 80% 60%, rgba(var(--drop-secondary-rgb), 0.3), transparent 26%),
-    radial-gradient(circle at 45% 80%, rgba(var(--drop-highlight-rgb), 0.3), transparent 30%);
-  opacity: 0;
-  animation: dropSparkle 2.6s ease-out forwards;
-}
+    .drop-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--drop-primary), var(--drop-secondary));
+      color: #0b0e14;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      font-size: 13px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 28px rgba(255, 255, 255, 0.16);
+      text-transform: uppercase;
+      filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.5));
+      animation: dropText 2s ease-out forwards;
+      z-index: 6;
+    }
 
-/* ↓ テキストは必ず一番手前のレイヤーへ */
-.drop-pill,
-.drop-item-name {
-  position: relative;
-  z-index: 3;
-}
+    .drop-item-name {
+      position: relative;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--drop-highlight);
+      border: 1px solid rgba(var(--drop-highlight-rgb), 0.45);
+      background: linear-gradient(145deg, rgba(var(--drop-primary-rgb), 0.16), rgba(var(--drop-secondary-rgb), 0.16));
+      padding: 8px 12px;
+      border-radius: 12px;
+      text-shadow: 0 3px 18px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 255, 255, 0.35);
+      animation: dropText 2s ease-out forwards;
+      transform-origin: center;
+      z-index: 6;
+    }
 
-/* RARE / LEGENDARY ラベル */
-.drop-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--drop-primary), var(--drop-secondary));
-  color: #0b0e14;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  font-size: 13px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 28px rgba(255, 255, 255, 0.16);
-  text-transform: uppercase;
-  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7));
-  animation: dropText 2s ease-out forwards;
-}
+    .drop-sparkles {
+      position: absolute;
+      inset: 10%;
+      background: radial-gradient(circle at 20% 30%, rgba(var(--drop-primary-rgb), 0.32), transparent 25%),
+        radial-gradient(circle at 80% 60%, rgba(var(--drop-secondary-rgb), 0.3), transparent 26%),
+        radial-gradient(circle at 45% 80%, rgba(var(--drop-highlight-rgb), 0.3), transparent 30%);
+      opacity: 0;
+      animation: dropSparkle 2.6s ease-out forwards;
+      z-index: 4;
+    }
 
-/* アイテム名本体 */
-.drop-item-name {
-  margin-top: 10px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-  color: var(--drop-highlight);
-  border: 1px solid rgba(var(--drop-highlight-rgb), 0.45);
-  background: linear-gradient(145deg, rgba(var(--drop-primary-rgb), 0.22), rgba(var(--drop-secondary-rgb), 0.22));
-  padding: 8px 14px;
-  border-radius: 12px;
-  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.8), 0 0 22px rgba(255, 255, 255, 0.45);
-  animation: dropText 2s ease-out forwards;
-  transform-origin: center;
-}
-    
+    .drop-content {
+      position: relative;
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+      z-index: 5;
+    }
+
     @keyframes dropEntrance {
       0% {
         opacity: 0;
@@ -467,32 +482,6 @@
       }
     }
 
-/* ===== ドロップ演出：レイヤー最終調整 ===== */
-
-/* 背景＆光エフェクトは全部「下のレイヤー」 */
-.drop-celebration .drop-backdrop,
-.drop-celebration .drop-core::before,
-.drop-celebration .drop-core::after,
-.drop-rings,
-.drop-rays,
-.drop-sparkles {
-  position: absolute;
-  z-index: 0;
-}
-
-/* コア本体はその上 */
-.drop-celebration .drop-core {
-  position: relative; /* ここ大事 */
-  z-index: 1;
-}
-
-/* RARE / LEGENDARY ラベルとアイテム名は一番手前 */
-.drop-pill,
-.drop-item-name {
-  position: relative;
-  z-index: 2;
-}
-    
 .phone.player-down::after {
   content: "戦闘不能";
   top:15px;
@@ -1676,8 +1665,10 @@
         <div class="drop-rings"></div>
         <div class="drop-rays"></div>
         <div class="drop-sparkles"></div>
-        <div id="drop-pill" class="drop-pill">RARE DROP</div>
-        <div id="drop-item-name" class="drop-item-name"></div>
+        <div class="drop-content">
+          <div id="drop-pill" class="drop-pill">RARE DROP</div>
+          <div id="drop-item-name" class="drop-item-name"></div>
+        </div>
       </div>
     </div>
   </div>
