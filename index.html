@@ -58,6 +58,131 @@
       position: relative;
     }
 
+    .level-up-toast {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translate(-50%, -10px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 12px;
+      background: linear-gradient(120deg, rgba(52, 211, 153, 0.14), rgba(96, 165, 250, 0.12));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(52, 211, 153, 0.08);
+      color: var(--text);
+      pointer-events: none;
+      opacity: 0;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .level-up-toast.show {
+      animation: levelUpToast 1.9s ease-out forwards;
+    }
+
+    .level-up-toast .toast-glow {
+      width: 8px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(52, 211, 153, 0.8), rgba(96, 165, 250, 0.7));
+      filter: blur(1px) drop-shadow(0 0 8px rgba(52, 211, 153, 0.65));
+      opacity: 0.9;
+      animation: toastGlow 1.6s ease-in-out infinite;
+    }
+
+    .level-up-toast .toast-body {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .level-up-toast .toast-icon {
+      font-size: 18px;
+      filter: drop-shadow(0 2px 6px rgba(52, 211, 153, 0.6));
+    }
+
+    .level-up-toast .toast-text {
+      display: grid;
+      gap: 2px;
+      line-height: 1.25;
+    }
+
+    .level-up-toast .toast-label {
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      font-size: 11px;
+      color: #a5f3fc;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .level-up-toast .toast-level {
+      font-weight: 700;
+      font-size: 14px;
+      color: #fef3c7;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+    }
+
+    .level-up-toast .toast-trail {
+      position: absolute;
+      inset: 4px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 20% 50%, rgba(52, 211, 153, 0.35), transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(96, 165, 250, 0.35), transparent 50%);
+      filter: blur(22px);
+      opacity: 0;
+      animation: toastTrail 1.4s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes levelUpToast {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -6px) scale(0.96);
+      }
+      12% {
+        opacity: 1;
+        transform: translate(-50%, -2px) scale(1.04);
+      }
+      70% {
+        opacity: 0.98;
+        transform: translate(-50%, -8px) scale(1.02);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -22px) scale(1.02);
+      }
+    }
+
+    @keyframes toastGlow {
+      0%,
+      100% {
+        opacity: 0.75;
+        transform: translateY(0);
+      }
+      50% {
+        opacity: 1;
+        transform: translateY(-4px);
+      }
+    }
+
+    @keyframes toastTrail {
+      0% {
+        opacity: 0.6;
+        transform: scale(0.9);
+      }
+      60% {
+        opacity: 0.85;
+        transform: scale(1.02);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.08);
+      }
+    }
+
 .phone.player-down::after {
   content: "戦闘不能";
   position: absolute;
@@ -1221,6 +1346,18 @@
       <button id="btn-inventory">アイテム</button>
       <button id="btn-debug">デバッグ</button>
     </nav>
+
+    <div id="level-up-toast" class="level-up-toast" aria-hidden="true">
+      <div class="toast-glow"></div>
+      <div class="toast-body">
+        <span class="toast-icon" aria-hidden="true">✨</span>
+        <div class="toast-text">
+          <div class="toast-label">LEVEL UP</div>
+          <div class="toast-level">Lv <span id="level-up-value"></span> に到達</div>
+        </div>
+      </div>
+      <div class="toast-trail"></div>
+    </div>
   </div>
 
   <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -4313,6 +4450,10 @@ function generateId(prefix = "id") {
     const statusPopoverDesc = document.getElementById("status-popover-desc");
     let statusPopoverTimer = null;
 
+    const levelUpToast = document.getElementById("level-up-toast");
+    const levelUpValue = document.getElementById("level-up-value");
+    let levelUpToastTimer = null;
+
     const getStatus = (entity, key) => (entity.statuses || []).find((s) => s.key === key);
     const hasStatus = (entity, key) => Boolean(getStatus(entity, key));
 
@@ -4329,6 +4470,20 @@ function generateId(prefix = "id") {
       const def = STATUS_DEFINITIONS[status.key];
       if (!def) return "";
       return `${def.description} / 残り${status.remaining}T`;
+    }
+
+    function triggerLevelUpEffect(level) {
+      if (!levelUpToast || !levelUpValue) return;
+      levelUpValue.textContent = level;
+      levelUpToast.setAttribute("aria-hidden", "false");
+      levelUpToast.classList.remove("show");
+      if (levelUpToastTimer) clearTimeout(levelUpToastTimer);
+      void levelUpToast.offsetWidth;
+      levelUpToast.classList.add("show");
+      levelUpToastTimer = setTimeout(() => {
+        levelUpToast?.classList.remove("show");
+        levelUpToast?.setAttribute("aria-hidden", "true");
+      }, 1900);
     }
 
     function showStatusPopover(def, status) {
@@ -7812,6 +7967,7 @@ function handlePlayerDefeat() {
       player.statPoints += 5;
       player.skillPoints += 1;
       log(`⬆️ レベルアップ！ Lv${player.level} 能力P+5 / スキルP+1`, "good");
+      triggerLevelUpEffect(player.level);
       maybeAutoSave("レベルアップ");
     }
 
