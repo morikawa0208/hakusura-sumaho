@@ -307,7 +307,7 @@
     }
 
     .drop-pill {
-      position: relative;
+      position: relative
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -351,6 +351,23 @@
       animation: dropSparkle 2.6s ease-out forwards;
     }
 
+/* 光のエフェクト類は一段下 */
+.drop-celebration .drop-backdrop,
+.drop-celebration .drop-core::before,
+.drop-celebration .drop-core::after,
+.drop-rings,
+.drop-rays,
+.drop-sparkles {
+  z-index: 0;
+}
+
+/* テキストは一番手前に固定 */
+.drop-pill,
+.drop-item-name {
+  position: relative;
+  z-index: 2;
+}
+    
     @keyframes dropEntrance {
       0% {
         opacity: 0;
