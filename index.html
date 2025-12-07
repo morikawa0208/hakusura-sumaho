@@ -223,7 +223,7 @@
     }
 
     .drop-celebration .drop-backdrop {
-      position: absolute;
+      position: fixed;
       inset: 0;
       background: radial-gradient(circle at 50% 40%, rgba(var(--drop-highlight-rgb), 0.16), transparent 45%),
         radial-gradient(circle at 70% 30%, rgba(var(--drop-primary-rgb), 0.14), transparent 40%),
@@ -234,7 +234,7 @@
     }
 
     .drop-celebration .drop-core {
-  position: relative;
+  position:fixed;
   padding: 18px 26px;
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
@@ -255,7 +255,7 @@
 .drop-rings,
 .drop-rays,
 .drop-sparkles {
-  position: absolute;
+  position:fixed;
   z-index: 0;
 }
 
@@ -313,7 +313,7 @@
 /* ↓ テキストは必ず一番手前のレイヤーへ */
 .drop-pill,
 .drop-item-name {
-  position: relative;
+  position: fixed;
   z-index: 3;
 }
 
