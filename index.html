@@ -234,7 +234,7 @@
     }
 
     .drop-celebration .drop-core {
-  position:fixed;
+  position: relative;
   padding: 18px 26px;
   border-radius: 18px;
   background: linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
@@ -255,7 +255,7 @@
 .drop-rings,
 .drop-rays,
 .drop-sparkles {
-  position:fixed;
+  position: absolute;
   z-index: 0;
 }
 
@@ -313,7 +313,7 @@
 /* ↓ テキストは必ず一番手前のレイヤーへ */
 .drop-pill,
 .drop-item-name {
-  position: fixed;
+  position: relative;
   z-index: 3;
 }
 
@@ -467,6 +467,32 @@
       }
     }
 
+/* ===== ドロップ演出：レイヤー最終調整 ===== */
+
+/* 背景＆光エフェクトは全部「下のレイヤー」 */
+.drop-celebration .drop-backdrop,
+.drop-celebration .drop-core::before,
+.drop-celebration .drop-core::after,
+.drop-rings,
+.drop-rays,
+.drop-sparkles {
+  position: absolute;
+  z-index: 0;
+}
+
+/* コア本体はその上 */
+.drop-celebration .drop-core {
+  position: relative; /* ここ大事 */
+  z-index: 1;
+}
+
+/* RARE / LEGENDARY ラベルとアイテム名は一番手前 */
+.drop-pill,
+.drop-item-name {
+  position: relative;
+  z-index: 2;
+}
+    
 .phone.player-down::after {
   content: "戦闘不能";
   top:15px;
