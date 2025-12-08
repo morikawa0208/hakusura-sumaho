@@ -183,7 +183,7 @@
       }
     }
 
-    .drop-celebration {
+    .drop-toast {
       --drop-primary: #7c3aed;
       --drop-secondary: #22d3ee;
       --drop-highlight: #c084fc;
@@ -191,16 +191,18 @@
       --drop-secondary-rgb: 34, 211, 238;
       --drop-highlight-rgb: 192, 132, 252;
       position: fixed;
-      inset: 0;
+      top: 15px;
+      left: 50%;
+      transform: translate(-50%, -10px) scale(0.96);
       display: grid;
       place-items: center;
       pointer-events: none;
-      z-index: 25;
+      z-index: 30;
       opacity: 0;
-      transform: scale(0.96);
+      min-width: 320px;
     }
 
-    .drop-celebration.rare {
+    .drop-toast.rare {
       --drop-primary: #7c3aed;
       --drop-secondary: #22d3ee;
       --drop-highlight: #c084fc;
@@ -209,7 +211,7 @@
       --drop-highlight-rgb: 192, 132, 252;
     }
 
-    .drop-celebration.legendary {
+    .drop-toast.legendary {
       --drop-primary: #f59e0b;
       --drop-secondary: #f472b6;
       --drop-highlight: #fef08a;
@@ -218,190 +220,197 @@
       --drop-highlight-rgb: 254, 240, 138;
     }
 
-    .drop-celebration.show {
-      animation: dropEntrance 2.6s ease-out forwards;
+    .drop-toast.show {
+      animation: dropToastEntrance 2.6s ease-out forwards;
     }
 
-    .drop-celebration .drop-backdrop {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 50% 40%, rgba(var(--drop-highlight-rgb), 0.16), transparent 45%),
-        radial-gradient(circle at 70% 30%, rgba(var(--drop-primary-rgb), 0.14), transparent 40%),
-        radial-gradient(circle at 30% 60%, rgba(var(--drop-secondary-rgb), 0.12), transparent 45%);
-      backdrop-filter: blur(4px);
-      opacity: 0;
-      animation: dropBackdrop 2.6s ease-out forwards;
-    }
-
-    .drop-celebration .drop-core {
+    .drop-toast .drop-toast-core {
       position: relative;
-      isolation: isolate;
-      padding: 18px 26px;
-      border-radius: 18px;
-      background: linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px 12px 14px;
+      border-radius: 16px;
+      background: linear-gradient(
+          120deg,
+          rgba(var(--drop-primary-rgb), 0.28),
+          rgba(var(--drop-secondary-rgb), 0.28)
+        ),
+        linear-gradient(145deg, rgba(11, 14, 20, 0.96), rgba(17, 24, 39, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45), 0 0 38px rgba(var(--drop-highlight-rgb), 0.35);
       overflow: hidden;
-      min-width: 280px;
-      transform: translateY(-6px);
+      isolation: isolate;
     }
 
-    .drop-celebration .drop-core::before {
+    .drop-toast .drop-toast-core::before {
       content: "";
       position: absolute;
-      inset: -40%;
+      inset: -50% -30%;
       background: conic-gradient(
-        from 140deg,
-        rgba(var(--drop-highlight-rgb), 0.06),
-        rgba(var(--drop-highlight-rgb), 0.22),
-        rgba(var(--drop-highlight-rgb), 0.06)
+        from 160deg,
+        rgba(var(--drop-highlight-rgb), 0.08),
+        rgba(var(--drop-highlight-rgb), 0.36),
+        rgba(var(--drop-highlight-rgb), 0.08)
       );
       filter: blur(18px);
-      animation: dropRays 3s linear infinite;
+      animation: dropToastRays 2.8s linear infinite;
       z-index: 0;
     }
 
-    .drop-celebration .drop-core::after {
+    .drop-toast .drop-toast-core::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(120deg, rgba(var(--drop-highlight-rgb), 0.16), transparent 55%);
+      background: linear-gradient(110deg, rgba(var(--drop-highlight-rgb), 0.14), transparent 58%);
       opacity: 0;
-      animation: dropSweep 2.2s ease-out forwards;
+      animation: dropToastSweep 2s ease-out forwards;
       z-index: 1;
     }
 
-    .drop-rings {
+    .drop-toast .drop-toast-glow {
       position: absolute;
-      inset: -12px;
-      border-radius: 18px;
-      background: radial-gradient(circle at 50% 50%, rgba(var(--drop-primary-rgb), 0.42), transparent 55%),
-        conic-gradient(
-          from 200deg,
-          rgba(var(--drop-highlight-rgb), 0.24),
-          transparent 35%,
-          rgba(var(--drop-secondary-rgb), 0.3)
-        );
-      filter: blur(10px);
-      opacity: 0.75;
-      animation: dropRings 2.4s ease-out forwards;
+      inset: -10px;
+      background: radial-gradient(circle at 20% 20%, rgba(var(--drop-primary-rgb), 0.3), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(var(--drop-secondary-rgb), 0.3), transparent 42%),
+        radial-gradient(circle at 50% 40%, rgba(var(--drop-highlight-rgb), 0.32), transparent 38%);
+      filter: blur(16px);
+      opacity: 0;
+      animation: dropToastGlow 2.4s ease-out forwards;
+      z-index: 0;
+    }
+
+    .drop-toast .drop-toast-body {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 12px;
       z-index: 2;
     }
 
-    .drop-rays {
-      position: absolute;
-      inset: -16px;
-      background: conic-gradient(
-          from 0deg,
-          rgba(var(--drop-highlight-rgb), 0.25),
-          rgba(var(--drop-secondary-rgb), 0.06),
-          rgba(var(--drop-highlight-rgb), 0.24),
-          rgba(var(--drop-primary-rgb), 0.08)
-        ),
-        repeating-conic-gradient(
-          from 0deg,
-          rgba(var(--drop-primary-rgb), 0.22) 0deg,
-          rgba(var(--drop-highlight-rgb), 0.06) 6deg,
-          rgba(var(--drop-secondary-rgb), 0.2) 12deg,
-          rgba(var(--drop-highlight-rgb), 0.05) 18deg
-        );
-      mix-blend-mode: screen;
-      opacity: 0.75;
-      animation: dropRays 3s linear infinite;
-      z-index: 3;
+    .drop-toast .drop-toast-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35), rgba(var(--drop-highlight-rgb), 0.2)),
+        linear-gradient(135deg, var(--drop-primary), var(--drop-secondary));
+      color: #0b0e14;
+      font-size: 22px;
+      box-shadow: 0 0 18px rgba(var(--drop-highlight-rgb), 0.55), 0 12px 28px rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      transform: scale(0.94);
+      animation: dropToastPop 1.4s ease-out forwards;
     }
 
-    .drop-pill {
-      position: relative;
+    .drop-toast .drop-text {
+      display: grid;
+      gap: 6px;
+      line-height: 1.25;
+    }
+
+    .drop-toast .drop-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 999px;
-      background: linear-gradient(135deg, var(--drop-primary), var(--drop-secondary));
+      background: linear-gradient(120deg, var(--drop-primary), var(--drop-secondary));
       color: #0b0e14;
       font-weight: 900;
       letter-spacing: 0.08em;
-      font-size: 13px;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 0 28px rgba(255, 255, 255, 0.16);
+      font-size: 12px;
       text-transform: uppercase;
-      filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.5));
-      animation: dropText 2s ease-out forwards;
-      z-index: 6;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 18px rgba(var(--drop-highlight-rgb), 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.4);
     }
 
-    .drop-item-name {
-      position: relative;
-      margin-top: 10px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      color: var(--drop-highlight);
-      border: 1px solid rgba(var(--drop-highlight-rgb), 0.45);
-      background: linear-gradient(145deg, rgba(var(--drop-primary-rgb), 0.16), rgba(var(--drop-secondary-rgb), 0.16));
+    .drop-toast .drop-item-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
       border-radius: 12px;
-      text-shadow: 0 3px 18px rgba(0, 0, 0, 0.6), 0 0 18px rgba(255, 255, 255, 0.35);
-      animation: dropText 2s ease-out forwards;
-      transform-origin: center;
-      z-index: 6;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      color: var(--drop-highlight);
+      background: linear-gradient(145deg, rgba(var(--drop-primary-rgb), 0.18), rgba(var(--drop-secondary-rgb), 0.22));
+      border: 1px solid rgba(var(--drop-highlight-rgb), 0.55);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), inset 0 0 22px rgba(var(--drop-highlight-rgb), 0.3);
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.4), 0 0 12px rgba(var(--drop-highlight-rgb), 0.7);
     }
 
-    .drop-sparkles {
+    .drop-toast .drop-sparkles {
       position: absolute;
-      inset: 10%;
-      background: radial-gradient(circle at 20% 30%, rgba(var(--drop-primary-rgb), 0.32), transparent 25%),
-        radial-gradient(circle at 80% 60%, rgba(var(--drop-secondary-rgb), 0.3), transparent 26%),
-        radial-gradient(circle at 45% 80%, rgba(var(--drop-highlight-rgb), 0.3), transparent 30%);
+      inset: -12px;
+      background: radial-gradient(circle at 30% 20%, rgba(var(--drop-primary-rgb), 0.35), transparent 36%),
+        radial-gradient(circle at 70% 30%, rgba(var(--drop-secondary-rgb), 0.32), transparent 36%),
+        radial-gradient(circle at 50% 70%, rgba(var(--drop-highlight-rgb), 0.38), transparent 40%);
+      mix-blend-mode: screen;
       opacity: 0;
-      animation: dropSparkle 2.6s ease-out forwards;
-      z-index: 4;
+      animation: dropToastSparkle 2.6s ease-out forwards;
+      z-index: 1;
     }
 
-    .drop-content {
-      position: relative;
-      display: grid;
-      gap: 10px;
-      justify-items: center;
-      z-index: 5;
+    .drop-toast .drop-ribbon {
+      position: absolute;
+      inset: -30%;
+      background: conic-gradient(
+        from 90deg,
+        rgba(var(--drop-primary-rgb), 0.4),
+        rgba(var(--drop-secondary-rgb), 0.08),
+        rgba(var(--drop-highlight-rgb), 0.35),
+        rgba(var(--drop-primary-rgb), 0.12)
+      );
+      filter: blur(22px);
+      opacity: 0.85;
+      transform: rotate(12deg);
+      animation: dropToastRibbon 3s ease-in-out infinite;
+      z-index: 0;
     }
 
-    @keyframes dropEntrance {
+    @keyframes dropToastEntrance {
       0% {
         opacity: 0;
-        transform: scale(0.92) translateY(-6px);
+        transform: translate(-50%, -6px) scale(0.9);
       }
-      20% {
+      18% {
         opacity: 1;
-        transform: scale(1.02) translateY(2px);
+        transform: translate(-50%, -1px) scale(1.04);
       }
       60% {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: translate(-50%, -6px) scale(1);
       }
       100% {
         opacity: 0;
-        transform: scale(1) translateY(-12px);
+        transform: translate(-50%, -18px) scale(1);
       }
     }
 
-    @keyframes dropBackdrop {
+    @keyframes dropToastGlow {
       0% {
-        opacity: 0;
+        opacity: 0.4;
+        transform: scale(0.92);
       }
-      25% {
+      30% {
         opacity: 0.9;
+        transform: scale(1.03);
       }
       70% {
-        opacity: 0.75;
+        opacity: 0.85;
+        transform: scale(1.02);
       }
       100% {
         opacity: 0;
+        transform: scale(1.08);
       }
     }
 
-    @keyframes dropRays {
+    @keyframes dropToastRays {
       0% {
         transform: rotate(0deg);
       }
@@ -410,52 +419,33 @@
       }
     }
 
-    @keyframes dropRings {
+    @keyframes dropToastSweep {
       0% {
         opacity: 0;
-        transform: scale(0.94);
-      }
-      25% {
-        opacity: 1;
-        transform: scale(1.05);
-      }
-      70% {
-        opacity: 0.9;
-        transform: scale(1);
-      }
-      100% {
-        opacity: 0;
-        transform: scale(1.1);
-      }
-    }
-
-    @keyframes dropSweep {
-      0% {
-        opacity: 0;
-        transform: translateX(-30%);
+        transform: translateX(-28%);
       }
       35% {
-        opacity: 0.4;
-        transform: translateX(8%);
+        opacity: 0.6;
+        transform: translateX(6%);
       }
       100% {
         opacity: 0;
-        transform: translateX(30%);
+        transform: translateX(26%);
       }
     }
 
-    @keyframes dropText {
+    @keyframes dropToastPop {
       0% {
         opacity: 0;
-        transform: scale(0.85) translateY(6px);
+        transform: scale(0.6) rotate(-10deg);
       }
-      30% {
+      35% {
         opacity: 1;
-        transform: scale(1.08) translateY(-2px);
+        transform: scale(1.08) rotate(4deg);
       }
       70% {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: scale(1) rotate(0deg);
       }
       100% {
         opacity: 0;
@@ -463,22 +453,34 @@
       }
     }
 
-    @keyframes dropSparkle {
+    @keyframes dropToastSparkle {
       0% {
         opacity: 0;
-        filter: blur(12px);
+        filter: blur(14px);
       }
       25% {
-        opacity: 0.7;
-        filter: blur(6px);
+        opacity: 0.9;
+        filter: blur(10px);
       }
       60% {
-        opacity: 0.5;
-        filter: blur(10px);
+        opacity: 0.6;
+        filter: blur(12px);
       }
       100% {
         opacity: 0;
-        filter: blur(14px);
+        filter: blur(16px);
+      }
+    }
+
+    @keyframes dropToastRibbon {
+      0%,
+      100% {
+        transform: rotate(12deg) scale(0.96);
+        opacity: 0.9;
+      }
+      50% {
+        transform: rotate(0deg) scale(1.02);
+        opacity: 0.75;
       }
     }
 
@@ -1659,16 +1661,18 @@
       <div class="toast-trail"></div>
     </div>
 
-    <div id="drop-celebration" class="drop-celebration" aria-hidden="true">
-      <div class="drop-backdrop"></div>
-      <div class="drop-core">
-        <div class="drop-rings"></div>
-        <div class="drop-rays"></div>
-        <div class="drop-sparkles"></div>
-        <div class="drop-content">
-          <div id="drop-pill" class="drop-pill">RARE DROP</div>
-          <div id="drop-item-name" class="drop-item-name"></div>
+    <div id="drop-celebration" class="drop-toast" aria-hidden="true">
+      <div class="drop-toast-core">
+        <div class="drop-toast-glow"></div>
+        <div class="drop-toast-body">
+          <div class="drop-toast-icon" aria-hidden="true">💎</div>
+          <div class="drop-text">
+            <div id="drop-pill" class="drop-pill">RARE DROP</div>
+            <div id="drop-item-name" class="drop-item-name"></div>
+          </div>
         </div>
+        <div class="drop-sparkles"></div>
+        <div class="drop-ribbon"></div>
       </div>
     </div>
   </div>
