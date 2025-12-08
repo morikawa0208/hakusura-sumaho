@@ -184,12 +184,12 @@
     }
 
     .drop-toast {
-      --drop-primary: #7c3aed;
-      --drop-secondary: #22d3ee;
-      --drop-highlight: #c084fc;
-      --drop-primary-rgb: 124, 58, 237;
-      --drop-secondary-rgb: 34, 211, 238;
-      --drop-highlight-rgb: 192, 132, 252;
+      --drop-primary: #fbbf24;
+      --drop-secondary: #fef08a;
+      --drop-highlight: #fcd34d;
+      --drop-primary-rgb: 251, 191, 36;
+      --drop-secondary-rgb: 254, 240, 138;
+      --drop-highlight-rgb: 252, 211, 77;
       position: fixed;
       top: 15px;
       left: 50%;
@@ -203,21 +203,21 @@
     }
 
     .drop-toast.rare {
-      --drop-primary: #7c3aed;
-      --drop-secondary: #22d3ee;
-      --drop-highlight: #c084fc;
-      --drop-primary-rgb: 124, 58, 237;
-      --drop-secondary-rgb: 34, 211, 238;
-      --drop-highlight-rgb: 192, 132, 252;
+      --drop-primary: #f59e0b;
+      --drop-secondary: #fde68a;
+      --drop-highlight: #fcd34d;
+      --drop-primary-rgb: 245, 158, 11;
+      --drop-secondary-rgb: 253, 230, 138;
+      --drop-highlight-rgb: 252, 211, 77;
     }
 
     .drop-toast.legendary {
-      --drop-primary: #f59e0b;
-      --drop-secondary: #f472b6;
-      --drop-highlight: #fef08a;
-      --drop-primary-rgb: 245, 158, 11;
-      --drop-secondary-rgb: 244, 114, 182;
-      --drop-highlight-rgb: 254, 240, 138;
+      --drop-primary: #b45309;
+      --drop-secondary: #f97316;
+      --drop-highlight: #fcd34d;
+      --drop-primary-rgb: 180, 83, 9;
+      --drop-secondary-rgb: 249, 115, 22;
+      --drop-highlight-rgb: 252, 211, 77;
     }
 
     .drop-toast.show {
@@ -309,6 +309,8 @@
       display: grid;
       gap: 6px;
       line-height: 1.25;
+      min-width: 220px;
+      max-width: 280px;
     }
 
     .drop-toast .drop-pill {
@@ -333,7 +335,7 @@
       gap: 8px;
       padding: 8px 12px;
       border-radius: 12px;
-      font-size: 16px;
+      font-size: clamp(14px, 4vw, 16px);
       font-weight: 800;
       letter-spacing: 0.03em;
       color: var(--drop-highlight);
@@ -341,6 +343,10 @@
       border: 1px solid rgba(var(--drop-highlight-rgb), 0.55);
       box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), inset 0 0 22px rgba(var(--drop-highlight-rgb), 0.3);
       text-shadow: 0 3px 12px rgba(0, 0, 0, 0.4), 0 0 12px rgba(var(--drop-highlight-rgb), 0.7);
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .drop-toast .drop-sparkles {
