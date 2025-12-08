@@ -1587,6 +1587,15 @@
       width: 96px;
     }
 
+    .debug-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 6px 0 4px;
+    }
+
     .debug-buttons {
       display: flex;
       flex-wrap: wrap;
@@ -2017,6 +2026,14 @@
             </label>
             <button id="debug-apply-floor">移動</button>
           </div>
+        </div>
+        <div class="debug-section">
+          <h4>ドロップ</h4>
+          <label class="debug-checkbox">
+            <input id="debug-force-legendary" type="checkbox" />
+            ボス撃破時にレジェンダリーを必ずドロップ
+          </label>
+          <div class="subtle">デバッグ専用。再読み込みでオフに戻ります。</div>
         </div>
         <div class="modal-actions">
           <button id="debug-new-run">新しく始める</button>
@@ -5082,12 +5099,16 @@ function generateId(prefix = "id") {
     function attemptEnemyDrop(enemy) {
       const derived = recalcDerivedStats();
       const dropBonus = (enemy.isBoss ? BOSS_DROP_BONUS : 0) + (enemy.dropChanceBonus || 0);
+      const forceLegendaryDrop = enemy.isBoss && debugForceBossLegendaryDrop;
       const chance = Math.min(95, BASE_DROP_CHANCE + dropBonus + (derived.dropRate?.total ?? 0));
-      if (Math.random() * 100 >= chance) return null;
+      if (!forceLegendaryDrop && Math.random() * 100 >= chance) return null;
 
+      const bossLegendaryCandidate = enemy.isBoss ? BOSS_LEGENDARY_DROPS[game.floor] : null;
       const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
       const rarityBonus = (derived.rarity?.total ?? 0) + (enemy.rarityBonus || 0);
-      const rarityRoll = rollDropRarityForEnemy(enemy, rarityBonus, slot);
+      const rarityRoll = forceLegendaryDrop
+        ? { rarityKey: "legendary", legendaryKey: bossLegendaryCandidate?.legendaryKey || "" }
+        : rollDropRarityForEnemy(enemy, rarityBonus, slot);
       const item = createEquipmentItem(slot, rarityRoll.rarityKey, {
         legendaryKey: rarityRoll.legendaryKey,
         titleBonus: derived.titleChance.total,
@@ -5810,6 +5831,8 @@ function generateId(prefix = "id") {
       if (debugLevelInput) debugLevelInput.value = player.level;
       if (debugHpInput) debugHpInput.value = Math.round(player.hp);
       if (debugFloorInput) debugFloorInput.value = game.floor;
+      if (debugForceLegendaryCheckbox)
+        debugForceLegendaryCheckbox.checked = !!debugForceBossLegendaryDrop;
     }
 
     function applyDebugLevelChange() {
@@ -6191,6 +6214,7 @@ function maybeAutoSave(reason = "auto") {
     }
 
     let lastGeneratedEquipment = null;
+    let debugForceBossLegendaryDrop = false;
 
     function renderDebugGearPreview(item) {
       if (!debugGearPreview) return;
@@ -7344,6 +7368,7 @@ function maybeAutoSave(reason = "auto") {
     const debugLevelInput = document.getElementById("debug-level-input");
     const debugHpInput = document.getElementById("debug-hp-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
+    const debugForceLegendaryCheckbox = document.getElementById("debug-force-legendary");
     const debugApplyLevelButton = document.getElementById("debug-apply-level");
     const debugApplyHpButton = document.getElementById("debug-apply-hp");
     const debugApplyFloorButton = document.getElementById("debug-apply-floor");
@@ -8401,6 +8426,9 @@ function handlePlayerDefeat() {
     debugApplyLevelButton?.addEventListener("click", applyDebugLevelChange);
     debugApplyHpButton?.addEventListener("click", applyDebugHpChange);
     debugApplyFloorButton?.addEventListener("click", applyDebugFloorChange);
+    debugForceLegendaryCheckbox?.addEventListener("change", () => {
+      debugForceBossLegendaryDrop = !!debugForceLegendaryCheckbox.checked;
+    });
     debugNewRunButton?.addEventListener("click", () => startNewRun(activeSaveSlotId));
     saveSlotList?.addEventListener("click", handleSaveAction);
     debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
