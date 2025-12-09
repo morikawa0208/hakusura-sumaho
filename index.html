@@ -1092,70 +1092,67 @@
       position: relative;
     }
 
-    .action-button-wrapper button {
+    .action-button-wrapper > .main-action {
       width: 100%;
       height: 100%;
     }
 
     .actions-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 6px;
       align-items: stretch;
     }
 
-    .potion-row {
+    .potion-row,
+    .skill-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+      height: 100%;
+    }
+
+    .potion-row button,
+    .skill-row button {
+      width: 100%;
       height: 100%;
     }
 
     .potion-button {
       background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(96, 165, 250, 0.15));
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px;
-      height: 100%;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 8px;
+      min-height: 82px;
+      text-align: center;
     }
 
     .potion-icon {
-      font-size: 16px;
-      width: 28px;
-      height: 28px;
+      font-size: 18px;
+      width: 34px;
+      height: 34px;
       display: grid;
       place-items: center;
       background: rgba(255, 255, 255, 0.08);
-      border-radius: 8px;
+      border-radius: 10px;
       flex-shrink: 0;
-    }
-
-    .potion-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      gap: 8px;
-      font-size: 12px;
-    }
-
-    .potion-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .potion-short {
-      font-weight: 700;
-      font-size: 13px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     }
 
     .potion-fill {
       color: var(--muted);
       font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 999px;
     }
 
-    .potion-info-button {
+    .info-button {
       width: 32px;
       height: 32px;
       border-radius: 50%;
@@ -1163,27 +1160,44 @@
       font-weight: 700;
       background: rgba(255, 255, 255, 0.08);
       flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .skill-button {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px;
-      text-align: left;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 8px;
+      min-height: 82px;
+      text-align: center;
     }
 
-    .skill-text {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
+    .skill-slot-index {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     }
 
     .skill-name {
       font-weight: 700;
       font-size: 13px;
+      min-width: 0;
+    }
+
+    .skill-status {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
     }
 
     .enemy-top {
@@ -7262,6 +7276,7 @@ function maybeAutoSave(reason = "auto") {
       const escapeWrapper = document.createElement("div");
       escapeWrapper.className = "action-button-wrapper";
       const escapeBtn = document.createElement("button");
+      escapeBtn.classList.add("main-action");
       escapeBtn.textContent = "🏃 にげる";
       escapeBtn.disabled = !canAct;
       escapeBtn.onclick = attemptEscape;
@@ -7288,32 +7303,23 @@ function maybeAutoSave(reason = "auto") {
         icon.className = "potion-icon";
         icon.textContent = potion.icon || "🧪";
 
-        const meta = document.createElement("div");
-        meta.className = "potion-meta";
-        const textWrap = document.createElement("div");
-        textWrap.className = "potion-text";
-        const shortLabel = document.createElement("div");
-        shortLabel.className = "potion-short";
-        shortLabel.textContent = potion.name || potion.short || (potion.type === "hp" ? "HP" : "MP");
-        applyItemRarityColor(shortLabel, { potion });
-        const rarityLabel = document.createElement("div");
-        rarityLabel.className = "subtle";
-        rarityLabel.textContent = `${potion.rarityLabel || ""}${potion.prefix ? ` / ${potion.prefix.name}` : ""}${
-          potion.suffix ? ` / ${potion.suffix.name}` : ""
-        }`.trim();
         const fill = document.createElement("div");
         fill.className = "potion-fill";
-        fill.textContent = `${Math.round(potion.fullness)}% / ${maxFullness}%`;
-        textWrap.appendChild(shortLabel);
-        if (rarityLabel.textContent) textWrap.appendChild(rarityLabel);
-        textWrap.appendChild(fill);
+        fill.textContent = `${Math.round(potion.fullness)}%`;
 
-        const infoBtn = document.createElement("div");
-        infoBtn.className = "potion-info-button";
+        potionBtn.appendChild(icon);
+        potionBtn.appendChild(fill);
+        potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
+        potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
+        applyItemRarityColor(potionBtn, { potion });
+        potionRow.appendChild(potionBtn);
+
+        const infoBtn = document.createElement("button");
+        infoBtn.className = "info-button";
         infoBtn.textContent = "i";
         infoBtn.title = "ポーション詳細";
         infoBtn.tabIndex = 0;
-        infoBtn.setAttribute("role", "button");
+        infoBtn.setAttribute("aria-label", "ポーション詳細を表示");
         infoBtn.onclick = (event) => {
           event.stopPropagation();
           openPotionModal(potion);
@@ -7326,25 +7332,17 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        meta.appendChild(textWrap);
-        meta.appendChild(infoBtn);
-
-        potionBtn.appendChild(icon);
-        potionBtn.appendChild(meta);
-
-        potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
-        potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
-        potionRow.appendChild(potionBtn);
+        potionRow.appendChild(infoBtn);
         row.appendChild(potionRow);
       });
 
       (player.activeSkillSlots || []).forEach((slot, index) => {
         const skill = slot.skillKey ? skills[slot.skillKey] : null;
         const wrapper = document.createElement("div");
-        wrapper.className = "action-button-wrapper";
+        wrapper.className = "action-button-wrapper skill-row";
 
         const skillBtn = document.createElement("button");
-        skillBtn.className = "skill-button";
+        skillBtn.className = "skill-button main-action";
         const remaining = Math.max(0, slot.cooldownRemaining || 0);
         const ready = remaining <= 0;
         const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
@@ -7363,20 +7361,32 @@ function maybeAutoSave(reason = "auto") {
           useActiveSkill(index);
         };
 
+        const slotIndex = document.createElement("div");
+        slotIndex.className = "skill-slot-index";
+        slotIndex.textContent = `${index + 1}`;
+
         const name = document.createElement("div");
         name.className = "skill-name";
-        name.textContent = skill ? `${skill.name} (MP${mpCost})` : `スキル${index + 1} 未セット`;
+        name.textContent = skill ? skill.name : "スキル未セット";
 
-        const textWrap = document.createElement("div");
-        textWrap.className = "skill-text";
-        textWrap.appendChild(name);
+        const status = document.createElement("div");
+        status.className = "skill-status";
+        status.textContent = skill
+          ? ready
+            ? `MP${mpCost} / OK`
+            : `MP${mpCost} / ${remaining}T`
+          : "タップでセット";
 
-        const infoBtn = document.createElement("div");
-        infoBtn.className = "potion-info-button";
+        skillBtn.appendChild(slotIndex);
+        skillBtn.appendChild(name);
+        skillBtn.appendChild(status);
+
+        const infoBtn = document.createElement("button");
+        infoBtn.className = "info-button";
         infoBtn.textContent = "i";
         infoBtn.title = "スキル詳細";
         infoBtn.tabIndex = 0;
-        infoBtn.setAttribute("role", "button");
+        infoBtn.setAttribute("aria-label", "スキル詳細を表示");
         infoBtn.onclick = (event) => {
           event.stopPropagation();
           if (skill) {
@@ -7397,14 +7407,12 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        skillBtn.appendChild(textWrap);
-        skillBtn.appendChild(infoBtn);
-
         const badge = document.createElement("div");
         badge.className = "cooldown-badge";
         badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
 
         wrapper.appendChild(skillBtn);
+        wrapper.appendChild(infoBtn);
         wrapper.appendChild(badge);
         row.appendChild(wrapper);
       });
@@ -7412,6 +7420,7 @@ function maybeAutoSave(reason = "auto") {
       const wrapper = document.createElement("div");
       wrapper.className = "action-button-wrapper";
       const btn = document.createElement("button");
+      btn.classList.add("main-action");
       const playerAttacks = Math.max(0, player.attacksRemaining ?? player.attackCount ?? 0);
 
       if (player.hp <= 0) {
