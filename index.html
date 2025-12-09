@@ -609,12 +609,6 @@
       resize: none;
     }
 
-    .log-card {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-    }
-
     #log .entry {
       opacity: 0.95;
       padding: 4px 6px;
@@ -658,64 +652,32 @@
       }
     }
 
-    .swipe-card {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .swipe-header {
+    .panel-header {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 4px;
     }
 
-    .swipe-title {
-      flex: 1;
-      text-align: center;
-      display: grid;
-      gap: 4px;
-    }
-
-    .swipe-title .label {
+    .panel-title {
       font-weight: 800;
       letter-spacing: 0.04em;
-    }
-
-    .swipe-title .hint {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .swipe-nav {
-      min-width: 42px;
-      padding: 8px;
-      font-size: 16px;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .swipe-nav:disabled {
-      opacity: 0.35;
-    }
-
-    .swipe-track {
       display: flex;
-      width: 100%;
-      transition: transform 0.24s ease;
-      will-change: transform;
-      touch-action: pan-y;
-      overflow: hidden;
-      gap: 0;
+      align-items: center;
+      gap: 8px;
     }
 
-    .swipe-slide {
-      min-width: 100%;
-      flex-shrink: 0;
+    .panel-hint {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .enemy-panel,
+    .log-card {
       display: flex;
       flex-direction: column;
+      align-items: stretch;
       gap: 8px;
     }
 
@@ -1016,25 +978,105 @@
       display: grid;
       grid-template-columns: 1fr;
       grid-auto-rows: minmax(var(--enemy-slot-height), auto);
-      gap: 6px;
+      gap: 8px;
       font-size: 13px;
       padding-bottom: 2px;
-      min-height: calc(var(--enemy-slot-height) * 3 + 12px);
+      min-height: calc(var(--enemy-slot-height) * 3 + 16px);
     }
 
     .enemy-card {
       display: grid;
-      gap: 6px;
-      padding: 9px;
-      background: rgba(255, 255, 255, 0.04);
+      gap: 8px;
+      padding: 10px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       transition: transform 0.08s ease, border-color 0.12s ease, box-shadow 0.12s ease;
       min-width: 0;
       position: relative;
       overflow: hidden;
       height: 100%;
+    }
+
+    .enemy-header {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .enemy-portrait {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 22px;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    .enemy-info {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .enemy-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .enemy-name {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      min-width: 0;
+    }
+
+    .enemy-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .enemy-order {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .enemy-quick-stats {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .enemy-stat {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    .enemy-stat .label {
+      color: var(--muted);
+      font-size: 11px;
     }
 
     .enemy-card:active {
@@ -1562,6 +1604,11 @@
       min-height: 18px;
     }
 
+    .enemy-statuses {
+      align-items: flex-start;
+      gap: 6px;
+    }
+
     .status-pill {
       font-size: 10px;
       padding: 3px 6px;
@@ -1681,27 +1728,20 @@
 </head>
 <body>
   <div class="phone">
-    <section class="card swipe-card">
-      <div class="swipe-header">
-        <button id="panel-prev" class="mini-btn swipe-nav" aria-label="前のビューへ">
-          ←
-        </button>
-        <div class="swipe-title">
-          <div id="panel-title" class="label"></div>
-          <div class="hint">スワイプまたは矢印で切替</div>
-        </div>
-        <button id="panel-next" class="mini-btn swipe-nav" aria-label="次のビューへ">
-          →
-        </button>
+    <section class="card enemy-panel">
+      <div class="panel-header">
+        <div class="panel-title">敵</div>
+        <div class="panel-hint">タップで詳細／長押しで属性</div>
       </div>
-      <div id="panel-track" class="swipe-track" aria-live="polite">
-        <div class="swipe-slide" data-panel="enemies" aria-label="敵カード">
-          <div id="enemies" class="enemy-list"></div>
-        </div>
-        <div class="swipe-slide" data-panel="log" aria-label="バトルログ">
-          <div id="log"></div>
-        </div>
+      <div id="enemies" class="enemy-list"></div>
+    </section>
+
+    <section class="card log-card">
+      <div class="panel-header">
+        <div class="panel-title">バトルログ</div>
+        <div class="panel-hint">最新の行動を表示</div>
       </div>
+      <div id="log"></div>
     </section>
 
     <section class="card">
@@ -7247,32 +7287,53 @@ function maybeAutoSave(reason = "auto") {
         card.setAttribute("role", "button");
         card.setAttribute("aria-label", `${enemy.name} の詳細`);
 
-        const top = document.createElement("div");
-        top.className = "enemy-top";
+        const header = document.createElement("div");
+        header.className = "enemy-header";
 
-        const name = document.createElement("div");
-        name.className = "enemy-name";
+        const portrait = document.createElement("div");
+        portrait.className = "enemy-portrait";
+
+        const info = document.createElement("div");
+        info.className = "enemy-info";
+
+        const nameRow = document.createElement("div");
+        nameRow.className = "enemy-name-row";
         const titleLabel = document.createElement("span");
+        titleLabel.className = "enemy-name";
+        const tag = document.createElement("div");
+        tag.className = "pill";
+        nameRow.appendChild(titleLabel);
+        nameRow.appendChild(tag);
 
         const meta = document.createElement("div");
         meta.className = "enemy-meta";
         const order = document.createElement("span");
+        order.className = "enemy-order";
         const archetype = document.createElement("span");
         archetype.className = "tag clickable";
-        const statusList = document.createElement("div");
-        statusList.className = "status-list";
         meta.appendChild(order);
         meta.appendChild(archetype);
-        meta.appendChild(statusList);
 
-        name.appendChild(titleLabel);
-        name.appendChild(meta);
-        top.appendChild(name);
+        const quickStats = document.createElement("div");
+        quickStats.className = "enemy-quick-stats";
+        const atkStat = document.createElement("span");
+        atkStat.className = "enemy-stat";
+        atkStat.innerHTML = `<span class="label">ATK</span><span class="value"></span>`;
+        const defStat = document.createElement("span");
+        defStat.className = "enemy-stat";
+        defStat.innerHTML = `<span class="label">DEF</span><span class="value"></span>`;
+        const spdStat = document.createElement("span");
+        spdStat.className = "enemy-stat";
+        spdStat.innerHTML = `<span class="label">SPD</span><span class="value"></span>`;
+        quickStats.appendChild(atkStat);
+        quickStats.appendChild(defStat);
+        quickStats.appendChild(spdStat);
 
-        const tag = document.createElement("div");
-        tag.className = "pill";
-        tag.textContent = "BOSS";
-        top.appendChild(tag);
+        info.appendChild(nameRow);
+        info.appendChild(meta);
+        info.appendChild(quickStats);
+        header.appendChild(portrait);
+        header.appendChild(info);
 
         const bar = document.createElement("div");
         bar.className = "enemy-bar";
@@ -7286,24 +7347,33 @@ function maybeAutoSave(reason = "auto") {
         bar.appendChild(fill);
         bar.appendChild(hpLabel);
 
+        const statusList = document.createElement("div");
+        statusList.className = "status-list enemy-statuses";
+
         const attackBadge = document.createElement("div");
         attackBadge.className = "attack-badge enemy";
         attackBadge.title = "1ターンあたりの攻撃回数";
 
-        card.appendChild(top);
+        card.appendChild(header);
         card.appendChild(bar);
+        card.appendChild(statusList);
         card.appendChild(attackBadge);
 
         card._refs = {
+          portrait,
           titleLabel,
           order,
           archetype,
           statusList,
           tag,
+          quickStats,
           bar,
           fill,
           hpLabel,
           attackBadge,
+          atkStat,
+          defStat,
+          spdStat,
         };
         return card;
       }
@@ -7313,6 +7383,11 @@ function maybeAutoSave(reason = "auto") {
         card.dataset.enemyId = String(enemy.id);
         card.onclick = () => openEnemyModal(enemy);
         card.classList.toggle("defeated", enemy.hp <= 0);
+
+        if (refs.portrait) {
+          refs.portrait.textContent =
+            enemy.icon || enemy.emoji || (enemy.isBoss ? "👑" : "👾");
+        }
 
         if (refs.titleLabel) {
           refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
@@ -7340,7 +7415,20 @@ function maybeAutoSave(reason = "auto") {
 
         if (refs.tag) {
           refs.tag.textContent = enemy.isBoss ? "BOSS" : "ENEMY";
-          refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
+          refs.tag.style.display = "inline-flex";
+        }
+
+        if (refs.atkStat) {
+          const valueEl = refs.atkStat.querySelector(".value");
+          if (valueEl) valueEl.textContent = Math.ceil(enemy.atk ?? enemy.attack ?? 0);
+        }
+        if (refs.defStat) {
+          const valueEl = refs.defStat.querySelector(".value");
+          if (valueEl) valueEl.textContent = Math.ceil(enemy.def ?? 0);
+        }
+        if (refs.spdStat) {
+          const valueEl = refs.spdStat.querySelector(".value");
+          if (valueEl) valueEl.textContent = Math.ceil(enemy.spd ?? 0);
         }
 
         const hpPct =
