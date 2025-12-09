@@ -2012,6 +2012,7 @@
           <div class="modal-actions">
             <button id="debug-generate-potion">ポーションを作成して追加</button>
             <button id="debug-generate-potion-random">ランダム作成</button>
+            <button id="debug-reroll-potion">再生成（プレビューのみ）</button>
           </div>
         </div>
       </div>
@@ -3506,14 +3507,22 @@ function generateId(prefix = "id") {
       return pool[randomInt(0, pool.length - 1)];
     }
 
-    function buildPotionName(base, variant, rarity, prefix, suffix) {
-      const rarityPrefix = rarity?.label ? `${rarity.label} ` : "";
+    function buildPotionName(base, variant, rarity, prefix, suffix, { includeRarity = true } = {}) {
+      const rarityPrefix = includeRarity && rarity?.label ? `${rarity.label} ` : "";
       const prefixName = prefix?.name ? `${prefix.name}` : rarityPrefix.trim();
       const suffixName = suffix?.name || "";
       return `${prefixName ? `${prefixName} ` : ""}${base}${variant || ""}${suffixName}`.trim();
     }
 
-    function rollPotionValues(variant, rarity) {
+    function rollPotionValues(variant, rarity, { useBaseValues = false } = {}) {
+      if (useBaseValues) {
+        return {
+          amount: variant.amount,
+          useCost: variant.useCost,
+          maxFullness: variant.maxFullness,
+        };
+      }
+
       const amount = Math.max(1, Math.round(variant.amount * rollValueInRange(rarity.amountRange, 2)));
       const useCost = Math.max(5, Math.round(variant.useCost * rollValueInRange(rarity.useCostRange, 2)));
       const maxFullness = Math.round(variant.maxFullness * rollValueInRange(rarity.fullnessRange, 2));
@@ -3526,13 +3535,17 @@ function generateId(prefix = "id") {
       return potion.effectText || potion.summary || "特殊効果";
     }
 
-    function createPotionFromTemplate(templateKey, variantKey, { rarityKey, allowLegendary = false } = {}) {
+    function createPotionFromTemplate(
+      templateKey,
+      variantKey,
+      { rarityKey, allowLegendary = false, useBaseValues = false, skipAffix = false, hideRarityInName = false } = {}
+    ) {
       const template = POTION_BASE_TEMPLATES[templateKey];
       const variant = template?.variants?.find((v) => v.key === variantKey) || template?.variants?.[0];
       const rarity = rarityKey ? getPotionRarity(rarityKey) : rollPotionRarity({ allowLegendary });
       if (!template || !variant) return null;
 
-      const { amount, useCost, maxFullness } = rollPotionValues(variant, rarity);
+      const { amount, useCost, maxFullness } = rollPotionValues(variant, rarity, { useBaseValues });
       const potion = {
         id: generateId(`potion-${template.key}-${variant.key}`),
         baseLabel: template.label,
@@ -3557,11 +3570,13 @@ function generateId(prefix = "id") {
             : "特殊な効果を持つポーション",
       };
 
-      const prefix = rollPotionAffix(potion, "prefix");
-      const suffix = rollPotionAffix(potion, "suffix");
+      const prefix = skipAffix ? null : rollPotionAffix(potion, "prefix");
+      const suffix = skipAffix ? null : rollPotionAffix(potion, "suffix");
       potion.prefix = prefix;
       potion.suffix = suffix;
-      potion.name = buildPotionName(template.label, variant.label, rarity, prefix, suffix);
+      potion.name = buildPotionName(template.label, variant.label, rarity, prefix, suffix, {
+        includeRarity: !hideRarityInName,
+      });
       potion.effectText = describePotionEffect(potion);
       return potion;
     }
@@ -4026,22 +4041,51 @@ function generateId(prefix = "id") {
       inventory: {
         items: [
           ensureAcquiredOrder(
-            createPotionInventoryItem(createPotionFromTemplate("hp", "small", { rarityKey: "normal" }))
-          ),
-          ensureAcquiredOrder(
-            createPotionInventoryItem(createPotionFromTemplate("hp", "medium", { rarityKey: "magic" }))
+            createPotionInventoryItem(
+              createPotionFromTemplate("hp", "small", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              })
+            )
           ),
           ensureAcquiredOrder(
             createPotionInventoryItem(
-              createPotionFromTemplate("hp", "large", { rarityKey: "rare" }),
+              createPotionFromTemplate("hp", "medium", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              })
+            )
+          ),
+          ensureAcquiredOrder(
+            createPotionInventoryItem(
+              createPotionFromTemplate("hp", "large", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              }),
               { description: "大きく回復する高級ポーション" }
             )
           ),
         ],
       },
       potions: [
-        createPotionFromTemplate("hp", "small"),
-        createPotionFromTemplate("mp", "small"),
+        createPotionFromTemplate("hp", "small", {
+          rarityKey: "normal",
+          useBaseValues: true,
+          skipAffix: true,
+          hideRarityInName: true,
+        }),
+        createPotionFromTemplate("mp", "small", {
+          rarityKey: "normal",
+          useBaseValues: true,
+          skipAffix: true,
+          hideRarityInName: true,
+        }),
       ],
       activeSkillSlots: Array.from({ length: ACTIVE_SKILL_SLOT_LIMIT }, () => ({ skillKey: null, cooldownRemaining: 0 })),
     };
@@ -6263,6 +6307,12 @@ function generateId(prefix = "id") {
       return potion;
     }
 
+    function rerollDebugPotionPreview() {
+      const potion = buildDebugPotionPreview();
+      lastGeneratedPotion = potion;
+      renderDebugPotionPreview(potion);
+    }
+
     function switchDebugTab(tabKey) {
       const panels = {
         status: debugTabStatus,
@@ -7864,6 +7914,7 @@ function maybeAutoSave(reason = "auto") {
     const debugPotionPreview = document.getElementById("debug-potion-preview");
     const debugGeneratePotionButton = document.getElementById("debug-generate-potion");
     const debugGeneratePotionRandomButton = document.getElementById("debug-generate-potion-random");
+    const debugRerollPotionButton = document.getElementById("debug-reroll-potion");
     const debugLevelInput = document.getElementById("debug-level-input");
     const debugHpInput = document.getElementById("debug-hp-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
@@ -8984,6 +9035,7 @@ function handlePlayerDefeat() {
       refreshDebugPotionPreview();
       generateDebugPotion({ randomRarity: debugPotionRaritySelect?.value === "random" });
     });
+    debugRerollPotionButton?.addEventListener("click", rerollDebugPotionPreview);
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
     });
