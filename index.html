@@ -2250,6 +2250,16 @@ function generateId(prefix = "id") {
       { key: "rare", weight: 15 },
     ];
 
+    const DROP_ITEM_TYPE_WEIGHTS = [
+      { key: "equipment", weight: 65 },
+      { key: "potion", weight: 35 },
+    ];
+
+    const BOSS_DROP_ITEM_TYPE_WEIGHTS = [
+      { key: "equipment", weight: 60 },
+      { key: "potion", weight: 40 },
+    ];
+
     const POTION_PREFIXES = {
       general: [
         { key: "condensed", name: "濃縮", effect: "効果量 +20〜30%" },
@@ -2550,6 +2560,13 @@ function generateId(prefix = "id") {
         modifiers: { atk: 1.4, hp: 1.35, def: 1.2, accuracy: 1.2, resist: { control: 1.25, dot: 1.2 } },
         legendaryKey: "dawnbringerAegis",
       },
+    };
+
+    const BOSS_LEGENDARY_POTIONS = {
+      50: ["phoenixCryst", "zealChalice"],
+      100: ["herosLegacy", "judgementBrew"],
+      200: ["pactOfSalvation", "aegisBlackForge"],
+      500: ["sanctuaryChalice", "shadowcloneAmbrosia"],
     };
 
     const ENEMY_BASE_PROFILES = [
@@ -5308,12 +5325,13 @@ function generateId(prefix = "id") {
 
     function triggerDropCelebration(item) {
       if (!dropCelebration || !dropItemName || !dropPill) return;
-      const rarity = item?.equipment?.rarity;
+      const rarity = item?.equipment?.rarity || item?.potion?.rarity;
       if (!rarity || !["rare", "legendary"].includes(rarity)) return;
 
       const label = rarity === "legendary" ? "LEGENDARY DROP" : "RARE DROP";
+      const name = item?.name || item?.potion?.name || "???";
       dropPill.textContent = label;
-      dropItemName.textContent = item?.name || "???";
+      dropItemName.textContent = name;
       dropCelebration.setAttribute("aria-hidden", "false");
       dropCelebration.classList.remove("show", "rare", "legendary");
       if (dropCelebrationTimer) clearTimeout(dropCelebrationTimer);
@@ -5557,6 +5575,43 @@ function generateId(prefix = "id") {
       return current;
     }
 
+    function rollDropItemType(isBoss) {
+      const weights = isBoss ? BOSS_DROP_ITEM_TYPE_WEIGHTS : DROP_ITEM_TYPE_WEIGHTS;
+      return weightedRandom(weights, weights[0])?.key || "equipment";
+    }
+
+    function pickRandomPotionTemplateKey() {
+      const templateKeys = Object.keys(POTION_BASE_TEMPLATES);
+      if (!templateKeys.length) return "";
+      return templateKeys[randomInt(0, templateKeys.length - 1)];
+    }
+
+    function pickRandomPotionVariantKey(templateKey) {
+      const variants = POTION_BASE_TEMPLATES[templateKey]?.variants || [];
+      if (!variants.length) return "";
+      const picked = variants[randomInt(0, variants.length - 1)];
+      return picked?.key || variants[0]?.key || "";
+    }
+
+    function createRandomPotionDrop({ isBoss } = {}) {
+      if (isBoss) {
+        const bossPotions = BOSS_LEGENDARY_POTIONS[game.floor];
+        if (bossPotions?.length) {
+          const legendaryKey = bossPotions[randomInt(0, bossPotions.length - 1)];
+          const legendaryPotion = createLegendaryPotion(legendaryKey);
+          if (legendaryPotion) {
+            return createPotionInventoryItem(legendaryPotion, { description: legendaryPotion.effectText });
+          }
+        }
+      }
+
+      const templateKey = pickRandomPotionTemplateKey();
+      const variantKey = pickRandomPotionVariantKey(templateKey);
+      const potion = createPotionFromTemplate(templateKey, variantKey);
+      if (!potion) return null;
+      return createPotionInventoryItem(potion, { description: potion.effectText });
+    }
+
     function rollDropRarityForEnemy(enemy, rarityBonus, slot) {
       const legendaryCandidate = enemy.isBoss ? BOSS_LEGENDARY_DROPS[game.floor] : null;
       if (legendaryCandidate && legendaryCandidate.slot === slot) {
@@ -5578,23 +5633,45 @@ function generateId(prefix = "id") {
       const chance = Math.min(95, BASE_DROP_CHANCE + dropBonus + (derived.dropRate?.total ?? 0));
       if (!forceLegendaryDrop && Math.random() * 100 >= chance) return null;
 
-      const bossLegendaryCandidate = enemy.isBoss ? BOSS_LEGENDARY_DROPS[game.floor] : null;
-      const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
-      const rarityBonus = (derived.rarity?.total ?? 0) + (enemy.rarityBonus || 0);
-      const rarityRoll = forceLegendaryDrop
-        ? { rarityKey: "legendary", legendaryKey: bossLegendaryCandidate?.legendaryKey || "" }
-        : rollDropRarityForEnemy(enemy, rarityBonus, slot);
-      const item = createEquipmentItem(slot, rarityRoll.rarityKey, {
-        legendaryKey: rarityRoll.legendaryKey,
-        titleBonus: derived.titleChance.total,
-      });
+      const dropType = forceLegendaryDrop ? "equipment" : rollDropItemType(enemy.isBoss);
+      let item = null;
+
+      if (dropType === "potion") {
+        item = createRandomPotionDrop({ isBoss: enemy.isBoss });
+      }
+
+      if (!item) {
+        const bossLegendaryCandidate = enemy.isBoss ? BOSS_LEGENDARY_DROPS[game.floor] : null;
+        const slot = resolveDropSlotForFloor(game.floor, enemy.isBoss);
+        const rarityBonus = (derived.rarity?.total ?? 0) + (enemy.rarityBonus || 0);
+        const rarityRoll = forceLegendaryDrop
+          ? { rarityKey: "legendary", legendaryKey: bossLegendaryCandidate?.legendaryKey || "" }
+          : rollDropRarityForEnemy(enemy, rarityBonus, slot);
+        item = createEquipmentItem(slot, rarityRoll.rarityKey, {
+          legendaryKey: rarityRoll.legendaryKey,
+          titleBonus: derived.titleChance.total,
+        });
+      }
+
+      if (!item) return null;
       player.inventory.items.push(item);
-      const rarityLabel = item.equipment?.rarityLabel || EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || "";
-      const rarityText = rarityLabel ? `${rarityLabel} ` : "";
-      const coloredName = item?.equipment?.rarity
-        ? `<span class="rarity-${item.equipment.rarity}">${item.name}</span>`
-        : item.name;
-      log(`🎁 ${enemy.name} から ${rarityText}${coloredName} を入手！`, "good", { asHtml: true });
+
+      if (item.type === "potion" && item.potion) {
+        const rarityLabel = item.potion.rarityLabel || POTION_RARITIES[item.potion.rarity]?.label || "";
+        const rarityText = rarityLabel ? `${rarityLabel} ` : "";
+        const coloredName = item.potion.rarity
+          ? `<span class="rarity-${item.potion.rarity}">${item.name}</span>`
+          : item.name;
+        log(`🎁 ${enemy.name} から ${rarityText}${coloredName} を入手！`, "good", { asHtml: true });
+      } else {
+        const rarityLabel = item.equipment?.rarityLabel || EQUIPMENT_RARITIES[item.equipment?.rarity]?.label || "";
+        const rarityText = rarityLabel ? `${rarityLabel} ` : "";
+        const coloredName = item?.equipment?.rarity
+          ? `<span class="rarity-${item.equipment.rarity}">${item.name}</span>`
+          : item.name;
+        log(`🎁 ${enemy.name} から ${rarityText}${coloredName} を入手！`, "good", { asHtml: true });
+      }
+
       triggerDropCelebration(item);
       renderInventory();
       return item;
