@@ -658,6 +658,67 @@
       }
     }
 
+    .swipe-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .swipe-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swipe-title {
+      flex: 1;
+      text-align: center;
+      display: grid;
+      gap: 4px;
+    }
+
+    .swipe-title .label {
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .swipe-title .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .swipe-nav {
+      min-width: 42px;
+      padding: 8px;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .swipe-nav:disabled {
+      opacity: 0.35;
+    }
+
+    .swipe-track {
+      display: flex;
+      width: 100%;
+      transition: transform 0.24s ease;
+      will-change: transform;
+      touch-action: pan-y;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    .swipe-slide {
+      min-width: 100%;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
     #actions {
       display: grid;
       grid-template-columns: 1fr;
@@ -951,7 +1012,7 @@
     }
 
     .enemy-list {
-      --enemy-slot-height: 120px;
+      --enemy-slot-height: 84px;
       display: grid;
       grid-template-columns: 1fr;
       grid-auto-rows: minmax(var(--enemy-slot-height), auto);
@@ -1620,12 +1681,27 @@
 </head>
 <body>
   <div class="phone">
-    <section class="card log-card">
-      <div id="log"></div>
-    </section>
-
-    <section class="card">
-      <div id="enemies" class="enemy-list"></div>
+    <section class="card swipe-card">
+      <div class="swipe-header">
+        <button id="panel-prev" class="mini-btn swipe-nav" aria-label="前のビューへ">
+          ←
+        </button>
+        <div class="swipe-title">
+          <div id="panel-title" class="label"></div>
+          <div class="hint">スワイプまたは矢印で切替</div>
+        </div>
+        <button id="panel-next" class="mini-btn swipe-nav" aria-label="次のビューへ">
+          →
+        </button>
+      </div>
+      <div id="panel-track" class="swipe-track" aria-live="polite">
+        <div class="swipe-slide" data-panel="enemies" aria-label="敵カード">
+          <div id="enemies" class="enemy-list"></div>
+        </div>
+        <div class="swipe-slide" data-panel="log" aria-label="バトルログ">
+          <div id="log"></div>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -5258,6 +5334,83 @@ function generateId(prefix = "id") {
       logBox.append(entry);
       logBox.scrollTop = logBox.scrollHeight;
     }
+
+    const swipeTrack = document.getElementById("panel-track");
+    const swipeSlides = swipeTrack ? Array.from(swipeTrack.querySelectorAll(".swipe-slide")) : [];
+    const swipePrev = document.getElementById("panel-prev");
+    const swipeNext = document.getElementById("panel-next");
+    const swipeTitle = document.getElementById("panel-title");
+    const swipeLabels = {
+      enemies: "敵カード",
+      log: "バトルログ",
+    };
+    let activeSwipeIndex = 0;
+    let swipeStartX = null;
+    let swipeDeltaX = 0;
+
+    function setActivePanel(index) {
+      if (!swipeTrack || swipeSlides.length === 0) return;
+      const nextIndex = Math.min(swipeSlides.length - 1, Math.max(0, index));
+      activeSwipeIndex = nextIndex;
+      swipeTrack.style.transition = "transform 0.24s ease";
+      swipeTrack.style.transform = `translateX(-${nextIndex * 100}%)`;
+      swipeSlides.forEach((slide, i) => {
+        const isActive = i === nextIndex;
+        slide.classList.toggle("active", isActive);
+        slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+      });
+      if (swipeTitle) {
+        const key = swipeSlides[nextIndex]?.dataset.panel || `${nextIndex + 1}`;
+        swipeTitle.textContent = swipeLabels[key] || `ビュー ${nextIndex + 1}`;
+      }
+      if (swipePrev) swipePrev.disabled = nextIndex === 0;
+      if (swipeNext) swipeNext.disabled = nextIndex === swipeSlides.length - 1;
+    }
+
+    function handleSwipeStart(e) {
+      if (!swipeTrack) return;
+      swipeStartX = e.touches?.[0]?.clientX ?? e.clientX;
+      swipeDeltaX = 0;
+      swipeTrack.style.transition = "none";
+    }
+
+    function handleSwipeMove(e) {
+      if (swipeStartX === null || !swipeTrack) return;
+      const currentX = e.touches?.[0]?.clientX ?? e.clientX;
+      swipeDeltaX = currentX - swipeStartX;
+      swipeTrack.style.transform = `translateX(calc(-${activeSwipeIndex * 100}% + ${swipeDeltaX}px))`;
+    }
+
+    function handleSwipeEnd() {
+      if (swipeStartX === null || !swipeTrack) return;
+      const threshold = 45;
+      if (swipeDeltaX > threshold) {
+        setActivePanel(activeSwipeIndex - 1);
+      } else if (swipeDeltaX < -threshold) {
+        setActivePanel(activeSwipeIndex + 1);
+      } else {
+        setActivePanel(activeSwipeIndex);
+      }
+      swipeStartX = null;
+      swipeDeltaX = 0;
+    }
+
+    if (swipeTrack) {
+      swipeTrack.addEventListener("touchstart", handleSwipeStart, { passive: true });
+      swipeTrack.addEventListener("touchmove", handleSwipeMove, { passive: true });
+      swipeTrack.addEventListener("touchend", handleSwipeEnd);
+      swipeTrack.addEventListener("touchcancel", handleSwipeEnd);
+      swipeTrack.addEventListener("mousedown", handleSwipeStart);
+      swipeTrack.addEventListener("mousemove", (e) => {
+        if (swipeStartX !== null && e.buttons === 1) handleSwipeMove(e);
+      });
+      swipeTrack.addEventListener("mouseup", handleSwipeEnd);
+      swipeTrack.addEventListener("mouseleave", handleSwipeEnd);
+    }
+
+    swipePrev?.addEventListener("click", () => setActivePanel(activeSwipeIndex - 1));
+    swipeNext?.addEventListener("click", () => setActivePanel(activeSwipeIndex + 1));
+    setActivePanel(0);
 
     const statusPopover = document.getElementById("status-popover");
     const statusPopoverName = document.getElementById("status-popover-name");
