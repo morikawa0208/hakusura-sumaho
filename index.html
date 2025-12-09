@@ -1074,20 +1074,6 @@
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
     }
 
-    .cooldown-badge {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: rgba(96, 165, 250, 0.18);
-      border: 1px solid rgba(96, 165, 250, 0.5);
-      color: #dbeafe;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      line-height: 1.2;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
     .action-button-wrapper {
       position: relative;
     }
@@ -1143,6 +1129,21 @@
       border-radius: 10px;
       flex-shrink: 0;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    .potion-fill {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
     }
 
     .info-chip {
@@ -7267,6 +7268,10 @@ function maybeAutoSave(reason = "auto") {
         icon.className = "potion-icon";
         icon.textContent = potion.icon || "🧪";
 
+        const fill = document.createElement("div");
+        fill.className = "potion-fill";
+        fill.textContent = `${Math.round(potion.fullness)}% / ${maxFullness}%`;
+
         const infoChip = document.createElement("span");
         infoChip.className = "info-chip";
         infoChip.textContent = "i";
@@ -7288,6 +7293,7 @@ function maybeAutoSave(reason = "auto") {
         };
 
         header.appendChild(icon);
+        header.appendChild(fill);
         header.appendChild(infoChip);
 
         potionBtn.appendChild(header);
@@ -7335,10 +7341,20 @@ function maybeAutoSave(reason = "auto") {
 
         const status = document.createElement("div");
         status.className = "skill-status";
-        status.textContent = skill
+        const cooldownInfo = skill
           ? ready
-            ? `MP${mpCost}`
-            : `MP${mpCost}`
+            ? baseCooldown !== null
+              ? `CT${baseCooldown}`
+              : ""
+            : `残${remaining}`
+          : "";
+        status.textContent = skill
+          ? [
+              `MP${mpCost}`,
+              cooldownInfo,
+            ]
+              .filter(Boolean)
+              .join(" / ") || "MP--"
           : "タップでセット";
 
         meta.appendChild(name);
@@ -7377,12 +7393,7 @@ function maybeAutoSave(reason = "auto") {
 
         skillBtn.appendChild(header);
 
-        const badge = document.createElement("div");
-        badge.className = "cooldown-badge";
-        badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
-
         wrapper.appendChild(skillBtn);
-        wrapper.appendChild(badge);
         row.appendChild(wrapper);
       });
 
