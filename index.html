@@ -2006,6 +2006,12 @@
               <select id="debug-potion-slot"></select>
             </label>
           </div>
+          <div id="debug-potion-legendary-wrapper" class="debug-selects hidden">
+            <label>
+              レジェンダリーポーション:
+              <select id="debug-potion-legendary-template"></select>
+            </label>
+          </div>
           <div id="debug-potion-preview" class="equipment-option-list">
             <div class="option-label">ポーションのプレビューがここに表示されます</div>
           </div>
@@ -2419,6 +2425,7 @@ function generateId(prefix = "id") {
         name: "フェニックス血晶",
         category: "recovery",
         type: "hp",
+        icon: "🔥",
         summary: "この戦闘中一度だけ戦闘不能を無効化し、HP50%で復活し直後1ターン無敵",
         tagline: "絶対死なない保険",
       },
@@ -2427,6 +2434,7 @@ function generateId(prefix = "id") {
         name: "英雄の遺酒",
         category: "recovery",
         type: "hybrid",
+        icon: "⚔️",
         summary: "HP/MP即時全回復＋3ターン回復量+200%、撃破時に攻撃/防御/速度が成長",
         tagline: "勝つための回復 × 成長",
       },
@@ -2435,6 +2443,7 @@ function generateId(prefix = "id") {
         name: "救済の契約酒",
         category: "recovery",
         type: "hybrid",
+        icon: "📜",
         summary: "即時全回復＆2ターン無敵。終了後は最大HP-20% (戦闘中のみ)",
         tagline: "一度だけの切り札",
       },
@@ -2443,6 +2452,7 @@ function generateId(prefix = "id") {
         name: "聖域の祝杯",
         category: "recovery",
         type: "hybrid",
+        icon: "🛡️",
         summary: "全回復＋3ターン状態異常完全無効",
         tagline: "状態異常・デバフ支配",
       },
@@ -2451,6 +2461,7 @@ function generateId(prefix = "id") {
         name: "狂信者の盃",
         category: "buff",
         type: "buff",
+        icon: "💢",
         summary: "2ターン与ダメ+120% / 被ダメ+40%、撃破毎に攻撃+10% 永続",
         tagline: "倒すほど伸びる",
       },
@@ -2459,6 +2470,7 @@ function generateId(prefix = "id") {
         name: "断罪の符酒",
         category: "buff",
         type: "buff",
+        icon: "🎯",
         summary: "次の3回攻撃が確定クリティカル＋防御貫通と固定ダメージを付与",
         tagline: "確実に前進",
       },
@@ -2467,6 +2479,7 @@ function generateId(prefix = "id") {
         name: "黒鉄の祈酒",
         category: "buff",
         type: "buff",
+        icon: "🛡️",
         summary: "3ターン防御強化＆被ダメ-60%、初撃無効、攻撃-25%",
         tagline: "極限防御",
       },
@@ -2475,6 +2488,7 @@ function generateId(prefix = "id") {
         name: "千の影の蜜",
         category: "buff",
         type: "buff",
+        icon: "🌀",
         summary: "次の3回被弾時に攻撃無効化＋反撃（クリ率優遇）",
         tagline: "受けて攻める",
       },
@@ -3600,6 +3614,51 @@ function generateId(prefix = "id") {
       if (potion.type === "hp") return `HPを${potion.amount}回復`;
       if (potion.type === "mp") return `MPを${potion.amount}回復`;
       return potion.effectText || potion.summary || "特殊効果";
+    }
+
+    function pickLegendaryPotion(preferredKey) {
+      if (!LEGENDARY_POTIONS?.length) return null;
+      if (preferredKey) {
+        const found = LEGENDARY_POTIONS.find((entry) => entry.key === preferredKey);
+        if (found) return found;
+      }
+      return LEGENDARY_POTIONS[randomInt(0, LEGENDARY_POTIONS.length - 1)];
+    }
+
+    function createLegendaryPotion(legendaryKey, { hideRarityInName = false } = {}) {
+      const def = pickLegendaryPotion(legendaryKey);
+      const rarity = POTION_RARITIES.legendary;
+      if (!def || !rarity) return null;
+
+      const maxFullness = def.maxFullness ?? 100;
+      const potion = {
+        id: generateId(`potion-legendary-${def.key}`),
+        baseLabel: def.name,
+        name: def.name,
+        short: def.name,
+        variant: def.variantLabel || "",
+        type: def.type || "buff",
+        category: def.category || "buff",
+        amount: def.amount ?? 0,
+        useCost: def.useCost ?? 55,
+        maxFullness,
+        fullness: maxFullness,
+        rarity: rarity.key,
+        rarityRank: rarity.rank,
+        rarityLabel: rarity.label,
+        icon: def.icon || (def.category === "recovery" ? "💧" : "✨"),
+        summary: def.summary || def.tagline,
+      };
+
+      const prefix = rollPotionAffix(potion, "prefix");
+      const suffix = rollPotionAffix(potion, "suffix");
+      potion.prefix = prefix;
+      potion.suffix = suffix;
+      potion.name = buildPotionName(def.name, def.variantLabel || "", rarity, prefix, suffix, {
+        includeRarity: !hideRarityInName,
+      });
+      potion.effectText = def.summary || def.tagline || describePotionEffect(potion);
+      return potion;
     }
 
     function createPotionFromTemplate(
@@ -6206,6 +6265,30 @@ function generateId(prefix = "id") {
       if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
     }
 
+    function populateLegendaryPotionSelect() {
+      if (!debugPotionLegendarySelect) return;
+      const rarityKey = debugPotionRaritySelect?.value;
+      const isLegendary = rarityKey === "legendary";
+      debugPotionLegendaryWrapper?.classList.toggle("hidden", !isLegendary);
+
+      debugPotionLegendarySelect.innerHTML = "";
+      if (!isLegendary) return;
+
+      const randomOpt = document.createElement("option");
+      randomOpt.value = "";
+      randomOpt.textContent = "おまかせ（ランダム）";
+      debugPotionLegendarySelect.appendChild(randomOpt);
+
+      LEGENDARY_POTIONS.forEach((entry) => {
+        const opt = document.createElement("option");
+        opt.value = entry.key;
+        opt.textContent = entry.name;
+        debugPotionLegendarySelect.appendChild(opt);
+      });
+
+      if (!debugPotionLegendarySelect.value) debugPotionLegendarySelect.value = "";
+    }
+
     function populateDebugPotionVariantSelect(templateKey) {
       if (!debugPotionVariantSelect) return;
       const key = templateKey || debugPotionTemplateSelect?.value || Object.keys(POTION_BASE_TEMPLATES)[0];
@@ -6272,6 +6355,14 @@ function generateId(prefix = "id") {
       populateDebugPotionVariantSelect(debugPotionTemplateSelect.value);
       if (!debugPotionRaritySelect.value) debugPotionRaritySelect.value = "random";
       populateDebugPotionSlotSelect();
+      updateDebugPotionControlState();
+    }
+
+    function updateDebugPotionControlState() {
+      const isLegendary = debugPotionRaritySelect?.value === "legendary";
+      if (debugPotionTemplateSelect) debugPotionTemplateSelect.disabled = isLegendary;
+      if (debugPotionVariantSelect) debugPotionVariantSelect.disabled = isLegendary;
+      populateLegendaryPotionSelect();
     }
 
     function resolveDebugPotionRarity(selection, { randomRarity = false } = {}) {
@@ -6339,23 +6430,34 @@ function generateId(prefix = "id") {
     }
 
     function buildDebugPotionPreview() {
+      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal");
+      const legendaryKey = rarityKey === "legendary" ? debugPotionLegendarySelect?.value || "" : "";
+      if (rarityKey === "legendary") {
+        return createLegendaryPotion(legendaryKey);
+      }
       if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
       const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
       const variantKey =
         debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
       if (!templateKey || !variantKey) return null;
-      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal");
       return createPotionFromTemplate(templateKey, variantKey, { rarityKey });
     }
 
     function generateDebugPotion({ randomRarity = false } = {}) {
-      if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
-      const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
-      const variantKey =
-        debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
       const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal", { randomRarity });
+      const legendaryKey = rarityKey === "legendary" ? debugPotionLegendarySelect?.value || "" : "";
 
-      const potion = createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+      const potion =
+        rarityKey === "legendary"
+          ? createLegendaryPotion(legendaryKey)
+          : (() => {
+              if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
+              const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+              const variantKey =
+                debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
+              if (!templateKey || !variantKey) return null;
+              return createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+            })();
       if (!potion) return null;
 
       const slotValue = debugPotionSlotSelect?.value ?? "";
@@ -7990,6 +8092,8 @@ function maybeAutoSave(reason = "auto") {
     const debugPotionVariantSelect = document.getElementById("debug-potion-variant");
     const debugPotionRaritySelect = document.getElementById("debug-potion-rarity");
     const debugPotionSlotSelect = document.getElementById("debug-potion-slot");
+    const debugPotionLegendaryWrapper = document.getElementById("debug-potion-legendary-wrapper");
+    const debugPotionLegendarySelect = document.getElementById("debug-potion-legendary-template");
     const debugPotionPreview = document.getElementById("debug-potion-preview");
     const debugGeneratePotionButton = document.getElementById("debug-generate-potion");
     const debugGeneratePotionRandomButton = document.getElementById("debug-generate-potion-random");
@@ -9108,7 +9212,11 @@ function handlePlayerDefeat() {
       refreshDebugPotionPreview();
     });
     debugPotionVariantSelect?.addEventListener("change", refreshDebugPotionPreview);
-    debugPotionRaritySelect?.addEventListener("change", refreshDebugPotionPreview);
+    debugPotionRaritySelect?.addEventListener("change", () => {
+      updateDebugPotionControlState();
+      refreshDebugPotionPreview();
+    });
+    debugPotionLegendarySelect?.addEventListener("change", refreshDebugPotionPreview);
     debugGeneratePotionButton?.addEventListener("click", () => {
       generateDebugPotion();
     });
@@ -9127,6 +9235,11 @@ function handlePlayerDefeat() {
       const rarityKeys = DEBUG_POTION_RARITY_OPTIONS.map((opt) => opt.key);
       if (rarityKeys.length) {
         debugPotionRaritySelect.value = rarityKeys[randomInt(0, rarityKeys.length - 1)];
+      }
+      updateDebugPotionControlState();
+      if (debugPotionRaritySelect.value === "legendary" && LEGENDARY_POTIONS.length) {
+        const randomLegendary = LEGENDARY_POTIONS[randomInt(0, LEGENDARY_POTIONS.length - 1)];
+        debugPotionLegendarySelect.value = randomLegendary?.key || "";
       }
       refreshDebugPotionPreview();
       generateDebugPotion({ randomRarity: debugPotionRaritySelect?.value === "random" });
