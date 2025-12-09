@@ -1984,6 +1984,36 @@
           <button id="debug-generate-gear">装備品を作成して追加</button>
           <button id="debug-generate-gear-random">ランダム作成</button>
         </div>
+        <div class="debug-section" style="margin-top: 12px;">
+          <h4>ポーション生成</h4>
+          <div class="debug-selects">
+            <label>
+              種類:
+              <select id="debug-potion-template"></select>
+            </label>
+            <label>
+              バリエーション:
+              <select id="debug-potion-variant"></select>
+            </label>
+          </div>
+          <div class="debug-selects">
+            <label>
+              レア度:
+              <select id="debug-potion-rarity"></select>
+            </label>
+            <label>
+              装備先:
+              <select id="debug-potion-slot"></select>
+            </label>
+          </div>
+          <div id="debug-potion-preview" class="equipment-option-list">
+            <div class="option-label">ポーションのプレビューがここに表示されます</div>
+          </div>
+          <div class="modal-actions">
+            <button id="debug-generate-potion">ポーションを作成して追加</button>
+            <button id="debug-generate-potion-random">ランダム作成</button>
+          </div>
+        </div>
       </div>
       <div id="debug-tab-adjust" class="debug-tab-panel hidden">
         <div class="debug-section">
@@ -2155,6 +2185,14 @@ function generateId(prefix = "id") {
 
     const DEBUG_RARITY_OPTIONS = [
       { key: "legendary", label: "レジェンド" },
+      { key: "random", label: "ランダム（ノーマル〜レア）" },
+    ];
+
+    const DEBUG_POTION_RARITY_OPTIONS = [
+      { key: "legendary", label: "レジェンダリー" },
+      { key: "rare", label: "レア" },
+      { key: "magic", label: "マジック" },
+      { key: "normal", label: "ノーマル" },
       { key: "random", label: "ランダム（ノーマル〜レア）" },
     ];
 
@@ -6052,6 +6090,179 @@ function generateId(prefix = "id") {
       if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
     }
 
+    function populateDebugPotionVariantSelect(templateKey) {
+      if (!debugPotionVariantSelect) return;
+      const key = templateKey || debugPotionTemplateSelect?.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+      const template = POTION_BASE_TEMPLATES[key];
+      debugPotionVariantSelect.innerHTML = "";
+      (template?.variants || []).forEach((variant, index) => {
+        const opt = document.createElement("option");
+        opt.value = variant.key;
+        opt.textContent = variant.label;
+        debugPotionVariantSelect.appendChild(opt);
+        if (index === 0 && !debugPotionVariantSelect.value) {
+          debugPotionVariantSelect.value = variant.key;
+        }
+      });
+    }
+
+    function populateDebugPotionSlotSelect() {
+      if (!debugPotionSlotSelect) return;
+      debugPotionSlotSelect.innerHTML = "";
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = "装備しない（インベントリ追加のみ）";
+      debugPotionSlotSelect.appendChild(none);
+
+      (player.potions || []).forEach((potion, index) => {
+        const opt = document.createElement("option");
+        opt.value = String(index);
+        const label = potion?.name || `スロット${index + 1}`;
+        opt.textContent = `スロット${index + 1}${potion ? `: ${label}` : ""}`;
+        debugPotionSlotSelect.appendChild(opt);
+      });
+
+      if (!debugPotionSlotSelect.value) debugPotionSlotSelect.value = "";
+    }
+
+    function populateDebugPotionSelects() {
+      if (!debugPotionTemplateSelect || !debugPotionRaritySelect) return;
+
+      if (!debugPotionTemplateSelect.options.length) {
+        Object.values(POTION_BASE_TEMPLATES).forEach((template, index) => {
+          const opt = document.createElement("option");
+          opt.value = template.key;
+          opt.textContent = template.label;
+          debugPotionTemplateSelect.appendChild(opt);
+          if (index === 0 && !debugPotionTemplateSelect.value) {
+            debugPotionTemplateSelect.value = template.key;
+          }
+        });
+      }
+
+      if (!debugPotionRaritySelect.options.length) {
+        DEBUG_POTION_RARITY_OPTIONS.forEach((rarity) => {
+          const opt = document.createElement("option");
+          opt.value = rarity.key;
+          opt.textContent = rarity.label;
+          debugPotionRaritySelect.appendChild(opt);
+        });
+      }
+
+      if (!debugPotionTemplateSelect.value) {
+        debugPotionTemplateSelect.value = Object.keys(POTION_BASE_TEMPLATES)[0];
+      }
+
+      populateDebugPotionVariantSelect(debugPotionTemplateSelect.value);
+      if (!debugPotionRaritySelect.value) debugPotionRaritySelect.value = "random";
+      populateDebugPotionSlotSelect();
+    }
+
+    function resolveDebugPotionRarity(selection, { randomRarity = false } = {}) {
+      let choice = selection;
+      if (randomRarity) {
+        const pick = DEBUG_POTION_RARITY_OPTIONS[randomInt(0, DEBUG_POTION_RARITY_OPTIONS.length - 1)];
+        choice = pick?.key;
+      }
+      if (choice === "random") {
+        return NON_LEGENDARY_RARITIES[randomInt(0, NON_LEGENDARY_RARITIES.length - 1)];
+      }
+      if (choice && POTION_RARITIES[choice]) return choice;
+      return "normal";
+    }
+
+    function renderDebugPotionPreview(potion) {
+      if (!debugPotionPreview) return;
+      debugPotionPreview.innerHTML = "";
+      if (!potion) {
+        const empty = document.createElement("div");
+        empty.className = "option-label";
+        empty.textContent = "ポーションのプレビューがここに表示されます";
+        debugPotionPreview.appendChild(empty);
+        return;
+      }
+
+      const title = document.createElement("div");
+      title.className = "option-value";
+      title.textContent = `${potion.name} (${potion.rarityLabel || potion.rarity})`;
+      applyItemRarityColor(title, { potion });
+      debugPotionPreview.appendChild(title);
+
+      const type = document.createElement("div");
+      type.className = "option-label";
+      const typeLabel = potion.type === "hp" ? "HP回復" : potion.type === "mp" ? "MP回復" : "特殊";
+      type.textContent = `種類: ${typeLabel}`;
+      debugPotionPreview.appendChild(type);
+
+      const effect = document.createElement("div");
+      effect.className = "option-value";
+      effect.textContent = describePotionEffect(potion);
+      debugPotionPreview.appendChild(effect);
+
+      const cost = document.createElement("div");
+      cost.className = "option-label";
+      cost.textContent = `消費: 1回 ${potion.useCost}% / 最大 ${potion.maxFullness}%`;
+      debugPotionPreview.appendChild(cost);
+
+      const prefix = document.createElement("div");
+      prefix.className = "option-value";
+      prefix.textContent = `前置詞: ${describePotionAffix(potion.prefix)}`;
+      debugPotionPreview.appendChild(prefix);
+
+      const suffix = document.createElement("div");
+      suffix.className = "option-value";
+      suffix.textContent = `後置詞: ${describePotionAffix(potion.suffix)}`;
+      debugPotionPreview.appendChild(suffix);
+    }
+
+    function buildDebugPotionPreview() {
+      if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
+      const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+      const variantKey =
+        debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
+      if (!templateKey || !variantKey) return null;
+      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal");
+      return createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+    }
+
+    function generateDebugPotion({ randomRarity = false } = {}) {
+      if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
+      const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+      const variantKey =
+        debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
+      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal", { randomRarity });
+
+      const potion = createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+      if (!potion) return null;
+
+      const slotValue = debugPotionSlotSelect?.value ?? "";
+      const slotIndex = slotValue === "" ? -1 : Number(slotValue);
+      const item = createPotionInventoryItem(potion, { description: "デバッグで生成したポーション" });
+      player.inventory.items.push(item);
+
+      if (Number.isInteger(slotIndex) && slotIndex >= 0) {
+        const previous = player.potions?.[slotIndex];
+        player.potions[slotIndex] = potion;
+        if (previous) {
+          player.inventory.items.push(
+            ensureAcquiredOrder(
+              createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+            )
+          );
+        }
+        log(`💧 ${potion.name} を生成しスロット${slotIndex + 1}に装備`, "info");
+      } else {
+        log(`💧 ${potion.name} を生成しインベントリへ追加`, "info");
+      }
+
+      lastGeneratedPotion = potion;
+      populateDebugPotionSlotSelect();
+      renderDebugPotionPreview(potion);
+      renderInventory();
+      updateUI();
+      return potion;
+    }
+
     function switchDebugTab(tabKey) {
       const panels = {
         status: debugTabStatus,
@@ -6070,6 +6281,8 @@ function generateId(prefix = "id") {
         populateDebugGearSelects();
         populateLegendaryTemplateSelect();
         renderDebugGearPreview(lastGeneratedEquipment);
+        populateDebugPotionSelects();
+        renderDebugPotionPreview(lastGeneratedPotion || buildDebugPotionPreview());
       } else if (tabKey === "status") {
         populateDebugEnemySelect();
         renderDebugStatusButtons();
@@ -6476,6 +6689,7 @@ function maybeAutoSave(reason = "auto") {
     }
 
     let lastGeneratedEquipment = null;
+    let lastGeneratedPotion = null;
     let debugForceBossLegendaryDrop = false;
 
     function renderDebugGearPreview(item) {
@@ -7643,6 +7857,13 @@ function maybeAutoSave(reason = "auto") {
     const debugGearPreview = document.getElementById("debug-gear-preview");
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
+    const debugPotionTemplateSelect = document.getElementById("debug-potion-template");
+    const debugPotionVariantSelect = document.getElementById("debug-potion-variant");
+    const debugPotionRaritySelect = document.getElementById("debug-potion-rarity");
+    const debugPotionSlotSelect = document.getElementById("debug-potion-slot");
+    const debugPotionPreview = document.getElementById("debug-potion-preview");
+    const debugGeneratePotionButton = document.getElementById("debug-generate-potion");
+    const debugGeneratePotionRandomButton = document.getElementById("debug-generate-potion-random");
     const debugLevelInput = document.getElementById("debug-level-input");
     const debugHpInput = document.getElementById("debug-hp-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
@@ -8732,6 +8953,36 @@ function handlePlayerDefeat() {
       debugGearRaritySelect.value = randomKey;
       populateLegendaryTemplateSelect();
       generateDebugGear({ randomRarity: true });
+    });
+
+    const refreshDebugPotionPreview = () => renderDebugPotionPreview(buildDebugPotionPreview());
+    debugPotionTemplateSelect?.addEventListener("change", () => {
+      populateDebugPotionVariantSelect();
+      refreshDebugPotionPreview();
+    });
+    debugPotionVariantSelect?.addEventListener("change", refreshDebugPotionPreview);
+    debugPotionRaritySelect?.addEventListener("change", refreshDebugPotionPreview);
+    debugGeneratePotionButton?.addEventListener("click", () => {
+      generateDebugPotion();
+    });
+    debugGeneratePotionRandomButton?.addEventListener("click", () => {
+      const templateKeys = Object.keys(POTION_BASE_TEMPLATES);
+      if (templateKeys.length) {
+        const randomTemplate = templateKeys[randomInt(0, templateKeys.length - 1)];
+        debugPotionTemplateSelect.value = randomTemplate;
+        populateDebugPotionVariantSelect(randomTemplate);
+        const variants = POTION_BASE_TEMPLATES[randomTemplate]?.variants || [];
+        if (variants.length) {
+          const randomVariant = variants[randomInt(0, variants.length - 1)];
+          debugPotionVariantSelect.value = randomVariant.key;
+        }
+      }
+      const rarityKeys = DEBUG_POTION_RARITY_OPTIONS.map((opt) => opt.key);
+      if (rarityKeys.length) {
+        debugPotionRaritySelect.value = rarityKeys[randomInt(0, rarityKeys.length - 1)];
+      }
+      refreshDebugPotionPreview();
+      generateDebugPotion({ randomRarity: debugPotionRaritySelect?.value === "random" });
     });
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
