@@ -1144,15 +1144,6 @@
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     }
 
-    .potion-fill {
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-      font-size: 12px;
-      background: rgba(255, 255, 255, 0.06);
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-
     .info-chip {
       width: 30px;
       height: 30px;
@@ -1174,18 +1165,6 @@
 
     .skill-button {
       background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(96, 165, 250, 0.14));
-    }
-
-    .skill-number {
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      background: rgba(255, 255, 255, 0.08);
-      font-weight: 800;
-      font-size: 16px;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
     }
 
     .skill-name {
@@ -7330,17 +7309,7 @@ function maybeAutoSave(reason = "auto") {
         header.appendChild(icon);
         header.appendChild(infoChip);
 
-        const name = document.createElement("div");
-        name.className = "skill-name";
-        name.textContent = potion.short || potion.name || "ポーション";
-
-        const fill = document.createElement("div");
-        fill.className = "potion-fill";
-        fill.textContent = `${Math.round(potion.fullness)}%`;
-
         potionBtn.appendChild(header);
-        potionBtn.appendChild(name);
-        potionBtn.appendChild(fill);
         potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
         potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
         applyItemRarityColor(potionBtn, { potion });
@@ -7376,9 +7345,9 @@ function maybeAutoSave(reason = "auto") {
         const header = document.createElement("div");
         header.className = "action-top";
 
-        const number = document.createElement("div");
-        number.className = "skill-number";
-        number.textContent = `${index + 1}`;
+        const name = document.createElement("div");
+        name.className = "skill-name";
+        name.textContent = skill ? skill.name : "スキル未セット";
 
         const infoChip = document.createElement("span");
         infoChip.className = "info-chip";
@@ -7408,12 +7377,8 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        header.appendChild(number);
+        header.appendChild(name);
         header.appendChild(infoChip);
-
-        const name = document.createElement("div");
-        name.className = "skill-name";
-        name.textContent = skill ? skill.name : "スキル未セット";
 
         const status = document.createElement("div");
         status.className = "skill-status";
@@ -7424,7 +7389,6 @@ function maybeAutoSave(reason = "auto") {
           : "タップでセット";
 
         skillBtn.appendChild(header);
-        skillBtn.appendChild(name);
         skillBtn.appendChild(status);
 
         const badge = document.createElement("div");
