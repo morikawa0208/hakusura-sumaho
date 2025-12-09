@@ -1719,9 +1719,13 @@
       </div>
       <div class="stats" style="margin-top: 10px;">
         <div>種類 <span id="potion-modal-type"></span></div>
+        <div>ランク <span id="potion-modal-rarity"></span></div>
         <div>効果 <span id="potion-modal-effect"></span></div>
         <div>消費 <span id="potion-modal-cost"></span></div>
         <div>残量 <span id="potion-modal-fill"></span></div>
+        <div>前置詞 <span id="potion-modal-prefix"></span></div>
+        <div>後置詞 <span id="potion-modal-suffix"></span></div>
+        <div>説明 <span id="potion-modal-desc"></span></div>
       </div>
       <div class="help-panel" style="margin-top: 10px;">
         敵を倒すと少しずつ補充されます。
@@ -1980,6 +1984,43 @@
           <button id="debug-generate-gear">装備品を作成して追加</button>
           <button id="debug-generate-gear-random">ランダム作成</button>
         </div>
+        <div class="debug-section" style="margin-top: 12px;">
+          <h4>ポーション生成</h4>
+          <div class="debug-selects">
+            <label>
+              種類:
+              <select id="debug-potion-template"></select>
+            </label>
+            <label>
+              バリエーション:
+              <select id="debug-potion-variant"></select>
+            </label>
+          </div>
+          <div class="debug-selects">
+            <label>
+              レア度:
+              <select id="debug-potion-rarity"></select>
+            </label>
+            <label>
+              装備先:
+              <select id="debug-potion-slot"></select>
+            </label>
+          </div>
+          <div id="debug-potion-legendary-wrapper" class="debug-selects hidden">
+            <label>
+              レジェンダリーポーション:
+              <select id="debug-potion-legendary-template"></select>
+            </label>
+          </div>
+          <div id="debug-potion-preview" class="equipment-option-list">
+            <div class="option-label">ポーションのプレビューがここに表示されます</div>
+          </div>
+          <div class="modal-actions">
+            <button id="debug-generate-potion">ポーションを作成して追加</button>
+            <button id="debug-generate-potion-random">ランダム作成</button>
+            <button id="debug-reroll-potion">再生成（プレビューのみ）</button>
+          </div>
+        </div>
       </div>
       <div id="debug-tab-adjust" class="debug-tab-panel hidden">
         <div class="debug-section">
@@ -2154,7 +2195,304 @@ function generateId(prefix = "id") {
       { key: "random", label: "ランダム（ノーマル〜レア）" },
     ];
 
+    const DEBUG_POTION_RARITY_OPTIONS = [
+      { key: "legendary", label: "レジェンダリー" },
+      { key: "rare", label: "レア" },
+      { key: "magic", label: "マジック" },
+      { key: "normal", label: "ノーマル" },
+      { key: "random", label: "ランダム（ノーマル〜レア）" },
+    ];
+
     const NON_LEGENDARY_RARITIES = ["normal", "magic", "rare"];
+
+    const POTION_RARITIES = {
+      normal: {
+        key: "normal",
+        label: "ノーマル",
+        color: "#e5e7eb",
+        rank: 0,
+        amountRange: [0.9, 1.0],
+        useCostRange: [0.95, 1.05],
+        fullnessRange: [0.9, 1.0],
+      },
+      magic: {
+        key: "magic",
+        label: "マジック",
+        color: "#60a5fa",
+        rank: 1,
+        amountRange: [1.05, 1.15],
+        useCostRange: [0.85, 0.95],
+        fullnessRange: [1.0, 1.1],
+      },
+      rare: {
+        key: "rare",
+        label: "レア",
+        color: "#fcd34d",
+        rank: 2,
+        amountRange: [1.2, 1.35],
+        useCostRange: [0.7, 0.85],
+        fullnessRange: [1.05, 1.2],
+      },
+      legendary: {
+        key: "legendary",
+        label: "レジェンダリー",
+        color: "#b45309",
+        rank: 3,
+        amountRange: [1.35, 1.5],
+        useCostRange: [0.55, 0.75],
+        fullnessRange: [1.1, 1.25],
+      },
+    };
+
+    const POTION_RARITY_WEIGHTS = [
+      { key: "normal", weight: 52 },
+      { key: "magic", weight: 33 },
+      { key: "rare", weight: 15 },
+    ];
+
+    const POTION_PREFIXES = {
+      general: [
+        { key: "condensed", name: "濃縮", effect: "効果量 +20〜30%" },
+        { key: "pure", name: "純粋", effect: "効率UP / デメリット軽減" },
+        { key: "temporal", name: "時禍", effect: "効果ターン +1" },
+        { key: "insightful", name: "冥視", effect: "効果内容を拡張（影響範囲/サブ効果）" },
+        { key: "sanctified", name: "聖別", effect: "使用時に小バフ or 小シールド" },
+        { key: "thrifty", name: "倹約", effect: "ポーション消費量 −25%" },
+      ],
+      recovery: [
+        { key: "sacred", name: "神聖", effect: "回復時シールド付与" },
+        { key: "soothing", name: "癒気", effect: "回復後に再生バフ" },
+        { key: "earthen", name: "地脈", effect: "回復に防御UP付与" },
+        { key: "blessed", name: "恩寵", effect: "回復量拡張 / 一時的最大HP上限UP" },
+        { key: "renewal", name: "再誕", effect: "回復時 状態異常解除" },
+      ],
+      buff: [
+        { key: "fervent", name: "強心", effect: "攻撃系効果強化" },
+        { key: "ironbound", name: "鋼守", effect: "防御効果強化" },
+        { key: "rush", name: "疾走", effect: "行動速度UP効果強化" },
+        { key: "crimson", name: "緋色", effect: "HP低いほど効果増" },
+        { key: "aggressive", name: "猛勢", effect: "代償と引き換えに効果増" },
+      ],
+      legendaryGeneral: [
+        { key: "miraculous", name: "奇跡", effect: "効果そのものが限界突破（質と威力変換）" },
+        { key: "fatebound", name: "運命", effect: "ランダムな追加効果が発動" },
+      ],
+      legendaryRecovery: [
+        { key: "salvation", name: "救済", effect: "致死回避 / 蘇生系" },
+        { key: "holyblood", name: "聖血", effect: "回復値の一部を攻撃またはシールドへ変換" },
+      ],
+      legendaryBuff: [
+        { key: "overlord", name: "狂皇", effect: "効果中ターン毎に累積成長" },
+        { key: "judgment", name: "断罪", effect: "HPが低い敵へ処刑判定を持つ" },
+      ],
+      legendaryCost: [{ key: "zeroTributePrefix", name: "零喉", effect: "設定消費の −70〜80%軽減（ゼロにならない）" }],
+    };
+
+    const POTION_SUFFIXES = {
+      general: [
+        { key: "afterglow", name: "の余韻", effect: "効果延長" },
+        { key: "merit", name: "の真価", effect: "終了時 小バフ" },
+        { key: "halo", name: "の光環", effect: "終了時 小シールド" },
+        { key: "resurgence", name: "の帰還", effect: "終了時 小回復" },
+        { key: "awakening", name: "の覚醒", effect: "効果中の撃破で微成長" },
+        { key: "efficiency", name: "の節減", effect: "次回のポーション消費量 −10%" },
+        { key: "refill", name: "の再充填", effect: "使用消費の20%を還元" },
+      ],
+      recovery: [
+        { key: "vitalPulse", name: "の鼓動", effect: "終了時HP回復" },
+        { key: "purity", name: "の清涼", effect: "MP少量回復" },
+        { key: "shelter", name: "の包翼", effect: "回復時に防御UP" },
+        { key: "guidance", name: "の導き", effect: "回復量とシールド効果連動" },
+        { key: "restoration", name: "の慈雨", effect: "回復が二段発生" },
+      ],
+      buff: [
+        { key: "venom", name: "の毒", effect: "終了時HP微減" },
+        { key: "echo", name: "の反響", effect: "終了後 小バフ再発動" },
+        { key: "pursuit", name: "の追撃", effect: "終了後追加ダメージ" },
+        { key: "momentum", name: "の飛翔", effect: "終了後速度UP" },
+        { key: "fury", name: "の激昂", effect: "被弾時火力成長" },
+      ],
+      legendaryGeneral: [{ key: "miracleEcho", name: "の奇跡転写", effect: "効果が弱化してもう一度発動" }],
+      legendaryRecovery: [
+        { key: "blessedReversal", name: "の恩寵還元", effect: "回復量をシールド化し弱体系無効" },
+        { key: "graceDelegation", name: "の代行", effect: "戦闘中一回 自動回復が発動" },
+      ],
+      legendaryBuff: [
+        { key: "finalMastery", name: "の極意", effect: "同じ行動ほど累積強化" },
+        { key: "executionRite", name: "の処断", effect: "終了時 最もHP低い敵へ必殺判定" },
+      ],
+      legendaryCost: [{ key: "zeroTributeSuffix", name: "の恩寵", effect: "このポーションの消費量 −60〜70%" }],
+    };
+
+    const POTION_BASE_TEMPLATES = {
+      hp: {
+        key: "hp",
+        label: "生命ポーション",
+        type: "hp",
+        category: "recovery",
+        icon: "🧪",
+        variants: [
+          { key: "small", label: "(小)", short: "HP小", amount: 24, useCost: 30, maxFullness: 100 },
+          { key: "medium", label: "(中)", short: "HP中", amount: 45, useCost: 38, maxFullness: 100 },
+          { key: "large", label: "(大)", short: "HP大", amount: 80, useCost: 55, maxFullness: 100 },
+        ],
+      },
+      mp: {
+        key: "mp",
+        label: "魔力ポーション",
+        type: "mp",
+        category: "recovery",
+        icon: "🔮",
+        variants: [
+          { key: "small", label: "(小)", short: "MP小", amount: 20, useCost: 28, maxFullness: 100 },
+          { key: "medium", label: "(中)", short: "MP中", amount: 40, useCost: 36, maxFullness: 100 },
+          { key: "large", label: "(大)", short: "MP大", amount: 70, useCost: 50, maxFullness: 100 },
+        ],
+      },
+      berserker: {
+        key: "berserker",
+        label: "狂戦士薬",
+        type: "buff",
+        category: "buff",
+        icon: "💢",
+        summary: "攻撃上昇と代償を伴う短期決戦用バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "狂戦士",
+            amount: 32,
+            useCost: 36,
+            maxFullness: 100,
+            duration: 3,
+            penalty: 18,
+            buildEffectText: (values, { variant }) =>
+              `${variant.duration}ターン 攻撃+${values.amount}% / 被ダメ+${variant.penalty}%`,
+          },
+        ],
+      },
+      haste: {
+        key: "haste",
+        label: "疾走薬",
+        type: "buff",
+        category: "buff",
+        icon: "💨",
+        summary: "行動速度とCT短縮を上げる機動戦バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "疾走",
+            amount: 26,
+            useCost: 32,
+            maxFullness: 100,
+            duration: 3,
+            buildEffectText: (values, { variant }) => {
+              const ctReduction = Math.max(8, Math.round(values.amount * 0.6));
+              return `${variant.duration}ターン 行動速度+${values.amount}% / スキルCT-${ctReduction}%`;
+            },
+          },
+        ],
+      },
+      bulwark: {
+        key: "bulwark",
+        label: "鋼守の薬",
+        type: "buff",
+        category: "buff",
+        icon: "🛡️",
+        summary: "被ダメ軽減とバリア付与で粘る防御バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "鋼守",
+            amount: 28,
+            useCost: 34,
+            maxFullness: 100,
+            duration: 3,
+            buildEffectText: (values, { variant }) => {
+              const barrier = Math.round(values.amount * 3.2);
+              return `${variant.duration}ターン 被ダメ-${values.amount}% / バリア+${barrier}`;
+            },
+          },
+        ],
+      },
+    };
+
+    const LEGENDARY_POTIONS = [
+      {
+        key: "phoenixCryst",
+        name: "フェニックス血晶",
+        category: "recovery",
+        type: "hp",
+        icon: "🔥",
+        summary: "この戦闘中一度だけ戦闘不能を無効化し、HP50%で復活し直後1ターン無敵",
+        tagline: "絶対死なない保険",
+      },
+      {
+        key: "herosLegacy",
+        name: "英雄の遺酒",
+        category: "recovery",
+        type: "hybrid",
+        icon: "⚔️",
+        summary: "HP/MP即時全回復＋3ターン回復量+200%、撃破時に攻撃/防御/速度が成長",
+        tagline: "勝つための回復 × 成長",
+      },
+      {
+        key: "pactOfSalvation",
+        name: "救済の契約酒",
+        category: "recovery",
+        type: "hybrid",
+        icon: "📜",
+        summary: "即時全回復＆2ターン無敵。終了後は最大HP-20% (戦闘中のみ)",
+        tagline: "一度だけの切り札",
+      },
+      {
+        key: "sanctuaryChalice",
+        name: "聖域の祝杯",
+        category: "recovery",
+        type: "hybrid",
+        icon: "🛡️",
+        summary: "全回復＋3ターン状態異常完全無効",
+        tagline: "状態異常・デバフ支配",
+      },
+      {
+        key: "zealChalice",
+        name: "狂信者の盃",
+        category: "buff",
+        type: "buff",
+        icon: "💢",
+        summary: "2ターン与ダメ+120% / 被ダメ+40%、撃破毎に攻撃+10% 永続",
+        tagline: "倒すほど伸びる",
+      },
+      {
+        key: "judgementBrew",
+        name: "断罪の符酒",
+        category: "buff",
+        type: "buff",
+        icon: "🎯",
+        summary: "次の3回攻撃が確定クリティカル＋防御貫通と固定ダメージを付与",
+        tagline: "確実に前進",
+      },
+      {
+        key: "aegisBlackForge",
+        name: "黒鉄の祈酒",
+        category: "buff",
+        type: "buff",
+        icon: "🛡️",
+        summary: "3ターン防御強化＆被ダメ-60%、初撃無効、攻撃-25%",
+        tagline: "極限防御",
+      },
+      {
+        key: "shadowcloneAmbrosia",
+        name: "千の影の蜜",
+        category: "buff",
+        type: "buff",
+        icon: "🌀",
+        summary: "次の3回被弾時に攻撃無効化＋反撃（クリ率優遇）",
+        tagline: "受けて攻める",
+      },
+    ];
 
     const BASE_DROP_CHANCE = 32;
     const BOSS_DROP_BONUS = 18;
@@ -3218,6 +3556,179 @@ function generateId(prefix = "id") {
       return Math.round(raw);
     }
 
+    function getPotionRarity(key) {
+      return POTION_RARITIES[key] || POTION_RARITIES.normal;
+    }
+
+    function rollPotionRarity() {
+      const picked = weightedRandom(POTION_RARITY_WEIGHTS, POTION_RARITY_WEIGHTS[0]);
+      return getPotionRarity(picked?.key);
+    }
+
+    function rollPotionAffixPool(potion, type) {
+      const isRecovery = potion.category === "recovery";
+      const isBuff = potion.category === "buff";
+      const includeLegendary = potion.rarity === "legendary";
+      const base = type === "prefix" ? POTION_PREFIXES : POTION_SUFFIXES;
+      const pools = [base.general];
+      if (isRecovery) pools.push(base.recovery);
+      if (isBuff) pools.push(base.buff);
+      if (includeLegendary) {
+        pools.push(base.legendaryGeneral);
+        if (isRecovery) pools.push(base.legendaryRecovery);
+        if (isBuff) pools.push(base.legendaryBuff);
+        pools.push(base.legendaryCost);
+      }
+      return pools.flat().filter(Boolean);
+    }
+
+    function rollPotionAffix(potion, type) {
+      const pool = rollPotionAffixPool(potion, type);
+      if (!pool.length) return null;
+      return pool[randomInt(0, pool.length - 1)];
+    }
+
+    function buildPotionName(base, variant, rarity, prefix, suffix, { includeRarity = true } = {}) {
+      const rarityPrefix = includeRarity && rarity?.label ? `${rarity.label} ` : "";
+      const prefixName = prefix?.name ? `${prefix.name}` : rarityPrefix.trim();
+      const suffixName = suffix?.name || "";
+      return `${prefixName ? `${prefixName} ` : ""}${base}${variant || ""}${suffixName}`.trim();
+    }
+
+    function rollPotionValues(variant, rarity, { useBaseValues = false } = {}) {
+      if (useBaseValues) {
+        return {
+          amount: variant.amount,
+          useCost: variant.useCost,
+          maxFullness: variant.maxFullness,
+        };
+      }
+
+      const amount = Math.max(1, Math.round(variant.amount * rollValueInRange(rarity.amountRange, 2)));
+      const useCost = Math.max(5, Math.round(variant.useCost * rollValueInRange(rarity.useCostRange, 2)));
+      const maxFullness = Math.round(variant.maxFullness * rollValueInRange(rarity.fullnessRange, 2));
+      return { amount, useCost, maxFullness };
+    }
+
+    function describePotionEffect(potion) {
+      if (potion.type === "hp") return `HPを${potion.amount}回復`;
+      if (potion.type === "mp") return `MPを${potion.amount}回復`;
+      return potion.effectText || potion.summary || "特殊効果";
+    }
+
+    function pickLegendaryPotion(preferredKey) {
+      if (!LEGENDARY_POTIONS?.length) return null;
+      if (preferredKey) {
+        const found = LEGENDARY_POTIONS.find((entry) => entry.key === preferredKey);
+        if (found) return found;
+      }
+      return LEGENDARY_POTIONS[randomInt(0, LEGENDARY_POTIONS.length - 1)];
+    }
+
+    function createLegendaryPotion(legendaryKey, { hideRarityInName = false } = {}) {
+      const def = pickLegendaryPotion(legendaryKey);
+      const rarity = POTION_RARITIES.legendary;
+      if (!def || !rarity) return null;
+
+      const maxFullness = def.maxFullness ?? 100;
+      const potion = {
+        id: generateId(`potion-legendary-${def.key}`),
+        baseLabel: def.name,
+        name: def.name,
+        short: def.name,
+        variant: def.variantLabel || "",
+        type: def.type || "buff",
+        category: def.category || "buff",
+        amount: def.amount ?? 0,
+        useCost: def.useCost ?? 55,
+        maxFullness,
+        fullness: maxFullness,
+        rarity: rarity.key,
+        rarityRank: rarity.rank,
+        rarityLabel: rarity.label,
+        icon: def.icon || (def.category === "recovery" ? "💧" : "✨"),
+        summary: def.summary || def.tagline,
+      };
+
+      const prefix = rollPotionAffix(potion, "prefix");
+      const suffix = rollPotionAffix(potion, "suffix");
+      potion.prefix = prefix;
+      potion.suffix = suffix;
+      potion.name = buildPotionName(def.name, def.variantLabel || "", rarity, prefix, suffix, {
+        includeRarity: !hideRarityInName,
+      });
+      potion.effectText = def.summary || def.tagline || describePotionEffect(potion);
+      return potion;
+    }
+
+    function createPotionFromTemplate(
+      templateKey,
+      variantKey,
+      { rarityKey, useBaseValues = false, skipAffix = false, hideRarityInName = false } = {}
+    ) {
+      const template = POTION_BASE_TEMPLATES[templateKey];
+      const variant = template?.variants?.find((v) => v.key === variantKey) || template?.variants?.[0];
+      const rarity = rarityKey ? getPotionRarity(rarityKey) : rollPotionRarity();
+      if (!template || !variant) return null;
+
+      const { amount, useCost, maxFullness } = rollPotionValues(variant, rarity, { useBaseValues });
+      const effectText =
+        typeof variant.buildEffectText === "function"
+          ? variant.buildEffectText({ amount, useCost, maxFullness }, { template, variant, rarity })
+          : variant.effectText;
+      const potion = {
+        id: generateId(`potion-${template.key}-${variant.key}`),
+        baseLabel: template.label,
+        name: template.label,
+        short: variant.short,
+        variant: variant.label,
+        type: template.type,
+        category: template.category,
+        amount,
+        useCost,
+        maxFullness,
+        fullness: maxFullness,
+        rarity: rarity.key,
+        rarityRank: rarity.rank,
+        rarityLabel: rarity.label,
+        icon: template.icon,
+        summary:
+          template.summary ||
+          (template.type === "hp"
+            ? "即時HPを取り戻す基本ポーション"
+            : template.type === "mp"
+            ? "即時MPを補給する基本ポーション"
+            : "特殊な効果を持つポーション"),
+      };
+
+      const prefix = skipAffix ? null : rollPotionAffix(potion, "prefix");
+      const suffix = skipAffix ? null : rollPotionAffix(potion, "suffix");
+      potion.prefix = prefix;
+      potion.suffix = suffix;
+      potion.name = buildPotionName(template.label, variant.label, rarity, prefix, suffix, {
+        includeRarity: !hideRarityInName,
+      });
+      potion.effectText = effectText || describePotionEffect(potion);
+      return potion;
+    }
+
+    function describePotionAffix(affix) {
+      if (!affix) return "なし";
+      return `${affix.name} (${affix.effect})`;
+    }
+
+    function createPotionInventoryItem(potion, { description } = {}) {
+      const desc = description || `${describePotionEffect(potion)} / 消費${potion.useCost}%`;
+      return ensureAcquiredOrder({
+        id: `inv-${potion.id}`,
+        name: potion.name,
+        desc,
+        type: "potion",
+        rarity: typeof potion.rarityRank === "number" ? potion.rarityRank : 0,
+        potion: { ...potion },
+      });
+    }
+
     function rollStatValue(def, rarity) {
       const [min, max] = def.range;
       const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
@@ -3463,11 +3974,10 @@ function generateId(prefix = "id") {
       if (!element) return;
       const classNames = ["rarity-normal", "rarity-magic", "rarity-rare", "rarity-legendary"];
       classNames.forEach((cls) => element.classList.remove(cls));
-      const rarityKey = item?.equipment?.rarity;
-      if (!rarityKey || !EQUIPMENT_RARITIES[rarityKey]) {
-        return;
+      const rarityKey = item?.equipment?.rarity || item?.potion?.rarity;
+      if (rarityKey && (EQUIPMENT_RARITIES[rarityKey] || POTION_RARITIES[rarityKey])) {
+        element.classList.add(`rarity-${rarityKey}`);
       }
-      element.classList.add(`rarity-${rarityKey}`);
     }
 
     function getEquipmentBonuses(item) {
@@ -3661,69 +4171,52 @@ function generateId(prefix = "id") {
       statuses: [],
       inventory: {
         items: [
-          ensureAcquiredOrder(createPotionInventoryItem({
-            id: "potion-hp-small",
-            name: "回復ポーション (小)",
-            short: "HP小",
-            type: "hp",
-            amount: 24,
-            useCost: 30,
-            fullness: 100,
-            maxFullness: 100,
-            icon: "🧪",
-          })),
-          ensureAcquiredOrder(createPotionInventoryItem({
-            id: "potion-hp-medium",
-            name: "回復ポーション (中)",
-            short: "HP中",
-            type: "hp",
-            amount: 45,
-            useCost: 40,
-            fullness: 100,
-            maxFullness: 100,
-            icon: "🧪",
-          })),
           ensureAcquiredOrder(
             createPotionInventoryItem(
-              {
-                id: "potion-hp-large",
-                name: "回復ポーション (大)",
-                short: "HP大",
-                type: "hp",
-                amount: 80,
-                useCost: 55,
-                fullness: 100,
-                maxFullness: 100,
-                icon: "🧪",
-              },
+              createPotionFromTemplate("hp", "small", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              })
+            )
+          ),
+          ensureAcquiredOrder(
+            createPotionInventoryItem(
+              createPotionFromTemplate("hp", "medium", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              })
+            )
+          ),
+          ensureAcquiredOrder(
+            createPotionInventoryItem(
+              createPotionFromTemplate("hp", "large", {
+                rarityKey: "normal",
+                useBaseValues: true,
+                skipAffix: true,
+                hideRarityInName: true,
+              }),
               { description: "大きく回復する高級ポーション" }
             )
           ),
         ],
       },
       potions: [
-        {
-          id: "potion-hp-small",
-          name: "しょぼいHPポーション",
-          short: "HP",
-          type: "hp",
-          amount: 24,
-          useCost: 35,
-          fullness: 100,
-          maxFullness: 100,
-          icon: "🧪",
-        },
-        {
-          id: "potion-mp-small",
-          name: "しょぼいMPポーション",
-          short: "MP",
-          type: "mp",
-          amount: 12,
-          useCost: 30,
-          fullness: 100,
-          maxFullness: 100,
-          icon: "🔮",
-        },
+        createPotionFromTemplate("hp", "small", {
+          rarityKey: "normal",
+          useBaseValues: true,
+          skipAffix: true,
+          hideRarityInName: true,
+        }),
+        createPotionFromTemplate("mp", "small", {
+          rarityKey: "normal",
+          useBaseValues: true,
+          skipAffix: true,
+          hideRarityInName: true,
+        }),
       ],
       activeSkillSlots: Array.from({ length: ACTIVE_SKILL_SLOT_LIMIT }, () => ({ skillKey: null, cooldownRemaining: 0 })),
     };
@@ -5772,6 +6265,235 @@ function generateId(prefix = "id") {
       if (!debugLegendarySelect.value) debugLegendarySelect.value = "";
     }
 
+    function populateLegendaryPotionSelect() {
+      if (!debugPotionLegendarySelect) return;
+      const rarityKey = debugPotionRaritySelect?.value;
+      const isLegendary = rarityKey === "legendary";
+      debugPotionLegendaryWrapper?.classList.toggle("hidden", !isLegendary);
+
+      debugPotionLegendarySelect.innerHTML = "";
+      if (!isLegendary) return;
+
+      const randomOpt = document.createElement("option");
+      randomOpt.value = "";
+      randomOpt.textContent = "おまかせ（ランダム）";
+      debugPotionLegendarySelect.appendChild(randomOpt);
+
+      LEGENDARY_POTIONS.forEach((entry) => {
+        const opt = document.createElement("option");
+        opt.value = entry.key;
+        opt.textContent = entry.name;
+        debugPotionLegendarySelect.appendChild(opt);
+      });
+
+      if (!debugPotionLegendarySelect.value) debugPotionLegendarySelect.value = "";
+    }
+
+    function populateDebugPotionVariantSelect(templateKey) {
+      if (!debugPotionVariantSelect) return;
+      const key = templateKey || debugPotionTemplateSelect?.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+      const template = POTION_BASE_TEMPLATES[key];
+      debugPotionVariantSelect.innerHTML = "";
+      (template?.variants || []).forEach((variant, index) => {
+        const opt = document.createElement("option");
+        opt.value = variant.key;
+        opt.textContent = variant.label;
+        debugPotionVariantSelect.appendChild(opt);
+        if (index === 0 && !debugPotionVariantSelect.value) {
+          debugPotionVariantSelect.value = variant.key;
+        }
+      });
+    }
+
+    function populateDebugPotionSlotSelect() {
+      if (!debugPotionSlotSelect) return;
+      debugPotionSlotSelect.innerHTML = "";
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = "装備しない（インベントリ追加のみ）";
+      debugPotionSlotSelect.appendChild(none);
+
+      (player.potions || []).forEach((potion, index) => {
+        const opt = document.createElement("option");
+        opt.value = String(index);
+        const label = potion?.name || `スロット${index + 1}`;
+        opt.textContent = `スロット${index + 1}${potion ? `: ${label}` : ""}`;
+        debugPotionSlotSelect.appendChild(opt);
+      });
+
+      if (!debugPotionSlotSelect.value) debugPotionSlotSelect.value = "";
+    }
+
+    function populateDebugPotionSelects() {
+      if (!debugPotionTemplateSelect || !debugPotionRaritySelect) return;
+
+      if (!debugPotionTemplateSelect.options.length) {
+        Object.values(POTION_BASE_TEMPLATES).forEach((template, index) => {
+          const opt = document.createElement("option");
+          opt.value = template.key;
+          opt.textContent = template.label;
+          debugPotionTemplateSelect.appendChild(opt);
+          if (index === 0 && !debugPotionTemplateSelect.value) {
+            debugPotionTemplateSelect.value = template.key;
+          }
+        });
+      }
+
+      if (!debugPotionRaritySelect.options.length) {
+        DEBUG_POTION_RARITY_OPTIONS.forEach((rarity) => {
+          const opt = document.createElement("option");
+          opt.value = rarity.key;
+          opt.textContent = rarity.label;
+          debugPotionRaritySelect.appendChild(opt);
+        });
+      }
+
+      if (!debugPotionTemplateSelect.value) {
+        debugPotionTemplateSelect.value = Object.keys(POTION_BASE_TEMPLATES)[0];
+      }
+
+      populateDebugPotionVariantSelect(debugPotionTemplateSelect.value);
+      if (!debugPotionRaritySelect.value) debugPotionRaritySelect.value = "random";
+      populateDebugPotionSlotSelect();
+      updateDebugPotionControlState();
+    }
+
+    function updateDebugPotionControlState() {
+      const isLegendary = debugPotionRaritySelect?.value === "legendary";
+      if (debugPotionTemplateSelect) debugPotionTemplateSelect.disabled = isLegendary;
+      if (debugPotionVariantSelect) debugPotionVariantSelect.disabled = isLegendary;
+      populateLegendaryPotionSelect();
+    }
+
+    function resolveDebugPotionRarity(selection, { randomRarity = false } = {}) {
+      let choice = selection;
+      if (randomRarity) {
+        const pick = DEBUG_POTION_RARITY_OPTIONS[randomInt(0, DEBUG_POTION_RARITY_OPTIONS.length - 1)];
+        choice = pick?.key;
+      }
+      if (choice === "random") {
+        return NON_LEGENDARY_RARITIES[randomInt(0, NON_LEGENDARY_RARITIES.length - 1)];
+      }
+      if (choice && POTION_RARITIES[choice]) return choice;
+      return "normal";
+    }
+
+    function renderDebugPotionPreview(potion) {
+      if (!debugPotionPreview) return;
+      debugPotionPreview.innerHTML = "";
+      if (!potion) {
+        const empty = document.createElement("div");
+        empty.className = "option-label";
+        empty.textContent = "ポーションのプレビューがここに表示されます";
+        debugPotionPreview.appendChild(empty);
+        return;
+      }
+
+      const title = document.createElement("div");
+      title.className = "option-value";
+      title.textContent = `${potion.name} (${potion.rarityLabel || potion.rarity})`;
+      applyItemRarityColor(title, { potion });
+      debugPotionPreview.appendChild(title);
+
+      const type = document.createElement("div");
+      type.className = "option-label";
+      const typeLabel =
+        potion.category === "buff"
+          ? "バフ"
+          : potion.type === "hp"
+          ? "HP回復"
+          : potion.type === "mp"
+          ? "MP回復"
+          : "特殊";
+      type.textContent = `種類: ${typeLabel}`;
+      debugPotionPreview.appendChild(type);
+
+      const effect = document.createElement("div");
+      effect.className = "option-value";
+      effect.textContent = describePotionEffect(potion);
+      debugPotionPreview.appendChild(effect);
+
+      const cost = document.createElement("div");
+      cost.className = "option-label";
+      cost.textContent = `消費: 1回 ${potion.useCost}% / 最大 ${potion.maxFullness}%`;
+      debugPotionPreview.appendChild(cost);
+
+      const prefix = document.createElement("div");
+      prefix.className = "option-value";
+      prefix.textContent = `前置詞: ${describePotionAffix(potion.prefix)}`;
+      debugPotionPreview.appendChild(prefix);
+
+      const suffix = document.createElement("div");
+      suffix.className = "option-value";
+      suffix.textContent = `後置詞: ${describePotionAffix(potion.suffix)}`;
+      debugPotionPreview.appendChild(suffix);
+    }
+
+    function buildDebugPotionPreview() {
+      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal");
+      const legendaryKey = rarityKey === "legendary" ? debugPotionLegendarySelect?.value || "" : "";
+      if (rarityKey === "legendary") {
+        return createLegendaryPotion(legendaryKey);
+      }
+      if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
+      const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+      const variantKey =
+        debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
+      if (!templateKey || !variantKey) return null;
+      return createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+    }
+
+    function generateDebugPotion({ randomRarity = false } = {}) {
+      const rarityKey = resolveDebugPotionRarity(debugPotionRaritySelect?.value || "normal", { randomRarity });
+      const legendaryKey = rarityKey === "legendary" ? debugPotionLegendarySelect?.value || "" : "";
+
+      const potion =
+        rarityKey === "legendary"
+          ? createLegendaryPotion(legendaryKey)
+          : (() => {
+              if (!debugPotionTemplateSelect || !debugPotionVariantSelect) return null;
+              const templateKey = debugPotionTemplateSelect.value || Object.keys(POTION_BASE_TEMPLATES)[0];
+              const variantKey =
+                debugPotionVariantSelect.value || POTION_BASE_TEMPLATES[templateKey]?.variants?.[0]?.key || "";
+              if (!templateKey || !variantKey) return null;
+              return createPotionFromTemplate(templateKey, variantKey, { rarityKey });
+            })();
+      if (!potion) return null;
+
+      const slotValue = debugPotionSlotSelect?.value ?? "";
+      const slotIndex = slotValue === "" ? -1 : Number(slotValue);
+      const item = createPotionInventoryItem(potion, { description: "デバッグで生成したポーション" });
+      player.inventory.items.push(item);
+
+      if (Number.isInteger(slotIndex) && slotIndex >= 0) {
+        const previous = player.potions?.[slotIndex];
+        player.potions[slotIndex] = potion;
+        if (previous) {
+          player.inventory.items.push(
+            ensureAcquiredOrder(
+              createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
+            )
+          );
+        }
+        log(`💧 ${potion.name} を生成しスロット${slotIndex + 1}に装備`, "info");
+      } else {
+        log(`💧 ${potion.name} を生成しインベントリへ追加`, "info");
+      }
+
+      lastGeneratedPotion = potion;
+      populateDebugPotionSlotSelect();
+      renderDebugPotionPreview(potion);
+      renderInventory();
+      updateUI();
+      return potion;
+    }
+
+    function rerollDebugPotionPreview() {
+      const potion = buildDebugPotionPreview();
+      lastGeneratedPotion = potion;
+      renderDebugPotionPreview(potion);
+    }
+
     function switchDebugTab(tabKey) {
       const panels = {
         status: debugTabStatus,
@@ -5790,6 +6512,8 @@ function generateId(prefix = "id") {
         populateDebugGearSelects();
         populateLegendaryTemplateSelect();
         renderDebugGearPreview(lastGeneratedEquipment);
+        populateDebugPotionSelects();
+        renderDebugPotionPreview(lastGeneratedPotion || buildDebugPotionPreview());
       } else if (tabKey === "status") {
         populateDebugEnemySelect();
         renderDebugStatusButtons();
@@ -6196,6 +6920,7 @@ function maybeAutoSave(reason = "auto") {
     }
 
     let lastGeneratedEquipment = null;
+    let lastGeneratedPotion = null;
     let debugForceBossLegendaryDrop = false;
 
     function renderDebugGearPreview(item) {
@@ -6476,7 +7201,12 @@ function maybeAutoSave(reason = "auto") {
         const useCost = potion.useCost ?? 25;
         const maxFullness = potion.maxFullness ?? 100;
         potion.fullness = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
-        const resourceFull = potion.type === "hp" ? player.hp >= player.maxHp : player.mp >= player.maxMp;
+        const resourceFull =
+          potion.type === "hp"
+            ? player.hp >= player.maxHp
+            : potion.type === "mp"
+            ? player.mp >= player.maxMp
+            : false;
         const icon = document.createElement("div");
         icon.className = "potion-icon";
         icon.textContent = potion.icon || "🧪";
@@ -6487,11 +7217,18 @@ function maybeAutoSave(reason = "auto") {
         textWrap.className = "potion-text";
         const shortLabel = document.createElement("div");
         shortLabel.className = "potion-short";
-        shortLabel.textContent = potion.short || (potion.type === "hp" ? "HP" : "MP");
+        shortLabel.textContent = potion.name || potion.short || (potion.type === "hp" ? "HP" : "MP");
+        applyItemRarityColor(shortLabel, { potion });
+        const rarityLabel = document.createElement("div");
+        rarityLabel.className = "subtle";
+        rarityLabel.textContent = `${potion.rarityLabel || ""}${potion.prefix ? ` / ${potion.prefix.name}` : ""}${
+          potion.suffix ? ` / ${potion.suffix.name}` : ""
+        }`.trim();
         const fill = document.createElement("div");
         fill.className = "potion-fill";
-        fill.textContent = `${Math.round(potion.fullness)}%`;
+        fill.textContent = `${Math.round(potion.fullness)}% / ${maxFullness}%`;
         textWrap.appendChild(shortLabel);
+        if (rarityLabel.textContent) textWrap.appendChild(rarityLabel);
         textWrap.appendChild(fill);
 
         const infoBtn = document.createElement("div");
@@ -7294,9 +8031,13 @@ function maybeAutoSave(reason = "auto") {
     const potionModalName = document.getElementById("potion-modal-name");
     const inventoryCompareResult = document.getElementById("inventory-compare-result");
     const potionModalType = document.getElementById("potion-modal-type");
+    const potionModalRarity = document.getElementById("potion-modal-rarity");
     const potionModalEffect = document.getElementById("potion-modal-effect");
     const potionModalCost = document.getElementById("potion-modal-cost");
     const potionModalFill = document.getElementById("potion-modal-fill");
+    const potionModalPrefix = document.getElementById("potion-modal-prefix");
+    const potionModalSuffix = document.getElementById("potion-modal-suffix");
+    const potionModalDesc = document.getElementById("potion-modal-desc");
     const skillInfoName = document.getElementById("skill-info-name");
     const skillInfoType = document.getElementById("skill-info-type");
     const skillInfoCooldown = document.getElementById("skill-info-cooldown");
@@ -7347,6 +8088,16 @@ function maybeAutoSave(reason = "auto") {
     const debugGearPreview = document.getElementById("debug-gear-preview");
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
+    const debugPotionTemplateSelect = document.getElementById("debug-potion-template");
+    const debugPotionVariantSelect = document.getElementById("debug-potion-variant");
+    const debugPotionRaritySelect = document.getElementById("debug-potion-rarity");
+    const debugPotionSlotSelect = document.getElementById("debug-potion-slot");
+    const debugPotionLegendaryWrapper = document.getElementById("debug-potion-legendary-wrapper");
+    const debugPotionLegendarySelect = document.getElementById("debug-potion-legendary-template");
+    const debugPotionPreview = document.getElementById("debug-potion-preview");
+    const debugGeneratePotionButton = document.getElementById("debug-generate-potion");
+    const debugGeneratePotionRandomButton = document.getElementById("debug-generate-potion-random");
+    const debugRerollPotionButton = document.getElementById("debug-reroll-potion");
     const debugLevelInput = document.getElementById("debug-level-input");
     const debugHpInput = document.getElementById("debug-hp-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
@@ -7431,10 +8182,23 @@ function maybeAutoSave(reason = "auto") {
       const maxFullness = potion.maxFullness ?? 100;
       const currentFill = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
       potionModalName.textContent = potion.name;
-      potionModalType.textContent = potion.type === "hp" ? "HP回復" : "MP回復";
-      potionModalEffect.textContent = potion.type === "hp" ? `HPを${potion.amount}回復` : `MPを${potion.amount}回復`;
+      const typeLabel =
+        potion.category === "buff"
+          ? "バフ"
+          : potion.type === "hp"
+          ? "HP回復"
+          : potion.type === "mp"
+          ? "MP回復"
+          : "特殊";
+      potionModalType.textContent = typeLabel;
+      potionModalEffect.textContent = describePotionEffect(potion);
+      potionModalRarity.textContent = potion.rarityLabel || "";
+      applyItemRarityColor(potionModalRarity, { potion });
       potionModalCost.textContent = `1回 ${useCost}% 消費`;
       potionModalFill.textContent = `${Math.round(currentFill)}% / ${maxFullness}%`;
+      potionModalPrefix.textContent = describePotionAffix(potion.prefix);
+      potionModalSuffix.textContent = describePotionAffix(potion.suffix);
+      potionModalDesc.textContent = potion.summary || potion.desc || "";
       potionModal.classList.remove("hidden");
     }
 
@@ -7605,6 +8369,7 @@ function maybeAutoSave(reason = "auto") {
         const qty = typeof item?.quantity === "number" ? item.quantity : 1;
         if (qty > 1) metaParts.push(`所持: ×${qty}`);
         if (item.equipment?.rarityLabel) metaParts.push(item.equipment.rarityLabel);
+        if (item.potion?.rarityLabel) metaParts.push(item.potion.rarityLabel);
         inventoryItemMeta.textContent = metaParts.join(" / ");
         inventoryItemMeta.style.display = metaParts.length ? "flex" : "none";
       };
@@ -7618,8 +8383,21 @@ function maybeAutoSave(reason = "auto") {
         const maxFullness = item.potion.maxFullness ?? 100;
         const currentFill = Math.max(0, Math.min(maxFullness, item.potion.fullness ?? maxFullness));
         const fields = [
-          { label: "種類", value: item.potion.type === "hp" ? "HP回復" : "MP回復" },
-          { label: "効果", value: item.potion.type === "hp" ? `HPを${item.potion.amount}回復` : `MPを${item.potion.amount}回復` },
+          {
+            label: "種類",
+            value:
+              item.potion.category === "buff"
+                ? "バフ"
+                : item.potion.type === "hp"
+                ? "HP回復"
+                : item.potion.type === "mp"
+                ? "MP回復"
+                : "特殊",
+          },
+          { label: "ランク", value: item.potion.rarityLabel || item.potion.rarity },
+          { label: "効果", value: describePotionEffect(item.potion) },
+          { label: "前置詞", value: describePotionAffix(item.potion.prefix) },
+          { label: "後置詞", value: describePotionAffix(item.potion.suffix) },
           { label: "消費", value: `1回 ${useCost}% 消費` },
           { label: "残量", value: `${Math.round(currentFill)}% / ${maxFullness}%` },
         ];
@@ -7953,6 +8731,8 @@ function maybeAutoSave(reason = "auto") {
         const restored = Math.min(potion.amount, derived.maxMp.total - player.mp);
         player.mp = Math.min(derived.maxMp.total, player.mp + restored);
         log(`${potion.icon || "🔮"} ${potion.name}を飲んでMPを${restored}回復`, "good");
+      } else {
+        log(`${potion.icon || "🧪"} ${potion.name}を使用: ${describePotionEffect(potion)}`, "good");
       }
 
       potion.fullness = Math.max(0, potion.fullness - useCost);
@@ -8425,6 +9205,46 @@ function handlePlayerDefeat() {
       populateLegendaryTemplateSelect();
       generateDebugGear({ randomRarity: true });
     });
+
+    const refreshDebugPotionPreview = () => renderDebugPotionPreview(buildDebugPotionPreview());
+    debugPotionTemplateSelect?.addEventListener("change", () => {
+      populateDebugPotionVariantSelect();
+      refreshDebugPotionPreview();
+    });
+    debugPotionVariantSelect?.addEventListener("change", refreshDebugPotionPreview);
+    debugPotionRaritySelect?.addEventListener("change", () => {
+      updateDebugPotionControlState();
+      refreshDebugPotionPreview();
+    });
+    debugPotionLegendarySelect?.addEventListener("change", refreshDebugPotionPreview);
+    debugGeneratePotionButton?.addEventListener("click", () => {
+      generateDebugPotion();
+    });
+    debugGeneratePotionRandomButton?.addEventListener("click", () => {
+      const templateKeys = Object.keys(POTION_BASE_TEMPLATES);
+      if (templateKeys.length) {
+        const randomTemplate = templateKeys[randomInt(0, templateKeys.length - 1)];
+        debugPotionTemplateSelect.value = randomTemplate;
+        populateDebugPotionVariantSelect(randomTemplate);
+        const variants = POTION_BASE_TEMPLATES[randomTemplate]?.variants || [];
+        if (variants.length) {
+          const randomVariant = variants[randomInt(0, variants.length - 1)];
+          debugPotionVariantSelect.value = randomVariant.key;
+        }
+      }
+      const rarityKeys = DEBUG_POTION_RARITY_OPTIONS.map((opt) => opt.key);
+      if (rarityKeys.length) {
+        debugPotionRaritySelect.value = rarityKeys[randomInt(0, rarityKeys.length - 1)];
+      }
+      updateDebugPotionControlState();
+      if (debugPotionRaritySelect.value === "legendary" && LEGENDARY_POTIONS.length) {
+        const randomLegendary = LEGENDARY_POTIONS[randomInt(0, LEGENDARY_POTIONS.length - 1)];
+        debugPotionLegendarySelect.value = randomLegendary?.key || "";
+      }
+      refreshDebugPotionPreview();
+      generateDebugPotion({ randomRarity: debugPotionRaritySelect?.value === "random" });
+    });
+    debugRerollPotionButton?.addEventListener("click", rerollDebugPotionPreview);
     statHelpButton.addEventListener("click", () => {
       memoModal.classList.remove("hidden");
     });
