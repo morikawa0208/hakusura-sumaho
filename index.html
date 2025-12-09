@@ -1095,40 +1095,41 @@
     .action-button-wrapper > .main-action {
       width: 100%;
       height: 100%;
+      min-height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .actions-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
       align-items: stretch;
     }
 
-    .potion-row,
-    .skill-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px;
-      align-items: center;
-      height: 100%;
+    .action-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px 12px;
+      min-height: 96px;
+      text-align: left;
     }
 
-    .potion-row button,
-    .skill-row button {
+    .action-top {
       width: 100%;
-      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .potion-button {
       background: linear-gradient(135deg, rgba(248, 113, 113, 0.22), rgba(96, 165, 250, 0.15));
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 8px;
-      min-height: 82px;
-      text-align: center;
     }
 
     .potion-icon {
@@ -1152,33 +1153,32 @@
       border-radius: 999px;
     }
 
-    .info-button {
-      width: 32px;
-      height: 32px;
+    .info-chip {
+      width: 30px;
+      height: 30px;
       border-radius: 50%;
       padding: 0;
-      font-weight: 700;
+      font-weight: 800;
       background: rgba(255, 255, 255, 0.08);
       flex-shrink: 0;
       display: grid;
       place-items: center;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+    }
+
+    .info-chip:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 2px;
     }
 
     .skill-button {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 8px;
-      min-height: 82px;
-      text-align: center;
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.16), rgba(96, 165, 250, 0.14));
     }
 
-    .skill-slot-index {
-      width: 38px;
-      height: 38px;
+    .skill-number {
+      width: 36px;
+      height: 36px;
       border-radius: 12px;
       display: grid;
       place-items: center;
@@ -7284,11 +7284,11 @@ function maybeAutoSave(reason = "auto") {
       row.appendChild(escapeWrapper);
 
       (player.potions || []).forEach((potion, index) => {
-        const potionRow = document.createElement("div");
-        potionRow.className = "potion-row";
+        const wrapper = document.createElement("div");
+        wrapper.className = "action-button-wrapper";
 
         const potionBtn = document.createElement("button");
-        potionBtn.className = "potion-button";
+        potionBtn.className = "potion-button main-action action-card";
         potionBtn.onclick = () => usePotion(index);
         const useCost = potion.useCost ?? 25;
         const maxFullness = potion.maxFullness ?? 100;
@@ -7299,32 +7299,27 @@ function maybeAutoSave(reason = "auto") {
             : potion.type === "mp"
             ? player.mp >= player.maxMp
             : false;
+
+        const header = document.createElement("div");
+        header.className = "action-top";
+
         const icon = document.createElement("div");
         icon.className = "potion-icon";
         icon.textContent = potion.icon || "🧪";
 
-        const fill = document.createElement("div");
-        fill.className = "potion-fill";
-        fill.textContent = `${Math.round(potion.fullness)}%`;
-
-        potionBtn.appendChild(icon);
-        potionBtn.appendChild(fill);
-        potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
-        potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
-        applyItemRarityColor(potionBtn, { potion });
-        potionRow.appendChild(potionBtn);
-
-        const infoBtn = document.createElement("button");
-        infoBtn.className = "info-button";
-        infoBtn.textContent = "i";
-        infoBtn.title = "ポーション詳細";
-        infoBtn.tabIndex = 0;
-        infoBtn.setAttribute("aria-label", "ポーション詳細を表示");
-        infoBtn.onclick = (event) => {
+        const infoChip = document.createElement("span");
+        infoChip.className = "info-chip";
+        infoChip.textContent = "i";
+        infoChip.title = "ポーション詳細";
+        infoChip.tabIndex = 0;
+        infoChip.setAttribute("role", "button");
+        infoChip.setAttribute("aria-label", "ポーション詳細を表示");
+        infoChip.onclick = (event) => {
           event.stopPropagation();
+          event.preventDefault();
           openPotionModal(potion);
         };
-        infoBtn.onkeydown = (event) => {
+        infoChip.onkeydown = (event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             event.stopPropagation();
@@ -7332,8 +7327,25 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        potionRow.appendChild(infoBtn);
-        row.appendChild(potionRow);
+        header.appendChild(icon);
+        header.appendChild(infoChip);
+
+        const name = document.createElement("div");
+        name.className = "skill-name";
+        name.textContent = potion.short || potion.name || "ポーション";
+
+        const fill = document.createElement("div");
+        fill.className = "potion-fill";
+        fill.textContent = `${Math.round(potion.fullness)}%`;
+
+        potionBtn.appendChild(header);
+        potionBtn.appendChild(name);
+        potionBtn.appendChild(fill);
+        potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
+        potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
+        applyItemRarityColor(potionBtn, { potion });
+        wrapper.appendChild(potionBtn);
+        row.appendChild(wrapper);
       });
 
       (player.activeSkillSlots || []).forEach((slot, index) => {
@@ -7342,7 +7354,7 @@ function maybeAutoSave(reason = "auto") {
         wrapper.className = "action-button-wrapper skill-row";
 
         const skillBtn = document.createElement("button");
-        skillBtn.className = "skill-button main-action";
+        skillBtn.className = "skill-button main-action action-card";
         const remaining = Math.max(0, slot.cooldownRemaining || 0);
         const ready = remaining <= 0;
         const baseCooldown = skill ? getEffectiveSkillCooldown(skill) : null;
@@ -7361,9 +7373,43 @@ function maybeAutoSave(reason = "auto") {
           useActiveSkill(index);
         };
 
-        const slotIndex = document.createElement("div");
-        slotIndex.className = "skill-slot-index";
-        slotIndex.textContent = `${index + 1}`;
+        const header = document.createElement("div");
+        header.className = "action-top";
+
+        const number = document.createElement("div");
+        number.className = "skill-number";
+        number.textContent = `${index + 1}`;
+
+        const infoChip = document.createElement("span");
+        infoChip.className = "info-chip";
+        infoChip.textContent = "i";
+        infoChip.title = "スキル詳細";
+        infoChip.tabIndex = 0;
+        infoChip.setAttribute("role", "button");
+        infoChip.setAttribute("aria-label", "スキル詳細を表示");
+        infoChip.onclick = (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          if (skill) {
+            openSkillInfoModal(skill);
+          } else {
+            openSkillsModal();
+          }
+        };
+        infoChip.onkeydown = (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (skill) {
+              openSkillInfoModal(skill);
+            } else {
+              openSkillsModal();
+            }
+          }
+        };
+
+        header.appendChild(number);
+        header.appendChild(infoChip);
 
         const name = document.createElement("div");
         name.className = "skill-name";
@@ -7377,35 +7423,9 @@ function maybeAutoSave(reason = "auto") {
             : `MP${mpCost} / ${remaining}T`
           : "タップでセット";
 
-        skillBtn.appendChild(slotIndex);
+        skillBtn.appendChild(header);
         skillBtn.appendChild(name);
         skillBtn.appendChild(status);
-
-        const infoBtn = document.createElement("button");
-        infoBtn.className = "info-button";
-        infoBtn.textContent = "i";
-        infoBtn.title = "スキル詳細";
-        infoBtn.tabIndex = 0;
-        infoBtn.setAttribute("aria-label", "スキル詳細を表示");
-        infoBtn.onclick = (event) => {
-          event.stopPropagation();
-          if (skill) {
-            openSkillInfoModal(skill);
-          } else {
-            openSkillsModal();
-          }
-        };
-        infoBtn.onkeydown = (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            event.stopPropagation();
-            if (skill) {
-              openSkillInfoModal(skill);
-            } else {
-              openSkillsModal();
-            }
-          }
-        };
 
         const badge = document.createElement("div");
         badge.className = "cooldown-badge";
