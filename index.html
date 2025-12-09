@@ -4193,39 +4193,7 @@ function generateId(prefix = "id") {
       resist: { control: 0, dot: 0, debuff: 0 },
       statuses: [],
       inventory: {
-        items: [
-          ensureAcquiredOrder(
-            createPotionInventoryItem(
-              createPotionFromTemplate("hp", "small", {
-                rarityKey: "normal",
-                useBaseValues: true,
-                skipAffix: true,
-                hideRarityInName: true,
-              })
-            )
-          ),
-          ensureAcquiredOrder(
-            createPotionInventoryItem(
-              createPotionFromTemplate("hp", "medium", {
-                rarityKey: "normal",
-                useBaseValues: true,
-                skipAffix: true,
-                hideRarityInName: true,
-              })
-            )
-          ),
-          ensureAcquiredOrder(
-            createPotionInventoryItem(
-              createPotionFromTemplate("hp", "large", {
-                rarityKey: "normal",
-                useBaseValues: true,
-                skipAffix: true,
-                hideRarityInName: true,
-              }),
-              { description: "大きく回復する高級ポーション" }
-            )
-          ),
-        ],
+        items: [],
       },
       potions: [
         createPotionFromTemplate("hp", "small", {
