@@ -2343,6 +2343,74 @@ function generateId(prefix = "id") {
           { key: "large", label: "(大)", short: "MP大", amount: 70, useCost: 50, maxFullness: 100 },
         ],
       },
+      berserker: {
+        key: "berserker",
+        label: "狂戦士薬",
+        type: "buff",
+        category: "buff",
+        icon: "💢",
+        summary: "攻撃上昇と代償を伴う短期決戦用バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "狂戦士",
+            amount: 32,
+            useCost: 36,
+            maxFullness: 100,
+            duration: 3,
+            penalty: 18,
+            buildEffectText: (values, { variant }) =>
+              `${variant.duration}ターン 攻撃+${values.amount}% / 被ダメ+${variant.penalty}%`,
+          },
+        ],
+      },
+      haste: {
+        key: "haste",
+        label: "疾走薬",
+        type: "buff",
+        category: "buff",
+        icon: "💨",
+        summary: "行動速度とCT短縮を上げる機動戦バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "疾走",
+            amount: 26,
+            useCost: 32,
+            maxFullness: 100,
+            duration: 3,
+            buildEffectText: (values, { variant }) => {
+              const ctReduction = Math.max(8, Math.round(values.amount * 0.6));
+              return `${variant.duration}ターン 行動速度+${values.amount}% / スキルCT-${ctReduction}%`;
+            },
+          },
+        ],
+      },
+      bulwark: {
+        key: "bulwark",
+        label: "鋼守の薬",
+        type: "buff",
+        category: "buff",
+        icon: "🛡️",
+        summary: "被ダメ軽減とバリア付与で粘る防御バフ",
+        variants: [
+          {
+            key: "standard",
+            label: "",
+            short: "鋼守",
+            amount: 28,
+            useCost: 34,
+            maxFullness: 100,
+            duration: 3,
+            buildEffectText: (values, { variant }) => {
+              const barrier = Math.round(values.amount * 3.2);
+              return `${variant.duration}ターン 被ダメ-${values.amount}% / バリア+${barrier}`;
+            },
+          },
+        ],
+      },
     };
 
     const LEGENDARY_POTIONS = [
@@ -3478,8 +3546,7 @@ function generateId(prefix = "id") {
       return POTION_RARITIES[key] || POTION_RARITIES.normal;
     }
 
-    function rollPotionRarity({ allowLegendary = false } = {}) {
-      if (allowLegendary && Math.random() < 0.05) return POTION_RARITIES.legendary;
+    function rollPotionRarity() {
       const picked = weightedRandom(POTION_RARITY_WEIGHTS, POTION_RARITY_WEIGHTS[0]);
       return getPotionRarity(picked?.key);
     }
@@ -3538,14 +3605,18 @@ function generateId(prefix = "id") {
     function createPotionFromTemplate(
       templateKey,
       variantKey,
-      { rarityKey, allowLegendary = false, useBaseValues = false, skipAffix = false, hideRarityInName = false } = {}
+      { rarityKey, useBaseValues = false, skipAffix = false, hideRarityInName = false } = {}
     ) {
       const template = POTION_BASE_TEMPLATES[templateKey];
       const variant = template?.variants?.find((v) => v.key === variantKey) || template?.variants?.[0];
-      const rarity = rarityKey ? getPotionRarity(rarityKey) : rollPotionRarity({ allowLegendary });
+      const rarity = rarityKey ? getPotionRarity(rarityKey) : rollPotionRarity();
       if (!template || !variant) return null;
 
       const { amount, useCost, maxFullness } = rollPotionValues(variant, rarity, { useBaseValues });
+      const effectText =
+        typeof variant.buildEffectText === "function"
+          ? variant.buildEffectText({ amount, useCost, maxFullness }, { template, variant, rarity })
+          : variant.effectText;
       const potion = {
         id: generateId(`potion-${template.key}-${variant.key}`),
         baseLabel: template.label,
@@ -3563,11 +3634,12 @@ function generateId(prefix = "id") {
         rarityLabel: rarity.label,
         icon: template.icon,
         summary:
-          template.type === "hp"
+          template.summary ||
+          (template.type === "hp"
             ? "即時HPを取り戻す基本ポーション"
             : template.type === "mp"
             ? "即時MPを補給する基本ポーション"
-            : "特殊な効果を持つポーション",
+            : "特殊な効果を持つポーション"),
       };
 
       const prefix = skipAffix ? null : rollPotionAffix(potion, "prefix");
@@ -3577,7 +3649,7 @@ function generateId(prefix = "id") {
       potion.name = buildPotionName(template.label, variant.label, rarity, prefix, suffix, {
         includeRarity: !hideRarityInName,
       });
-      potion.effectText = describePotionEffect(potion);
+      potion.effectText = effectText || describePotionEffect(potion);
       return potion;
     }
 
@@ -6234,7 +6306,14 @@ function generateId(prefix = "id") {
 
       const type = document.createElement("div");
       type.className = "option-label";
-      const typeLabel = potion.type === "hp" ? "HP回復" : potion.type === "mp" ? "MP回復" : "特殊";
+      const typeLabel =
+        potion.category === "buff"
+          ? "バフ"
+          : potion.type === "hp"
+          ? "HP回復"
+          : potion.type === "mp"
+          ? "MP回復"
+          : "特殊";
       type.textContent = `種類: ${typeLabel}`;
       debugPotionPreview.appendChild(type);
 
@@ -7999,7 +8078,14 @@ function maybeAutoSave(reason = "auto") {
       const maxFullness = potion.maxFullness ?? 100;
       const currentFill = Math.max(0, Math.min(maxFullness, potion.fullness ?? maxFullness));
       potionModalName.textContent = potion.name;
-      const typeLabel = potion.type === "hp" ? "HP回復" : potion.type === "mp" ? "MP回復" : "特殊";
+      const typeLabel =
+        potion.category === "buff"
+          ? "バフ"
+          : potion.type === "hp"
+          ? "HP回復"
+          : potion.type === "mp"
+          ? "MP回復"
+          : "特殊";
       potionModalType.textContent = typeLabel;
       potionModalEffect.textContent = describePotionEffect(potion);
       potionModalRarity.textContent = potion.rarityLabel || "";
@@ -8193,7 +8279,17 @@ function maybeAutoSave(reason = "auto") {
         const maxFullness = item.potion.maxFullness ?? 100;
         const currentFill = Math.max(0, Math.min(maxFullness, item.potion.fullness ?? maxFullness));
         const fields = [
-          { label: "種類", value: item.potion.type === "hp" ? "HP回復" : item.potion.type === "mp" ? "MP回復" : "特殊" },
+          {
+            label: "種類",
+            value:
+              item.potion.category === "buff"
+                ? "バフ"
+                : item.potion.type === "hp"
+                ? "HP回復"
+                : item.potion.type === "mp"
+                ? "MP回復"
+                : "特殊",
+          },
           { label: "ランク", value: item.potion.rarityLabel || item.potion.rarity },
           { label: "効果", value: describePotionEffect(item.potion) },
           { label: "前置詞", value: describePotionAffix(item.potion.prefix) },
