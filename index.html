@@ -658,6 +658,67 @@
       }
     }
 
+    .swipe-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .swipe-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .swipe-title {
+      flex: 1;
+      text-align: center;
+      display: grid;
+      gap: 4px;
+    }
+
+    .swipe-title .label {
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .swipe-title .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .swipe-nav {
+      min-width: 42px;
+      padding: 8px;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .swipe-nav:disabled {
+      opacity: 0.35;
+    }
+
+    .swipe-track {
+      display: flex;
+      width: 100%;
+      transition: transform 0.24s ease;
+      will-change: transform;
+      touch-action: pan-y;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    .swipe-slide {
+      min-width: 100%;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
     #actions {
       display: grid;
       grid-template-columns: 1fr;
@@ -951,11 +1012,14 @@
     }
 
     .enemy-list {
+      --enemy-slot-height: 84px;
       display: grid;
-      grid-template-columns: repeat(var(--enemy-columns, 3), minmax(0, 1fr));
+      grid-template-columns: 1fr;
+      grid-auto-rows: minmax(var(--enemy-slot-height), auto);
       gap: 6px;
       font-size: 13px;
       padding-bottom: 2px;
+      min-height: calc(var(--enemy-slot-height) * 3 + 12px);
     }
 
     .enemy-card {
@@ -970,6 +1034,7 @@
       min-width: 0;
       position: relative;
       overflow: hidden;
+      height: 100%;
     }
 
     .enemy-card:active {
@@ -1616,12 +1681,27 @@
 </head>
 <body>
   <div class="phone">
-    <section class="card log-card">
-      <div id="log"></div>
-    </section>
-
-    <section class="card">
-      <div id="enemies" class="enemy-list"></div>
+    <section class="card swipe-card">
+      <div class="swipe-header">
+        <button id="panel-prev" class="mini-btn swipe-nav" aria-label="前のビューへ">
+          ←
+        </button>
+        <div class="swipe-title">
+          <div id="panel-title" class="label"></div>
+          <div class="hint">スワイプまたは矢印で切替</div>
+        </div>
+        <button id="panel-next" class="mini-btn swipe-nav" aria-label="次のビューへ">
+          →
+        </button>
+      </div>
+      <div id="panel-track" class="swipe-track" aria-live="polite">
+        <div class="swipe-slide" data-panel="enemies" aria-label="敵カード">
+          <div id="enemies" class="enemy-list"></div>
+        </div>
+        <div class="swipe-slide" data-panel="log" aria-label="バトルログ">
+          <div id="log"></div>
+        </div>
+      </div>
     </section>
 
     <section class="card">
@@ -5255,6 +5335,83 @@ function generateId(prefix = "id") {
       logBox.scrollTop = logBox.scrollHeight;
     }
 
+    const swipeTrack = document.getElementById("panel-track");
+    const swipeSlides = swipeTrack ? Array.from(swipeTrack.querySelectorAll(".swipe-slide")) : [];
+    const swipePrev = document.getElementById("panel-prev");
+    const swipeNext = document.getElementById("panel-next");
+    const swipeTitle = document.getElementById("panel-title");
+    const swipeLabels = {
+      enemies: "敵カード",
+      log: "バトルログ",
+    };
+    let activeSwipeIndex = 0;
+    let swipeStartX = null;
+    let swipeDeltaX = 0;
+
+    function setActivePanel(index) {
+      if (!swipeTrack || swipeSlides.length === 0) return;
+      const nextIndex = Math.min(swipeSlides.length - 1, Math.max(0, index));
+      activeSwipeIndex = nextIndex;
+      swipeTrack.style.transition = "transform 0.24s ease";
+      swipeTrack.style.transform = `translateX(-${nextIndex * 100}%)`;
+      swipeSlides.forEach((slide, i) => {
+        const isActive = i === nextIndex;
+        slide.classList.toggle("active", isActive);
+        slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+      });
+      if (swipeTitle) {
+        const key = swipeSlides[nextIndex]?.dataset.panel || `${nextIndex + 1}`;
+        swipeTitle.textContent = swipeLabels[key] || `ビュー ${nextIndex + 1}`;
+      }
+      if (swipePrev) swipePrev.disabled = nextIndex === 0;
+      if (swipeNext) swipeNext.disabled = nextIndex === swipeSlides.length - 1;
+    }
+
+    function handleSwipeStart(e) {
+      if (!swipeTrack) return;
+      swipeStartX = e.touches?.[0]?.clientX ?? e.clientX;
+      swipeDeltaX = 0;
+      swipeTrack.style.transition = "none";
+    }
+
+    function handleSwipeMove(e) {
+      if (swipeStartX === null || !swipeTrack) return;
+      const currentX = e.touches?.[0]?.clientX ?? e.clientX;
+      swipeDeltaX = currentX - swipeStartX;
+      swipeTrack.style.transform = `translateX(calc(-${activeSwipeIndex * 100}% + ${swipeDeltaX}px))`;
+    }
+
+    function handleSwipeEnd() {
+      if (swipeStartX === null || !swipeTrack) return;
+      const threshold = 45;
+      if (swipeDeltaX > threshold) {
+        setActivePanel(activeSwipeIndex - 1);
+      } else if (swipeDeltaX < -threshold) {
+        setActivePanel(activeSwipeIndex + 1);
+      } else {
+        setActivePanel(activeSwipeIndex);
+      }
+      swipeStartX = null;
+      swipeDeltaX = 0;
+    }
+
+    if (swipeTrack) {
+      swipeTrack.addEventListener("touchstart", handleSwipeStart, { passive: true });
+      swipeTrack.addEventListener("touchmove", handleSwipeMove, { passive: true });
+      swipeTrack.addEventListener("touchend", handleSwipeEnd);
+      swipeTrack.addEventListener("touchcancel", handleSwipeEnd);
+      swipeTrack.addEventListener("mousedown", handleSwipeStart);
+      swipeTrack.addEventListener("mousemove", (e) => {
+        if (swipeStartX !== null && e.buttons === 1) handleSwipeMove(e);
+      });
+      swipeTrack.addEventListener("mouseup", handleSwipeEnd);
+      swipeTrack.addEventListener("mouseleave", handleSwipeEnd);
+    }
+
+    swipePrev?.addEventListener("click", () => setActivePanel(activeSwipeIndex - 1));
+    swipeNext?.addEventListener("click", () => setActivePanel(activeSwipeIndex + 1));
+    setActivePanel(0);
+
     const statusPopover = document.getElementById("status-popover");
     const statusPopoverName = document.getElementById("status-popover-name");
     const statusPopoverTurns = document.getElementById("status-popover-turns");
@@ -7071,160 +7228,157 @@ function maybeAutoSave(reason = "auto") {
     }
 
     function renderEnemies() {
-  const wrapper = document.getElementById("enemies");
-  if (!wrapper) return;
+      const wrapper = document.getElementById("enemies");
+      if (!wrapper) return;
 
-  const enemyColumns = Math.max(1, Math.min(3, game.enemies.length || 1));
-  wrapper.style.setProperty("--enemy-columns", enemyColumns);
-
-  // ★ いま画面上にある .enemy-card を全部拾っておく
-  const existing = new Map(
-    Array.from(wrapper.querySelectorAll(".enemy-card")).map((card) => [
-      card.dataset.enemyId,
-      card,
-    ])
-  );
-  const used = new Set();
-
-  function createEnemyCard(enemy) {
-    const card = document.createElement("div");
-    card.className = "enemy-card";
-    card.dataset.enemyId = String(enemy.id);
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${enemy.name} の詳細`);
-
-    const top = document.createElement("div");
-    top.className = "enemy-top";
-
-    const name = document.createElement("div");
-    name.className = "enemy-name";
-    const titleLabel = document.createElement("span");
-
-    const meta = document.createElement("div");
-    meta.className = "enemy-meta";
-    const order = document.createElement("span");
-    const archetype = document.createElement("span");
-    archetype.className = "tag clickable";
-    const statusList = document.createElement("div");
-    statusList.className = "status-list";
-    meta.appendChild(order);
-    meta.appendChild(archetype);
-    meta.appendChild(statusList);
-
-    name.appendChild(titleLabel);
-    name.appendChild(meta);
-    top.appendChild(name);
-
-    const tag = document.createElement("div");
-    tag.className = "pill";
-    tag.textContent = "BOSS";
-    top.appendChild(tag);
-
-    const bar = document.createElement("div");
-    bar.className = "enemy-bar";
-    bar.addEventListener("animationend", (event) => {
-      if (event.animationName === "barPulse") bar.classList.remove("pulse");
-    });
-    const fill = document.createElement("span");
-    fill.className = "fill";
-    const hpLabel = document.createElement("span");
-    hpLabel.className = "label";
-    bar.appendChild(fill);
-    bar.appendChild(hpLabel);
-
-    const attackBadge = document.createElement("div");
-    attackBadge.className = "attack-badge enemy";
-    attackBadge.title = "1ターンあたりの攻撃回数";
-
-    card.appendChild(top);
-    card.appendChild(bar);
-    card.appendChild(attackBadge);
-
-    card._refs = {
-      titleLabel,
-      order,
-      archetype,
-      statusList,
-      tag,
-      bar,
-      fill,
-      hpLabel,
-      attackBadge,
-    };
-    return card;
-  }
-
-  function updateEnemyCard(card, enemy, index) {
-    const refs = card._refs || {};
-    card.dataset.enemyId = String(enemy.id);
-    card.onclick = () => openEnemyModal(enemy);
-    card.classList.toggle("defeated", enemy.hp <= 0);
-
-    if (refs.titleLabel) {
-      refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
-    }
-    if (refs.order) {
-      refs.order.textContent = `#${index + 1}`;
-    }
-
-    if (refs.archetype) {
-      const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
-      refs.archetype.style.display = hasArchetype ? "inline-flex" : "none";
-      refs.archetype.textContent = hasArchetype ? enemy.archetypeLabel : "";
-      refs.archetype.onclick = hasArchetype
-        ? (event) => {
-            event.stopPropagation();
-            openArchetypeModal(enemy);
-          }
-        : null;
-    }
-
-    if (refs.statusList) {
-      refs.statusList.innerHTML = "";
-      renderStatusList(refs.statusList, enemy);
-    }
-
-    if (refs.tag) {
-      refs.tag.textContent = enemy.isBoss ? "BOSS" : "ENEMY";
-      refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
-    }
-
-    const hpPct =
-      enemy.maxHp > 0 ? Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100)) : 0;
-    if (refs.fill) {
-      refs.fill.style.width = `${hpPct}%`;
-    }
-    if (refs.hpLabel) {
-      refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
-    }
-
-    if (refs.attackBadge) {
-      const enemyAttacks = Math.max(
-        0,
-        enemy.attacksRemaining ?? enemy.attackCount ?? 0
+      // ★ いま画面上にある .enemy-card を全部拾っておく
+      const existing = new Map(
+        Array.from(wrapper.querySelectorAll(".enemy-card")).map((card) => [
+          card.dataset.enemyId,
+          card,
+        ])
       );
-      refs.attackBadge.textContent = `x${enemyAttacks}`;
-    }
-  }
+      const used = new Set();
 
-  // ★ ここが重要：wrapper.innerHTML = "" で全消ししない！
-  // 既存カードを再利用しつつ、足りない分だけ新規作成
-  game.enemies.forEach((enemy, index) => {
-    const id = String(enemy.id);
-    let card = existing.get(id);
-    if (!card) {
-      card = createEnemyCard(enemy);
-      wrapper.appendChild(card);
-    }
-    updateEnemyCard(card, enemy, index);
-    used.add(id);
-  });
+      function createEnemyCard(enemy) {
+        const card = document.createElement("div");
+        card.className = "enemy-card";
+        card.dataset.enemyId = String(enemy.id);
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `${enemy.name} の詳細`);
 
-  // もういない敵のカードだけ片付ける
-  existing.forEach((card, id) => {
-    if (!used.has(id)) card.remove();
-  });
-}
+        const top = document.createElement("div");
+        top.className = "enemy-top";
+
+        const name = document.createElement("div");
+        name.className = "enemy-name";
+        const titleLabel = document.createElement("span");
+
+        const meta = document.createElement("div");
+        meta.className = "enemy-meta";
+        const order = document.createElement("span");
+        const archetype = document.createElement("span");
+        archetype.className = "tag clickable";
+        const statusList = document.createElement("div");
+        statusList.className = "status-list";
+        meta.appendChild(order);
+        meta.appendChild(archetype);
+        meta.appendChild(statusList);
+
+        name.appendChild(titleLabel);
+        name.appendChild(meta);
+        top.appendChild(name);
+
+        const tag = document.createElement("div");
+        tag.className = "pill";
+        tag.textContent = "BOSS";
+        top.appendChild(tag);
+
+        const bar = document.createElement("div");
+        bar.className = "enemy-bar";
+        bar.addEventListener("animationend", (event) => {
+          if (event.animationName === "barPulse") bar.classList.remove("pulse");
+        });
+        const fill = document.createElement("span");
+        fill.className = "fill";
+        const hpLabel = document.createElement("span");
+        hpLabel.className = "label";
+        bar.appendChild(fill);
+        bar.appendChild(hpLabel);
+
+        const attackBadge = document.createElement("div");
+        attackBadge.className = "attack-badge enemy";
+        attackBadge.title = "1ターンあたりの攻撃回数";
+
+        card.appendChild(top);
+        card.appendChild(bar);
+        card.appendChild(attackBadge);
+
+        card._refs = {
+          titleLabel,
+          order,
+          archetype,
+          statusList,
+          tag,
+          bar,
+          fill,
+          hpLabel,
+          attackBadge,
+        };
+        return card;
+      }
+
+      function updateEnemyCard(card, enemy, index) {
+        const refs = card._refs || {};
+        card.dataset.enemyId = String(enemy.id);
+        card.onclick = () => openEnemyModal(enemy);
+        card.classList.toggle("defeated", enemy.hp <= 0);
+
+        if (refs.titleLabel) {
+          refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
+        }
+        if (refs.order) {
+          refs.order.textContent = `#${index + 1}`;
+        }
+
+        if (refs.archetype) {
+          const hasArchetype = Boolean(enemy.archetypeLabel && !enemy.isBoss);
+          refs.archetype.style.display = hasArchetype ? "inline-flex" : "none";
+          refs.archetype.textContent = hasArchetype ? enemy.archetypeLabel : "";
+          refs.archetype.onclick = hasArchetype
+            ? (event) => {
+                event.stopPropagation();
+                openArchetypeModal(enemy);
+              }
+            : null;
+        }
+
+        if (refs.statusList) {
+          refs.statusList.innerHTML = "";
+          renderStatusList(refs.statusList, enemy);
+        }
+
+        if (refs.tag) {
+          refs.tag.textContent = enemy.isBoss ? "BOSS" : "ENEMY";
+          refs.tag.style.display = enemy.isBoss ? "inline-flex" : "none";
+        }
+
+        const hpPct =
+          enemy.maxHp > 0 ? Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100)) : 0;
+        if (refs.fill) {
+          refs.fill.style.width = `${hpPct}%`;
+        }
+        if (refs.hpLabel) {
+          refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+        }
+
+        if (refs.attackBadge) {
+          const enemyAttacks = Math.max(
+            0,
+            enemy.attacksRemaining ?? enemy.attackCount ?? 0
+          );
+          refs.attackBadge.textContent = `x${enemyAttacks}`;
+        }
+      }
+
+      // ★ ここが重要：wrapper.innerHTML = "" で全消ししない！
+      // 既存カードを再利用しつつ、足りない分だけ新規作成
+      game.enemies.forEach((enemy, index) => {
+        const id = String(enemy.id);
+        let card = existing.get(id);
+        if (!card) {
+          card = createEnemyCard(enemy);
+          wrapper.appendChild(card);
+        }
+        updateEnemyCard(card, enemy, index);
+        used.add(id);
+      });
+
+      // もういない敵のカードだけ片付ける
+      existing.forEach((card, id) => {
+        if (!used.has(id)) card.remove();
+      });
+    }
 
 
     function renderActions() {
