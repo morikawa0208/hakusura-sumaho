@@ -7432,7 +7432,6 @@ function maybeAutoSave(reason = "auto") {
         badge.textContent = skill ? (ready ? `CT ${baseCooldown || "--"}T` : `残り ${remaining}T`) : "未セット";
 
         wrapper.appendChild(skillBtn);
-        wrapper.appendChild(infoBtn);
         wrapper.appendChild(badge);
         row.appendChild(wrapper);
       });
