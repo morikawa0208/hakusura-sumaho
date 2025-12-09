@@ -7369,8 +7369,8 @@ function maybeAutoSave(reason = "auto") {
         status.className = "skill-status";
         status.textContent = skill
           ? ready
-            ? `MP${mpCost} / OK`
-            : `MP${mpCost} / ${remaining}T`
+            ? `MP${mpCost}`
+            : `MP${mpCost}`
           : "タップでセット";
 
         meta.appendChild(name);
