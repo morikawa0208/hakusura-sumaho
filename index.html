@@ -7320,7 +7320,7 @@ function maybeAutoSave(reason = "auto") {
       (player.activeSkillSlots || []).forEach((slot, index) => {
         const skill = slot.skillKey ? skills[slot.skillKey] : null;
         const wrapper = document.createElement("div");
-        wrapper.className = "action-button-wrapper";
+        wrapper.className = "action-button-wrapper skill-row";
 
         const skillBtn = document.createElement("button");
         skillBtn.className = "skill-button main-action action-card";
