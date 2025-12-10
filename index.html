@@ -811,6 +811,61 @@
       letter-spacing: 0.02em;
     }
 
+    .enhance-badge {
+      display: inline-flex;
+      align-items: center;
+      font-weight: 800;
+      font-size: 12px;
+      margin-left: 4px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+
+    .enhance-badge.broken {
+      color: #f87171;
+    }
+
+    .enhance-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .enhance-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .enhance-table {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 6px;
+    }
+
+    .enhance-row {
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+    }
+
+    .enhance-row.current {
+      border-color: rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35);
+    }
+
+    .enhance-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .favorite-badge {
       color: #fcd34d;
       font-weight: 900;
@@ -1333,6 +1388,10 @@
     #reset-modal,
     #skill-reset-modal {
       z-index: 60;
+    }
+
+    #weapon-enhance-modal {
+      z-index: 70;
     }
 
     .hidden {
@@ -1990,6 +2049,23 @@
     </div>
   </div>
 
+  <div id="weapon-enhance-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">武器強化</div>
+          <div style="font-weight: 700;">費用と成功率を確認して強化</div>
+        </div>
+        <button id="weapon-enhance-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="weapon-enhance-summary" class="equipment-option-list" style="margin-top: 8px;"></div>
+      <div class="enhance-actions" id="weapon-enhance-actions"></div>
+      <div class="enhance-note" id="weapon-enhance-note"></div>
+      <div class="modal-body-title" style="margin-top: 12px;">成功率一覧</div>
+      <div id="weapon-enhance-table" class="enhance-table"></div>
+    </div>
+  </div>
+
   <div id="inventory-modal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-content inventory-modal-content">
       <div class="modal-header">
@@ -2250,6 +2326,8 @@ function generateId(prefix = "id") {
     let inventoryFilter = "all";
     let inventorySortMode = "acquire";
     let inventoryAcquireSequence = 0;
+    let weaponEnhanceTarget = null;
+    let currentInventorySelection = null;
 
     const EQUIPMENT_SLOTS = {
       weapon: { label: "メイン(武器)" },
@@ -2285,6 +2363,46 @@ function generateId(prefix = "id") {
       rare: 100,
       legendary: 10000,
     };
+
+    const WEAPON_ENHANCE_PROGRESSION = [
+      { from: 0, to: 1, success: 100 },
+      { from: 1, to: 2, success: 100 },
+      { from: 2, to: 3, success: 100 },
+      { from: 3, to: 4, success: 100 },
+      { from: 4, to: 5, success: 100 },
+      { from: 5, to: 6, success: 90 },
+      { from: 6, to: 7, success: 70 },
+      { from: 7, to: 8, success: 70 },
+      { from: 8, to: 9, success: 50 },
+      { from: 9, to: 10, success: 50 },
+      { from: 10, to: 11, success: 45 },
+      { from: 11, to: 12, success: 45 },
+      { from: 12, to: 13, success: 30 },
+      { from: 13, to: 14, success: 30 },
+      { from: 14, to: 15, success: 7.5 },
+      { from: 15, to: 16, success: 7.5 },
+      { from: 16, to: 17, success: 5 },
+      { from: 17, to: 18, success: 5 },
+      { from: 18, to: 19, success: 2 },
+      { from: 19, to: 20, success: 2 },
+      { from: 20, to: 21, success: 0.01 },
+    ];
+
+    const MAX_ENHANCE_LEVEL = WEAPON_ENHANCE_PROGRESSION.reduce((max, step) => Math.max(max, step.to), 0);
+
+    const WEAPON_ENHANCE_COLORS = [
+      { min: 20, color: "#f8fafc" },
+      { min: 17, color: "#fbbf24" },
+      { min: 15, color: "#fb923c" },
+      { min: 13, color: "#f9a8d4" },
+      { min: 9, color: "#60a5fa" },
+      { min: 7, color: "#facc15" },
+      { min: 1, color: "#34d399" },
+    ];
+
+    const WEAPON_ENHANCE_POWER_PER_LEVEL = 0.02; // 1段階ごとに+2%補正
+    const WEAPON_ENHANCE_BASE_COST = 240;
+    const WEAPON_ENHANCE_COST_GROWTH = 1.48;
 
     const DEBUG_RARITY_OPTIONS = [
       { key: "legendary", label: "レジェンド" },
@@ -4029,6 +4147,89 @@ function generateId(prefix = "id") {
       return `${prefix} ${base}${suffix}`;
     }
 
+    function normalizeEquipmentItem(item) {
+      if (!item || item.type !== "equipment") return item;
+      if (typeof item.enhanceLevel !== "number") item.enhanceLevel = 0;
+      item.enhanceBroken = !!item.enhanceBroken;
+      if (!item.slot && item.equipment?.slot) item.slot = item.equipment.slot;
+      return item;
+    }
+
+    function getWeaponEnhanceStep(level) {
+      return WEAPON_ENHANCE_PROGRESSION.find((step) => step.from === level) || null;
+    }
+
+    function calculateWeaponEnhanceCost(level) {
+      return Math.round(WEAPON_ENHANCE_BASE_COST * Math.pow(WEAPON_ENHANCE_COST_GROWTH, level));
+    }
+
+    function getWeaponEnhanceMultiplier(item) {
+      const slot = item?.slot || item?.equipment?.slot;
+      if (slot !== "weapon") return 1;
+      const level = Math.max(0, item?.enhanceLevel || 0);
+      return 1 + level * WEAPON_ENHANCE_POWER_PER_LEVEL;
+    }
+
+    function getWeaponEnhanceColor(level) {
+      const rule = WEAPON_ENHANCE_COLORS.find((entry) => level >= entry.min);
+      return rule?.color || "";
+    }
+
+    function applyEnhanceScaling(primary, secondary, item) {
+      const multiplier = getWeaponEnhanceMultiplier(item);
+      if (multiplier === 1) return { primary, secondary };
+      const scaledPrimary = { ...createEmptyPrimaryBonus(), ...primary };
+      const scaledSecondary = { ...createEmptyBonus(), ...secondary };
+      Object.keys(scaledPrimary).forEach((key) => {
+        if (typeof scaledPrimary[key] === "number") {
+          scaledPrimary[key] = Number((scaledPrimary[key] * multiplier).toFixed(2));
+        }
+      });
+      Object.keys(scaledSecondary).forEach((key) => {
+        if (typeof scaledSecondary[key] === "number") {
+          scaledSecondary[key] = Number((scaledSecondary[key] * multiplier).toFixed(2));
+        }
+      });
+      return { primary: scaledPrimary, secondary: scaledSecondary };
+    }
+
+    function getEnhancedEntry(entry, item) {
+      if (!entry || typeof entry.value !== "number") return entry;
+      const multiplier = getWeaponEnhanceMultiplier(item);
+      if (multiplier === 1) return entry;
+      const precision = entry.precision ?? (entry.unit === "%" ? 1 : 0);
+      const value = Number((entry.value * multiplier).toFixed(precision));
+      return { ...entry, value };
+    }
+
+    function createEnhanceBadge(item, { includeZero = false } = {}) {
+      if (!item || item.type !== "equipment") return null;
+      const slot = item.slot || item.equipment?.slot;
+      if (slot !== "weapon" && !item.enhanceBroken) return null;
+      const level = Math.max(0, item.enhanceLevel || 0);
+      if (level <= 0 && !includeZero && !item.enhanceBroken) return null;
+      const badge = document.createElement("span");
+      badge.className = "enhance-badge";
+      const color = getWeaponEnhanceColor(level);
+      if (color) badge.style.color = color;
+      badge.textContent = item.enhanceBroken ? `+${level} (破損)` : `+${level}`;
+      if (item.enhanceBroken) badge.classList.add("broken");
+      return badge;
+    }
+
+    function formatEnhanceRate(rate) {
+      if (rate >= 1) {
+        return rate % 1 === 0 ? rate.toFixed(0) : rate.toFixed(1);
+      }
+      return rate.toFixed(2);
+    }
+
+    function describeEnhanceEffect(level) {
+      const multiplier = 1 + Math.max(0, level) * WEAPON_ENHANCE_POWER_PER_LEVEL;
+      const bonusPercent = Math.round((multiplier - 1) * 1000) / 10;
+      return { multiplier, bonusPercent };
+    }
+
     function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "", titleBonus = 0 } = {}) {
       const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
@@ -4067,6 +4268,8 @@ function generateId(prefix = "id") {
         name,
         desc: "デバッグで生成した装備品",
         rarity: rarity.rank,
+        enhanceLevel: 0,
+        enhanceBroken: false,
         equipment: {
           slot,
           rarity: rarity.key,
@@ -4094,6 +4297,7 @@ function generateId(prefix = "id") {
     }
 
     function getEquipmentBonuses(item) {
+      normalizeEquipmentItem(item);
       const primary = createEmptyPrimaryBonus();
       const secondary = createEmptyBonus();
       if (!item?.equipment) return { primary, secondary };
@@ -4101,7 +4305,7 @@ function generateId(prefix = "id") {
       if (item.primaryBonus || item.bonus) {
         Object.assign(primary, item.primaryBonus || {});
         Object.assign(secondary, item.bonus || {});
-        return { primary, secondary };
+        return applyEnhanceScaling(primary, secondary, item);
       }
 
       const collect = (options) => {
@@ -4115,7 +4319,7 @@ function generateId(prefix = "id") {
       collect(item.equipment.randomOptions);
       collect(item.equipment.prefix?.options);
       collect(item.equipment.suffix?.options);
-      return { primary, secondary };
+      return applyEnhanceScaling(primary, secondary, item);
     }
 
     function diffEquipmentBonuses(newItem, equippedItem) {
@@ -5608,19 +5812,16 @@ function generateId(prefix = "id") {
       const secondary = createEmptyBonus();
       const primary = createEmptyPrimaryBonus();
       Object.values(player.equipment || {}).forEach((item) => {
-        if (!item) return;
-        if (item.primaryBonus) {
-          Object.entries(item.primaryBonus).forEach(([key, value]) => {
-            if (typeof value !== "number") return;
-            primary[key] = (primary[key] ?? 0) + value;
-          });
-        }
-        if (item.bonus) {
-          Object.entries(item.bonus).forEach(([key, value]) => {
-            if (typeof value !== "number") return;
-            secondary[key] = (secondary[key] ?? 0) + value;
-          });
-        }
+        if (!item?.equipment) return;
+        const bonuses = getEquipmentBonuses(item);
+        Object.entries(bonuses.primary || {}).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          primary[key] = (primary[key] ?? 0) + value;
+        });
+        Object.entries(bonuses.secondary || {}).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          secondary[key] = (secondary[key] ?? 0) + value;
+        });
       });
       return { primary, secondary };
     }
@@ -6321,6 +6522,7 @@ function generateId(prefix = "id") {
       renderPrimaryStats();
       renderSkills();
       renderStatusList(document.getElementById("player-status-list"), player);
+      renderWeaponEnhancePanel();
     }
 
     function renderStatusList(container, entity) {
@@ -6892,6 +7094,11 @@ function maybeAutoSave(reason = "auto") {
       });
     }
 
+    function normalizeOwnedEquipment() {
+      Object.values(player.equipment || {}).forEach((item) => normalizeEquipmentItem(item));
+      (player.inventory?.items || []).forEach((entry) => normalizeEquipmentItem(entry));
+    }
+
     function restoreAttackCounts() {
       player.attacksRemaining = Math.max(0, Math.floor(player.attackCount || 0));
       game.enemies = game.enemies || [];
@@ -6906,6 +7113,7 @@ function maybeAutoSave(reason = "auto") {
       replaceObject(player, payload.player || {});
       replaceObject(game, payload.game || {});
       mergeSkillsFromSave(payload.skills || {});
+      normalizeOwnedEquipment();
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       const battleActive = game.awaitingInput || (game.enemies || []).some((e) => e.hp > 0);
@@ -7164,19 +7372,19 @@ function maybeAutoSave(reason = "auto") {
       slot.textContent = `部位: ${slotLabel}`;
       debugGearPreview.appendChild(slot);
 
-      const appendList = (titleText, options) => {
-        if (!options?.length) return;
-        const heading = document.createElement("div");
-        heading.className = "option-label";
-        heading.textContent = titleText;
-        debugGearPreview.appendChild(heading);
-        options.forEach((opt) => {
-          const row = document.createElement("div");
-          row.className = "option-value";
-          row.textContent = formatEquipmentValue(opt);
-          debugGearPreview.appendChild(row);
-        });
-      };
+        const appendList = (titleText, options) => {
+          if (!options?.length) return;
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = titleText;
+          debugGearPreview.appendChild(heading);
+          options.forEach((opt) => {
+            const row = document.createElement("div");
+            row.className = "option-value";
+            row.textContent = formatEquipmentValue(getEnhancedEntry(opt, item));
+            debugGearPreview.appendChild(row);
+          });
+        };
 
       const appendAffix = (label, affix) => {
         if (!affix?.options?.length) return;
@@ -8135,6 +8343,7 @@ function maybeAutoSave(reason = "auto") {
       }
 
       sorted.forEach(({ item, index }) => {
+        normalizeEquipmentItem(item);
         const row = document.createElement("button");
         row.type = "button";
         row.className = "inventory-row";
@@ -8158,10 +8367,193 @@ function maybeAutoSave(reason = "auto") {
         label.textContent = item?.name || "不明なアイテム";
         applyItemRarityColor(label, item);
         name.appendChild(label);
+        const enhanceBadge = createEnhanceBadge(item);
+        if (enhanceBadge) name.appendChild(enhanceBadge);
 
         row.appendChild(name);
         container.appendChild(row);
       });
+    }
+
+    function renderWeaponEnhancePanel() {
+      const summary = document.getElementById("weapon-enhance-summary");
+      const actions = document.getElementById("weapon-enhance-actions");
+      const note = document.getElementById("weapon-enhance-note");
+      const table = document.getElementById("weapon-enhance-table");
+      if (!summary || !actions || !note || !table) return;
+
+      summary.innerHTML = "";
+      actions.innerHTML = "";
+      note.textContent = "";
+      table.innerHTML = "";
+
+      const weapon = normalizeEquipmentItem(weaponEnhanceTarget || player.equipment?.weapon);
+      weaponEnhanceTarget = weapon || null;
+      if (!weapon) {
+        const empty = document.createElement("div");
+        empty.className = "option-label";
+        empty.textContent = "強化対象の武器がありません";
+        summary.appendChild(empty);
+        note.textContent = "インベントリから武器を選んで強化ボタンを押してください。";
+        return;
+      }
+
+      const header = document.createElement("div");
+      header.className = "option-label";
+      header.style.display = "flex";
+      header.style.alignItems = "center";
+      header.style.gap = "8px";
+      const name = document.createElement("span");
+      name.textContent = weapon.name;
+      applyItemRarityColor(name, weapon);
+      header.appendChild(name);
+      const badge = createEnhanceBadge(weapon, { includeZero: true });
+      if (badge) header.appendChild(badge);
+      summary.appendChild(header);
+
+      const level = Math.max(0, weapon.enhanceLevel || 0);
+      const step = getWeaponEnhanceStep(level);
+      const success = step?.success ?? 0;
+      const enhanceCost = step ? calculateWeaponEnhanceCost(level) : 0;
+      const repairCost = calculateWeaponEnhanceCost(level) * 2;
+      const { bonusPercent } = describeEnhanceEffect(level);
+      const nextEffect = step ? describeEnhanceEffect(step.to) : { bonusPercent };
+      const projectedGain = Math.max(0, Math.round((nextEffect.bonusPercent - bonusPercent) * 10) / 10);
+
+      const infoGrid = document.createElement("div");
+      infoGrid.className = "enhance-info-grid";
+      const infoList = [
+        { label: "現在の強化値", value: `+${level}${weapon.enhanceBroken ? " (破損)" : ""}` },
+        { label: "成功率", value: step ? `${formatEnhanceRate(success)}%` : "最大" },
+        { label: "強化費用", value: step ? `${formatGold(enhanceCost)}G` : "なし" },
+        { label: "武器補正", value: bonusPercent > 0 ? `全オプション ${bonusPercent}%` : "補正なし" },
+        {
+          label: "成功時の見込み",
+          value: step
+            ? `全オプション +${projectedGain}% (次は+${step.to})`
+            : `最大強化達成 (全オプション ${bonusPercent}%)`,
+        },
+      ];
+      infoList.forEach((entry) => {
+        const row = document.createElement("div");
+        row.className = "option-value";
+        row.textContent = `${entry.label}: ${entry.value}`;
+        infoGrid.appendChild(row);
+      });
+      summary.appendChild(infoGrid);
+
+      const enhanceBtn = document.createElement("button");
+      enhanceBtn.textContent = step ? `強化する (${formatGold(enhanceCost)}G)` : "最大強化済み";
+      enhanceBtn.disabled = !step || weapon.enhanceBroken || player.gold < enhanceCost;
+      enhanceBtn.onclick = () => attemptWeaponEnhance();
+      actions.appendChild(enhanceBtn);
+
+      const repairBtn = document.createElement("button");
+      repairBtn.textContent = `修理 (${formatGold(repairCost)}G)`;
+      repairBtn.disabled = !weapon.enhanceBroken || player.gold < repairCost;
+      repairBtn.onclick = () => repairWeapon();
+      actions.appendChild(repairBtn);
+
+      const penaltyText = weapon.enhanceBroken
+        ? `武器が破損しています。${formatGold(repairCost)}Gで修理できます。`
+        : level >= 10
+        ? `失敗すると破損し、修理に${formatGold(repairCost)}Gかかります。`
+        : level >= 6
+        ? "失敗すると強化値が1下がります。"
+        : "失敗してもペナルティはありません。";
+      note.textContent = penaltyText;
+
+      WEAPON_ENHANCE_PROGRESSION.forEach((row) => {
+        const entry = document.createElement("div");
+        entry.className = "enhance-row";
+        if (row.from === level) entry.classList.add("current");
+        const title = document.createElement("div");
+        title.className = "option-label";
+        title.textContent = `+${row.from} → +${row.to}`;
+        entry.appendChild(title);
+        const rate = document.createElement("div");
+        rate.className = "option-value";
+        rate.textContent = `成功率 ${formatEnhanceRate(row.success)}%`;
+        entry.appendChild(rate);
+        const costRow = document.createElement("div");
+        costRow.className = "option-value";
+        costRow.textContent = `費用 ${formatGold(calculateWeaponEnhanceCost(row.from))}G`;
+        entry.appendChild(costRow);
+        table.appendChild(entry);
+      });
+    }
+
+    function attemptWeaponEnhance() {
+      const weapon = normalizeEquipmentItem(weaponEnhanceTarget || player.equipment?.weapon);
+      if (!weapon) {
+        log("強化する武器を選択してください", "warning");
+        return;
+      }
+      if (weapon.enhanceBroken) {
+        log("まずは修理が必要です", "warning");
+        return;
+      }
+      const level = Math.max(0, weapon.enhanceLevel || 0);
+      const step = getWeaponEnhanceStep(level);
+      if (!step) {
+        log("これ以上強化できません", "info");
+        return;
+      }
+      const cost = calculateWeaponEnhanceCost(level);
+      if (player.gold < cost) {
+        log("強化費用が不足しています", "warning");
+        return;
+      }
+
+      player.gold -= cost;
+      const roll = Math.random() * 100;
+      if (roll < step.success) {
+        weapon.enhanceLevel = step.to;
+        log(`🔨 ${weapon.name} を強化成功！ +${level} → +${step.to}`, "good");
+      } else {
+        if (level >= 10) {
+          weapon.enhanceBroken = true;
+          log(`⚠️ ${weapon.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
+        } else if (level >= 6) {
+          weapon.enhanceLevel = Math.max(0, level - 1);
+          log(`⚠️ ${weapon.name} の強化失敗… +${level} → +${weapon.enhanceLevel}`, "warning");
+        } else {
+          log(`⚠️ ${weapon.name} の強化失敗…ペナルティなし`, "warning");
+        }
+      }
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+      renderInventory();
+      renderWeaponEnhancePanel();
+      rerenderInventoryItemModal();
+      maybeAutoSave("武器強化");
+    }
+
+    function repairWeapon() {
+      const weapon = normalizeEquipmentItem(weaponEnhanceTarget || player.equipment?.weapon);
+      if (!weapon) {
+        log("修理する武器を選択してください", "warning");
+        return;
+      }
+      if (!weapon.enhanceBroken) {
+        log("修理が必要な状態ではありません", "info");
+        return;
+      }
+      const level = Math.max(0, weapon.enhanceLevel || 0);
+      const cost = calculateWeaponEnhanceCost(level) * 2;
+      if (player.gold < cost) {
+        log("修理費用が不足しています", "warning");
+        return;
+      }
+      player.gold -= cost;
+      weapon.enhanceBroken = false;
+      log(`🛠️ ${weapon.name} を修理しました (+${level})`, "info");
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+      renderInventory();
+      renderWeaponEnhancePanel();
+      rerenderInventoryItemModal();
+      maybeAutoSave("武器修理");
     }
 
     function equipPotionFromInventory(inventoryIndex, slotIndex) {
@@ -8217,6 +8609,7 @@ function maybeAutoSave(reason = "auto") {
     const skillInfoModal = document.getElementById("skill-info-modal");
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
+    const weaponEnhanceModal = document.getElementById("weapon-enhance-modal");
     const inventoryModal = document.getElementById("inventory-modal");
     const inventoryItemModal = document.getElementById("inventory-item-modal");
     const closeModalButton = document.getElementById("modal-close");
@@ -8224,6 +8617,7 @@ function maybeAutoSave(reason = "auto") {
     const skillInfoCloseButton = document.getElementById("skill-info-close");
     const playerModalCloseButton = document.getElementById("player-close");
     const skillsModalCloseButton = document.getElementById("skills-close");
+    const weaponEnhanceCloseButton = document.getElementById("weapon-enhance-close");
     const inventoryModalCloseButton = document.getElementById("inventory-close");
     const inventoryItemCloseButton = document.getElementById("inventory-item-close");
     const statHelpButton = document.getElementById("stat-help");
@@ -8477,6 +8871,17 @@ function maybeAutoSave(reason = "auto") {
       updateSkillSummaryVisibility();
     }
 
+    function openWeaponEnhanceModal(targetItem = null) {
+      weaponEnhanceTarget = targetItem || player.equipment?.weapon || null;
+      renderWeaponEnhancePanel();
+      weaponEnhanceModal?.classList.remove("hidden");
+    }
+
+    function closeWeaponEnhanceModal() {
+      weaponEnhanceTarget = null;
+      weaponEnhanceModal?.classList.add("hidden");
+    }
+
     function openInventoryModal() {
       renderInventoryFilters();
       renderInventory();
@@ -8517,6 +8922,8 @@ function maybeAutoSave(reason = "auto") {
       applyItemRarityColor(currentName, equipped);
       currentRow.appendChild(currentLabel);
       currentRow.appendChild(currentName);
+      const currentEnhance = createEnhanceBadge(equipped, { includeZero: true });
+      if (currentEnhance) currentRow.appendChild(currentEnhance);
       inventoryCompareResult.appendChild(currentRow);
 
       const nextRow = document.createElement("div");
@@ -8528,6 +8935,8 @@ function maybeAutoSave(reason = "auto") {
       applyItemRarityColor(nextName, item);
       nextRow.appendChild(nextLabel);
       nextRow.appendChild(nextName);
+      const nextEnhance = createEnhanceBadge(item, { includeZero: true });
+      if (nextEnhance) nextRow.appendChild(nextEnhance);
       inventoryCompareResult.appendChild(nextRow);
 
       if (!diffs.length) {
@@ -8556,9 +8965,16 @@ function maybeAutoSave(reason = "auto") {
 
     function openInventoryItemModal(item, index) {
       if (!item) return;
+      currentInventorySelection = { item, index, id: item.id };
+      normalizeEquipmentItem(item);
       clearComparisonResult();
-      inventoryItemName.textContent = item?.name || "不明なアイテム";
-      applyItemRarityColor(inventoryItemName, item);
+      inventoryItemName.innerHTML = "";
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = item?.name || "不明なアイテム";
+      applyItemRarityColor(nameSpan, item);
+      inventoryItemName.appendChild(nameSpan);
+      const badge = createEnhanceBadge(item, { includeZero: true });
+      if (badge) inventoryItemName.appendChild(badge);
       inventoryItemDesc.textContent = item?.desc || "説明なし";
 
       const updateMeta = () => {
@@ -8603,6 +9019,11 @@ function maybeAutoSave(reason = "auto") {
         if (sellPrice > 0) {
           fields.push({ label: "売値", value: `${formatGold(sellPrice)}G` });
         }
+        if ((item.slot || item.equipment.slot) === "weapon") {
+          const level = Math.max(0, item.enhanceLevel || 0);
+          const broken = item.enhanceBroken;
+          fields.push({ label: "強化値", value: `${broken ? "破損中 / " : ""}+${level}` });
+        }
         fields.forEach((f) => {
           const row = document.createElement("div");
           row.textContent = `${f.label} ${f.value}`;
@@ -8635,7 +9056,7 @@ function maybeAutoSave(reason = "auto") {
           options.forEach((option) => {
             const line = document.createElement("div");
             line.className = "option-value";
-            line.textContent = formatEquipmentValue(option);
+            line.textContent = formatEquipmentValue(getEnhancedEntry(option, item));
             block.appendChild(line);
           });
           inventoryItemDetail.appendChild(block);
@@ -8754,6 +9175,13 @@ function maybeAutoSave(reason = "auto") {
               };
               inventoryItemActions.appendChild(unequipBtn);
             }
+
+            if (item.equipment.slot === "weapon") {
+              const enhanceBtn = document.createElement("button");
+              enhanceBtn.textContent = "強化する";
+              enhanceBtn.onclick = () => openWeaponEnhanceModal(item);
+              inventoryItemActions.appendChild(enhanceBtn);
+            }
           };
 
           if (item.equipment.slot === "accessory") {
@@ -8782,7 +9210,18 @@ function maybeAutoSave(reason = "auto") {
 
     function closeInventoryItemModal() {
       clearComparisonResult();
+      currentInventorySelection = null;
       inventoryItemModal?.classList.add("hidden");
+    }
+
+    function rerenderInventoryItemModal() {
+      if (!currentInventorySelection) return;
+      const items = player.inventory?.items || [];
+      const { item, index, id } = currentInventorySelection;
+      const currentIndex = items.findIndex((entry) => (id ? entry.id === id : entry === item));
+      const targetIndex = currentIndex >= 0 ? currentIndex : index;
+      const targetItem = items[targetIndex] || item;
+      openInventoryItemModal(targetItem, targetIndex);
     }
 
     function promptPlayerTurn() {
@@ -9367,6 +9806,7 @@ function handlePlayerDefeat() {
     skillInfoCloseButton?.addEventListener("click", closeSkillInfoModal);
     playerModalCloseButton.addEventListener("click", closePlayerModal);
     skillsModalCloseButton.addEventListener("click", closeSkillsModal);
+    weaponEnhanceCloseButton?.addEventListener("click", closeWeaponEnhanceModal);
     inventoryModalCloseButton?.addEventListener("click", closeInventoryModal);
     inventoryItemCloseButton?.addEventListener("click", closeInventoryItemModal);
     debugTargetSelect?.addEventListener("change", updateDebugTargetState);
