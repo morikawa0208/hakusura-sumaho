@@ -8369,8 +8369,6 @@ function maybeAutoSave(reason = "auto") {
         label.textContent = item?.name || "不明なアイテム";
         applyItemRarityColor(label, item);
         name.appendChild(label);
-        const enhanceBadge = createEnhanceBadge(item);
-        if (enhanceBadge) name.appendChild(enhanceBadge);
 
         row.appendChild(name);
         container.appendChild(row);
