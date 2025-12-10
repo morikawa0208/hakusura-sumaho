@@ -8363,6 +8363,8 @@ function maybeAutoSave(reason = "auto") {
           fav.textContent = "★";
           name.appendChild(fav);
         }
+        const enhanceBadge = createEnhanceBadge(item);
+        if (enhanceBadge) name.appendChild(enhanceBadge);
         const label = document.createElement("span");
         label.textContent = item?.name || "不明なアイテム";
         applyItemRarityColor(label, item);
