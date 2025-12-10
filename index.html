@@ -3519,31 +3519,55 @@ function generateId(prefix = "id") {
       ],
     };
 
-    const LEGENDARY_TEMPLATE_INDEX = Object.entries(LEGENDARY_EQUIPMENT_LIBRARY).reduce((acc, [slotKey, list]) => {
+    // レジェンド装備定義から、キー→テンプレートの逆引きインデックスを遅延生成する
+let LEGENDARY_TEMPLATE_INDEX = null;
+
+function buildLegendaryTemplateIndex() {
+  // すでに作ってあればそれを返す
+  if (LEGENDARY_TEMPLATE_INDEX) return LEGENDARY_TEMPLATE_INDEX;
+
+  // ライブラリがまだ無ければ空のまま
+  if (typeof LEGENDARY_EQUIPMENT_LIBRARY === "undefined" || !LEGENDARY_EQUIPMENT_LIBRARY) {
+    LEGENDARY_TEMPLATE_INDEX = {};
+    return LEGENDARY_TEMPLATE_INDEX;
+  }
+
+  LEGENDARY_TEMPLATE_INDEX = Object.entries(LEGENDARY_EQUIPMENT_LIBRARY).reduce(
+    (acc, [slotKey, list]) => {
       (list || []).forEach((entry) => {
         acc[entry.key] = { ...entry, slot: entry.slot || slotKey };
       });
       return acc;
-    }, {});
+    },
+    {}
+  );
 
-    function getLegendaryTemplateByKey(key) {
-      if (!key) return null;
-      return LEGENDARY_TEMPLATE_INDEX[key] || null;
-    }
+  return LEGENDARY_TEMPLATE_INDEX;
+}
 
-    function inferLegendaryKeyFromItem(item) {
-      if (!item?.equipment || item.equipment?.rarity !== "legendary") return "";
-      if (item.equipment.legendaryKey) return item.equipment.legendaryKey;
-      const match = Object.values(LEGENDARY_TEMPLATE_INDEX).find((entry) => {
-        const nameHit = item.name?.includes(entry.name);
-        const uniqueName = entry.unique?.name;
-        const hasUnique = uniqueName
-          ? (item.equipment.uniqueOptions || []).some((opt) => opt?.name === uniqueName)
-          : false;
-        return nameHit || hasUnique;
-      });
-      return match?.key || "";
-    }
+function getLegendaryTemplateByKey(key) {
+  if (!key) return null;
+  const index = buildLegendaryTemplateIndex();
+  return index[key] || null;
+}
+
+function inferLegendaryKeyFromItem(item) {
+  if (!item?.equipment || item.equipment?.rarity !== "legendary") return "";
+  if (item.equipment.legendaryKey) return item.equipment.legendaryKey;
+
+  const index = buildLegendaryTemplateIndex();
+  const match = Object.values(index).find((entry) => {
+    const nameHit = item.name?.includes(entry.name);
+    const uniqueName = entry.unique?.name;
+    const hasUnique = uniqueName
+      ? (item.equipment.uniqueOptions || []).some((opt) => opt?.name === uniqueName)
+      : false;
+    return nameHit || hasUnique;
+  });
+
+  return match?.key || "";
+}
+
 
     const EQUIPMENT_TITLE_PREFIXES = [
       { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
