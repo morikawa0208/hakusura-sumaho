@@ -2261,6 +2261,18 @@
             レア度:
             <select id="debug-gear-rarity"></select>
           </label>
+          <label>
+            強化値:
+            <input
+              id="debug-gear-enhance"
+              type="number"
+              min="0"
+              max="21"
+              step="1"
+              inputmode="numeric"
+              value="0"
+            />
+          </label>
         </div>
         <div id="debug-legendary-wrapper" class="debug-selects hidden">
           <label>
@@ -2353,6 +2365,9 @@
               <button data-debug-boss-floor="50">50F</button>
               <button data-debug-boss-floor="100">100F</button>
               <button data-debug-boss-floor="200">200F</button>
+              <button data-debug-boss-floor="500">500F</button>
+              <button data-debug-boss-floor="700">700F</button>
+              <button data-debug-boss-floor="1000">1000F</button>
             </div>
           </div>
         </div>
@@ -4364,7 +4379,7 @@ function generateId(prefix = "id") {
       return { multiplier, bonusPercent };
     }
 
-    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "", titleBonus = 0 } = {}) {
+    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "", titleBonus = 0, enhanceLevel = 0 } = {}) {
       const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
       const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
       const template = rarityKey === "legendary" ? pickLegendaryEquipment(slot, legendaryKey) : pickEquipmentTemplate(slot);
@@ -4388,6 +4403,8 @@ function generateId(prefix = "id") {
 
       const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, template?.name || uniqueOption?.itemName);
 
+      const clampedEnhanceLevel = Math.max(0, Math.min(MAX_ENHANCE_LEVEL, Math.floor(enhanceLevel || 0)));
+
       const prefixAffix = prefixTitle
         ? { ...prefixTitle, options: prefixOptions.entries }
         : null;
@@ -4402,7 +4419,7 @@ function generateId(prefix = "id") {
         name,
         desc: "デバッグで生成した装備品",
         rarity: rarity.rank,
-        enhanceLevel: 0,
+        enhanceLevel: clampedEnhanceLevel,
         enhanceBroken: false,
         equipment: {
           slot,
@@ -7571,7 +7588,12 @@ function maybeAutoSave(reason = "auto") {
         : debugGearRaritySelect.value;
       const rarityKey = resolveDebugRarity(rarityChoice);
       const legendaryKey = rarityChoice === "legendary" ? debugLegendarySelect?.value || "" : "";
-      const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey });
+      const enhanceInput = Number(debugGearEnhanceInput?.value);
+      const enhanceLevel = Number.isNaN(enhanceInput)
+        ? 0
+        : Math.max(0, Math.min(MAX_ENHANCE_LEVEL, Math.floor(enhanceInput)));
+      if (debugGearEnhanceInput) debugGearEnhanceInput.value = enhanceLevel;
+      const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey, enhanceLevel });
       lastGeneratedEquipment = item;
       player.inventory.items.push(item);
       log(`🛠️ ${item.name} を生成しインベントリへ追加`, "info");
@@ -8646,7 +8668,7 @@ function maybeAutoSave(reason = "auto") {
 
     function applyEnhanceOutcomeIfNeeded() {
       const outcome = enhanceAnimationState.pendingOutcome;
-      if (!outcome || enhanceAnimationState.completed) return;
+      if (!outcome || enhanceAnimationState.completed) return false;
       enhanceAnimationState.completed = true;
       const { equipment, success, broken, penalty, newLevel, oldLevel, cost } = outcome;
       if (success) {
@@ -8671,12 +8693,15 @@ function maybeAutoSave(reason = "auto") {
       renderInventory();
       renderWeaponEnhancePanel();
       rerenderInventoryItemModal();
-      maybeAutoSave("装備強化");
+      return true;
     }
 
     function finishEnhanceAnimation() {
       clearEnhanceAnimationTimers();
-      applyEnhanceOutcomeIfNeeded();
+      const applied = applyEnhanceOutcomeIfNeeded();
+      if (applied) {
+        maybeAutoSave("装備強化");
+      }
       if (weaponEnhanceAnimation) {
         weaponEnhanceAnimation.classList.add("hidden");
         weaponEnhanceAnimation.classList.remove("is-progress", "is-success", "is-fail", "is-broken");
@@ -8949,6 +8974,7 @@ function maybeAutoSave(reason = "auto") {
     const debugGearRaritySelect = document.getElementById("debug-gear-rarity");
     const debugLegendaryWrapper = document.getElementById("debug-legendary-wrapper");
     const debugLegendarySelect = document.getElementById("debug-legendary-template");
+    const debugGearEnhanceInput = document.getElementById("debug-gear-enhance");
     const debugGearPreview = document.getElementById("debug-gear-preview");
     const debugGenerateGearButton = document.getElementById("debug-generate-gear");
     const debugGenerateGearRandomButton = document.getElementById("debug-generate-gear-random");
@@ -10117,6 +10143,10 @@ function handlePlayerDefeat() {
     saveSlotList?.addEventListener("click", handleSaveAction);
     debugGearSlotSelect?.addEventListener("change", populateLegendaryTemplateSelect);
     debugGearRaritySelect?.addEventListener("change", populateLegendaryTemplateSelect);
+    if (debugGearEnhanceInput) {
+      debugGearEnhanceInput.max = MAX_ENHANCE_LEVEL;
+      if (!debugGearEnhanceInput.value) debugGearEnhanceInput.value = 0;
+    }
     debugGenerateGearButton?.addEventListener("click", () => {
       generateDebugGear();
     });
