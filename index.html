@@ -1258,14 +1258,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      font-weight: 700;
+      gap: 2px;
+      font-weight: 600;
       letter-spacing: 0.02em;
-      padding: 6px 8px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
     }
 
     .info-chip {
@@ -7606,9 +7601,18 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        header.appendChild(icon);
+        // ① action-top（アイコン＋info をまとめるコンテナ）を作成
+        const top = document.createElement("div");
+        top.className = "action-top";
+        
+        // ② icon と infoChip を top 内に入れる
+        top.appendChild(icon);
+        top.appendChild(infoChip);
+        
+        // ③ header には top → fill の順で入れる
+        header.appendChild(top);
         header.appendChild(fill);
-        header.appendChild(infoChip);
+
 
         potionBtn.appendChild(header);
         potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
