@@ -6607,8 +6607,9 @@ function inferLegendaryKeyFromItem(item) {
       enemy.variant = variant.key;
       enemy.archetypeRank = rank;
       const rankLabel = variant.rankLabels?.[rank - 1] || variant.label;
-      enemy.archetypeLabel = rankLabel;
-      enemy.flavor = variant.description;
+      enemy.archetypeLabel = variant.label;
+      enemy.archetypeRankLabel = rankLabel;
+      enemy.archetypeFlavor = variant.description;
       applyEnemyModifiers(enemy, variant.baseModifiers);
       const applied = [];
       (variant.abilities || [])
@@ -6750,7 +6751,8 @@ function inferLegendaryKeyFromItem(item) {
 
       if (baseProfile && !isBoss) {
         enemy.baseProfile = baseProfile.key;
-        enemy.flavor = baseProfile.summary || baseProfile.label;
+        enemy.baseFlavor = baseProfile.summary || baseProfile.label;
+        enemy.flavor = enemy.baseFlavor;
         applyEnemyModifiers(enemy, baseProfile.modifiers);
       }
 
@@ -6762,7 +6764,8 @@ function inferLegendaryKeyFromItem(item) {
         const bossDef = BOSS_DEFINITIONS[game.floor];
         if (bossDef) {
           enemy.name = bossDef.name;
-          enemy.flavor = bossDef.flavor;
+          enemy.baseFlavor = bossDef.flavor;
+          enemy.flavor = enemy.baseFlavor;
           enemy.bossLegendaryKey = bossDef.legendaryKey;
           const { modifiers = {} } = bossDef;
           applyEnemyModifiers(enemy, modifiers);
@@ -9443,7 +9446,7 @@ function maybeAutoSave(reason = "auto") {
         tag.style.display = "none";
       }
       if (modalFeature) {
-        const feature = enemy.flavor || "特徴情報なし";
+        const feature = enemy.baseFlavor || enemy.flavor || "特徴情報なし";
         modalFeature.textContent = feature;
         modalFeature.classList.toggle("hidden", !feature);
       }
@@ -9457,9 +9460,10 @@ function maybeAutoSave(reason = "auto") {
 
     function openArchetypeModal(enemy) {
       if (!enemy?.archetypeLabel) return;
-      archetypeModalName.textContent = enemy.archetypeLabel;
       const variant = ENEMY_VARIANTS.find((v) => v.key === enemy.variant);
-      archetypeModalDesc.textContent = variant?.description || enemy.flavor || "特徴不明";
+      const archetypeName = enemy.archetypeLabel || variant?.label || "";
+      archetypeModalName.textContent = archetypeName;
+      archetypeModalDesc.textContent = enemy.archetypeFlavor || variant?.description || "特徴不明";
       archetypeModalAbilities.innerHTML = "";
       const baseModifierText = describeModifiers(enemy.archetypeBaseModifiers || variant?.baseModifiers);
       const baseRow = document.createElement("div");
