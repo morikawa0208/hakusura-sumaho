@@ -3021,6 +3021,7 @@ function generateId(prefix = "id") {
       {
         key: "brute",
         label: "剛腕",
+        tagLabels: ["剛腕", "豪槌", "覇鎚"],
         rankLabels: ["剛腕の徒", "剛腕の豪傑", "剛腕の覇鎚"],
         description: "単純だが痛い一撃を振り下ろす。",
         weight: 3,
@@ -3035,6 +3036,7 @@ function generateId(prefix = "id") {
       {
         key: "bulwark",
         label: "重甲",
+        tagLabels: ["重甲", "巨壁", "堅城"],
         rankLabels: ["重甲の守り手", "重甲の城壁", "重甲の要塞"],
         description: "硬い外殻で攻撃をいなし、じわじわ迫る。",
         weight: 2,
@@ -3049,6 +3051,7 @@ function generateId(prefix = "id") {
       {
         key: "skirmisher",
         label: "疾走",
+        tagLabels: ["疾走", "影刃", "迅雷"],
         rankLabels: ["疾走の斥候", "疾走の影刃", "疾走の迅雷"],
         description: "素早く間合いを詰め、ヒット＆アウェイを狙う。",
         weight: 2,
@@ -3063,6 +3066,7 @@ function generateId(prefix = "id") {
       {
         key: "hexer",
         label: "呪詠",
+        tagLabels: ["呪詠", "典礼", "導師"],
         rankLabels: ["呪詠の徒", "呪詠の典礼師", "呪詠の大導師"],
         description: "呪気をまとい、異常耐性がやや高い。",
         weight: 1,
@@ -3077,6 +3081,7 @@ function generateId(prefix = "id") {
       {
         key: "berserker",
         label: "狂戦",
+        tagLabels: ["狂戦", "猛撃", "暴帝"],
         rankLabels: ["狂戦の鬨", "狂戦の猛者", "狂戦の暴帝"],
         description: "手数で押す荒ぶる敵。防御はやや薄い。",
         weight: 1,
@@ -6607,7 +6612,9 @@ function inferLegendaryKeyFromItem(item) {
       enemy.variant = variant.key;
       enemy.archetypeRank = rank;
       const rankLabel = variant.rankLabels?.[rank - 1] || variant.label;
-      enemy.archetypeLabel = variant.label;
+      const tagLabel = (variant.tagLabels?.[rank - 1] || variant.label || "").slice(0, 2);
+      enemy.archetypeLabel = tagLabel;
+      enemy.archetypeName = rankLabel;
       enemy.archetypeRankLabel = rankLabel;
       enemy.archetypeFlavor = variant.description;
       applyEnemyModifiers(enemy, variant.baseModifiers);
@@ -9461,7 +9468,12 @@ function maybeAutoSave(reason = "auto") {
     function openArchetypeModal(enemy) {
       if (!enemy?.archetypeLabel) return;
       const variant = ENEMY_VARIANTS.find((v) => v.key === enemy.variant);
-      const archetypeName = enemy.archetypeLabel || variant?.label || "";
+      const archetypeName =
+        enemy.archetypeName ||
+        variant?.rankLabels?.[(enemy.archetypeRank || 1) - 1] ||
+        enemy.archetypeLabel ||
+        variant?.label ||
+        "";
       archetypeModalName.textContent = archetypeName;
       archetypeModalDesc.textContent = enemy.archetypeFlavor || variant?.description || "特徴不明";
       archetypeModalAbilities.innerHTML = "";
