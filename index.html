@@ -7601,25 +7601,22 @@ function maybeAutoSave(reason = "auto") {
           }
         };
 
-        // ① action-top（アイコン＋info をまとめるコンテナ）を作成
+        // ★ ここからレイアウト部分だけ修正
         const top = document.createElement("div");
         top.className = "action-top";
-        
-        // ② icon と infoChip を top 内に入れる
         top.appendChild(icon);
         top.appendChild(infoChip);
         
-        // ③ header には top → fill の順で入れる
-        header.appendChild(top);
-        header.appendChild(fill);
-
-
-        potionBtn.appendChild(header);
+        // header はもう使わない
+        potionBtn.appendChild(top);   // icon + info
+        potionBtn.appendChild(fill);  // その外に fill
+        
         potionBtn.title = `${potion.short || potion.name} (${useCost}%消費)`;
         potionBtn.disabled = !canAct || potion.fullness < useCost || resourceFull;
         applyItemRarityColor(potionBtn, { potion });
         wrapper.appendChild(potionBtn);
         row.appendChild(wrapper);
+
       });
 
       (player.activeSkillSlots || []).forEach((slot, index) => {
