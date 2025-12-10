@@ -814,21 +814,14 @@
     .enhance-badge {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      padding: 2px 8px;
-      border-radius: 8px;
       font-weight: 800;
       font-size: 12px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      margin-left: 4px;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
     }
 
     .enhance-badge.broken {
       color: #f87171;
-      border-color: rgba(248, 113, 113, 0.4);
-      background: rgba(248, 113, 113, 0.08);
     }
 
     .enhance-info-grid {
@@ -1395,6 +1388,10 @@
     #reset-modal,
     #skill-reset-modal {
       z-index: 60;
+    }
+
+    #weapon-enhance-modal {
+      z-index: 70;
     }
 
     .hidden {
@@ -2404,8 +2401,8 @@ function generateId(prefix = "id") {
     ];
 
     const WEAPON_ENHANCE_POWER_PER_LEVEL = 0.02; // 1段階ごとに+2%補正
-    const WEAPON_ENHANCE_BASE_COST = 120;
-    const WEAPON_ENHANCE_COST_GROWTH = 1.32;
+    const WEAPON_ENHANCE_BASE_COST = 240;
+    const WEAPON_ENHANCE_COST_GROWTH = 1.48;
 
     const DEBUG_RARITY_OPTIONS = [
       { key: "legendary", label: "レジェンド" },
@@ -4215,7 +4212,7 @@ function generateId(prefix = "id") {
       badge.className = "enhance-badge";
       const color = getWeaponEnhanceColor(level);
       if (color) badge.style.color = color;
-      badge.textContent = item.enhanceBroken ? `+${level} 破損` : `+${level}`;
+      badge.textContent = item.enhanceBroken ? `+${level} (破損)` : `+${level}`;
       if (item.enhanceBroken) badge.classList.add("broken");
       return badge;
     }
@@ -8372,6 +8369,8 @@ function maybeAutoSave(reason = "auto") {
         label.textContent = item?.name || "不明なアイテム";
         applyItemRarityColor(label, item);
         name.appendChild(label);
+        const enhanceBadge = createEnhanceBadge(item);
+        if (enhanceBadge) name.appendChild(enhanceBadge);
 
         row.appendChild(name);
         container.appendChild(row);
@@ -8406,12 +8405,12 @@ function maybeAutoSave(reason = "auto") {
       header.style.display = "flex";
       header.style.alignItems = "center";
       header.style.gap = "8px";
-      const badge = createEnhanceBadge(weapon, { includeZero: true });
-      if (badge) header.appendChild(badge);
       const name = document.createElement("span");
       name.textContent = weapon.name;
       applyItemRarityColor(name, weapon);
       header.appendChild(name);
+      const badge = createEnhanceBadge(weapon, { includeZero: true });
+      if (badge) header.appendChild(badge);
       summary.appendChild(header);
 
       const level = Math.max(0, weapon.enhanceLevel || 0);
@@ -8433,8 +8432,8 @@ function maybeAutoSave(reason = "auto") {
         {
           label: "成功時の見込み",
           value: step
-            ? `全オプション ${nextEffect.bonusPercent}% (+${projectedGain}%)`
-            : `最大強化達成 (${bonusPercent}%)`,
+            ? `全オプション +${projectedGain}% (次は+${step.to})`
+            : `最大強化達成 (全オプション ${bonusPercent}%)`,
         },
       ];
       infoList.forEach((entry) => {
@@ -8457,9 +8456,14 @@ function maybeAutoSave(reason = "auto") {
       repairBtn.onclick = () => repairWeapon();
       actions.appendChild(repairBtn);
 
-      note.textContent = weapon.enhanceBroken
+      const penaltyText = weapon.enhanceBroken
         ? `武器が破損しています。${formatGold(repairCost)}Gで修理できます。`
-        : `失敗すると武器が破損し、修理に${formatGold(repairCost)}Gかかります。`;
+        : level >= 10
+        ? `失敗すると破損し、修理に${formatGold(repairCost)}Gかかります。`
+        : level >= 6
+        ? "失敗すると強化値が1下がります。"
+        : "失敗してもペナルティはありません。";
+      note.textContent = penaltyText;
 
       WEAPON_ENHANCE_PROGRESSION.forEach((row) => {
         const entry = document.createElement("div");
@@ -8509,8 +8513,15 @@ function maybeAutoSave(reason = "auto") {
         weapon.enhanceLevel = step.to;
         log(`🔨 ${weapon.name} を強化成功！ +${level} → +${step.to}`, "good");
       } else {
-        weapon.enhanceBroken = true;
-        log(`⚠️ ${weapon.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
+        if (level >= 10) {
+          weapon.enhanceBroken = true;
+          log(`⚠️ ${weapon.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
+        } else if (level >= 6) {
+          weapon.enhanceLevel = Math.max(0, level - 1);
+          log(`⚠️ ${weapon.name} の強化失敗… +${level} → +${weapon.enhanceLevel}`, "warning");
+        } else {
+          log(`⚠️ ${weapon.name} の強化失敗…ペナルティなし`, "warning");
+        }
       }
       const derived = recalcDerivedStats();
       updateUI(derived);
@@ -8913,6 +8924,8 @@ function maybeAutoSave(reason = "auto") {
       applyItemRarityColor(currentName, equipped);
       currentRow.appendChild(currentLabel);
       currentRow.appendChild(currentName);
+      const currentEnhance = createEnhanceBadge(equipped, { includeZero: true });
+      if (currentEnhance) currentRow.appendChild(currentEnhance);
       inventoryCompareResult.appendChild(currentRow);
 
       const nextRow = document.createElement("div");
@@ -8924,6 +8937,8 @@ function maybeAutoSave(reason = "auto") {
       applyItemRarityColor(nextName, item);
       nextRow.appendChild(nextLabel);
       nextRow.appendChild(nextName);
+      const nextEnhance = createEnhanceBadge(item, { includeZero: true });
+      if (nextEnhance) nextRow.appendChild(nextEnhance);
       inventoryCompareResult.appendChild(nextRow);
 
       if (!diffs.length) {
@@ -8959,9 +8974,9 @@ function maybeAutoSave(reason = "auto") {
       const nameSpan = document.createElement("span");
       nameSpan.textContent = item?.name || "不明なアイテム";
       applyItemRarityColor(nameSpan, item);
+      inventoryItemName.appendChild(nameSpan);
       const badge = createEnhanceBadge(item, { includeZero: true });
       if (badge) inventoryItemName.appendChild(badge);
-      inventoryItemName.appendChild(nameSpan);
       inventoryItemDesc.textContent = item?.desc || "説明なし";
 
       const updateMeta = () => {
