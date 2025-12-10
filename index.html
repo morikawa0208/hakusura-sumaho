@@ -1041,8 +1041,11 @@
 
     .enemy-card {
       display: grid;
-      gap: 6px;
-      padding: 8px;
+      gap: 2px;
+      padding-top: 2px;
+      padding-left: 6px;
+      padding-bottom: 2px;
+      padding-right: 6px;
       background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 12px;
@@ -1080,7 +1083,7 @@
     .enemy-card .row {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 8px;
+      gap: 2px;
       align-items: center;
       min-width: 0;
     }
@@ -1099,14 +1102,14 @@
 
     .enemy-info {
       display: grid;
-      gap: 4px;
+      gap: 2px;
       min-width: 0;
     }
 
     .enemy-name-row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
       flex-wrap: wrap;
       min-width: 0;
     }
@@ -1117,13 +1120,13 @@
       min-width: 0;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
     }
 
     .enemy-meta {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
       color: var(--muted);
       font-size: 12px;
     }
@@ -1753,18 +1756,10 @@
 <body>
   <div class="phone">
     <section class="card log-card">
-      <div class="panel-header">
-        <div class="panel-title">バトルログ</div>
-        <div class="panel-hint">最新の行動を表示</div>
-      </div>
       <div id="log"></div>
     </section>
 
     <section class="card enemy-panel">
-      <div class="panel-header">
-        <div class="panel-title">敵</div>
-        <div class="panel-hint">タップで詳細／長押しで属性</div>
-      </div>
       <div id="enemies" class="enemy-list"></div>
     </section>
 
@@ -7462,9 +7457,6 @@ function maybeAutoSave(reason = "auto") {
 
         const header = document.createElement("div");
         header.className = "row";
-
-        const portrait = document.createElement("div");
-        portrait.className = "enemy-portrait";
 
         const info = document.createElement("div");
         info.className = "enemy-info";
