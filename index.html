@@ -1872,6 +1872,28 @@
       letter-spacing: 0.04em;
     }
 
+    .legendary-records {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .legendary-record-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      gap: 6px;
+    }
+
+    .legendary-extreme {
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 12px;
+      padding-left: 6px;
+      white-space: nowrap;
+    }
+
   </style>
 </head>
 <body>
@@ -1961,6 +1983,13 @@
         <div>SPD <span id="modal-spd"></span></div>
       </div>
       <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
+      <div id="modal-feature" class="help-panel" style="margin-top: 10px;"></div>
+      <div id="modal-legendary-section" class="help-panel hidden" style="margin-top: 10px;">
+        <div class="option-label" style="margin-bottom: 6px;">ボスレジェンダリー</div>
+        <div class="option-value" id="modal-legendary-name"></div>
+        <div class="option-value" id="modal-legendary-status"></div>
+        <div id="modal-legendary-stats" class="legendary-records"></div>
+      </div>
     </div>
   </div>
 
@@ -2945,11 +2974,41 @@ function generateId(prefix = "id") {
     };
 
     const ENEMY_BASE_PROFILES = [
-      { key: "balanced", label: "標準", weight: 4, modifiers: {} },
-      { key: "ironhide", label: "硬質", weight: 2, modifiers: { hp: 1.06, def: 1.12, spd: 0.96 } },
-      { key: "feral", label: "獰猛", weight: 2, modifiers: { atk: 1.08, spd: 1.04, evade: 1.06, def: 0.94 } },
-      { key: "stalker", label: "狡猾", weight: 1, modifiers: { accuracy: 1.08, evade: 1.08, hp: 0.96, def: 0.95 } },
-      { key: "warded", label: "呪纏", weight: 1, modifiers: { atk: 1.04, resist: { control: 1.08, debuff: 1.08, dot: 1.06 } } },
+      {
+        key: "balanced",
+        label: "標準",
+        summary: "攻防ともに平均的な標準タイプ。",
+        weight: 4,
+        modifiers: {},
+      },
+      {
+        key: "ironhide",
+        label: "硬質",
+        summary: "硬い装甲で粘る守り重視の敵。",
+        weight: 2,
+        modifiers: { hp: 1.06, def: 1.12, spd: 0.96 },
+      },
+      {
+        key: "feral",
+        label: "獰猛",
+        summary: "素早い攻めで押してくる獰猛な敵。",
+        weight: 2,
+        modifiers: { atk: 1.08, spd: 1.04, evade: 1.06, def: 0.94 },
+      },
+      {
+        key: "stalker",
+        label: "狡猾",
+        summary: "命中と回避に長け、隙を突く狡猾さ。",
+        weight: 1,
+        modifiers: { accuracy: 1.08, evade: 1.08, hp: 0.96, def: 0.95 },
+      },
+      {
+        key: "warded",
+        label: "呪纏",
+        summary: "呪気をまとい、異常耐性が高め。",
+        weight: 1,
+        modifiers: { atk: 1.04, resist: { control: 1.08, debuff: 1.08, dot: 1.06 } },
+      },
     ];
 
     const ARCHETYPE_RANK_WEIGHTS = [
@@ -3459,6 +3518,32 @@ function generateId(prefix = "id") {
         },
       ],
     };
+
+    const LEGENDARY_TEMPLATE_INDEX = Object.entries(LEGENDARY_EQUIPMENT_LIBRARY).reduce((acc, [slotKey, list]) => {
+      (list || []).forEach((entry) => {
+        acc[entry.key] = { ...entry, slot: entry.slot || slotKey };
+      });
+      return acc;
+    }, {});
+
+    function getLegendaryTemplateByKey(key) {
+      if (!key) return null;
+      return LEGENDARY_TEMPLATE_INDEX[key] || null;
+    }
+
+    function inferLegendaryKeyFromItem(item) {
+      if (!item?.equipment || item.equipment?.rarity !== "legendary") return "";
+      if (item.equipment.legendaryKey) return item.equipment.legendaryKey;
+      const match = Object.values(LEGENDARY_TEMPLATE_INDEX).find((entry) => {
+        const nameHit = item.name?.includes(entry.name);
+        const uniqueName = entry.unique?.name;
+        const hasUnique = uniqueName
+          ? (item.equipment.uniqueOptions || []).some((opt) => opt?.name === uniqueName)
+          : false;
+        return nameHit || hasUnique;
+      });
+      return match?.key || "";
+    }
 
     const EQUIPMENT_TITLE_PREFIXES = [
       { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
@@ -4134,6 +4219,21 @@ function generateId(prefix = "id") {
       return Math.round(scaled);
     }
 
+    function computeStatRollBounds(def, rarity) {
+      const [min, max] = def.range || [0, 0];
+      const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
+      const precision = def.precision ?? (def.unit === "%" ? 1 : 0);
+      const scaleAndRound = (value) => {
+        const scaled = value * rarityScale;
+        if (precision > 0) {
+          const base = 10 ** precision;
+          return Math.round(scaled * base) / base;
+        }
+        return Math.round(scaled);
+      };
+      return { min: scaleAndRound(min), max: scaleAndRound(max) };
+    }
+
     function rollTemplateOptions(definitions, rarity) {
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
@@ -4313,6 +4413,10 @@ function generateId(prefix = "id") {
       if (typeof item.enhanceLevel !== "number") item.enhanceLevel = 0;
       item.enhanceBroken = !!item.enhanceBroken;
       if (!item.slot && item.equipment?.slot) item.slot = item.equipment.slot;
+      if (item.equipment?.rarity === "legendary" && !item.equipment.legendaryKey) {
+        const inferredKey = inferLegendaryKeyFromItem(item);
+        if (inferredKey) item.equipment.legendaryKey = inferredKey;
+      }
       return item;
     }
 
@@ -4437,6 +4541,7 @@ function generateId(prefix = "id") {
           rarity: rarity.key,
           rarityLabel: rarity.label,
           color: rarity.color,
+          legendaryKey: rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
           baseOptions: base.entries,
           randomOptions: random.entries,
           prefix: prefixAffix,
@@ -4675,6 +4780,7 @@ function generateId(prefix = "id") {
       turnQueue: [],
       awaitingInput: false,
       defeatedBosses: 0,
+      legendaryRecords: {},
     };
 
     let lastDerivedStats = null;
@@ -6131,6 +6237,29 @@ function generateId(prefix = "id") {
       return { rarityKey: upgraded, legendaryKey: "" };
     }
 
+    function recordLegendaryDrop(item, enemy) {
+      if (!item?.equipment || item.equipment.rarity !== "legendary") return;
+      game.legendaryRecords = game.legendaryRecords || {};
+      const legendaryKey = item.equipment.legendaryKey || inferLegendaryKeyFromItem(item);
+      if (!legendaryKey) return;
+      const record = game.legendaryRecords[legendaryKey] || { drops: 0, baseRanges: {} };
+      record.drops += 1;
+
+      (item.equipment.baseOptions || []).forEach((opt) => {
+        if (!opt || typeof opt.value !== "number") return;
+        const current = record.baseRanges[opt.key] || { min: opt.value, max: opt.value };
+        record.baseRanges[opt.key] = {
+          min: Math.min(current.min, opt.value),
+          max: Math.max(current.max, opt.value),
+        };
+      });
+
+      game.legendaryRecords[legendaryKey] = record;
+      if (enemy?.isBoss) {
+        maybeAutoSave("ボスレジェンダリー獲得");
+      }
+    }
+
     function attemptEnemyDrop(enemy) {
       const derived = recalcDerivedStats();
       const dropBonus = (enemy.isBoss ? BOSS_DROP_BONUS : 0) + (enemy.dropChanceBonus || 0);
@@ -6160,6 +6289,10 @@ function generateId(prefix = "id") {
 
       if (!item) return null;
       player.inventory.items.push(item);
+
+      if (item.equipment?.rarity === "legendary") {
+        recordLegendaryDrop(item, enemy);
+      }
 
       if (item.type === "potion" && item.potion) {
         const rarityLabel = item.potion.rarityLabel || POTION_RARITIES[item.potion.rarity]?.label || "";
@@ -6455,7 +6588,7 @@ function generateId(prefix = "id") {
 
       if (baseProfile && !isBoss) {
         enemy.baseProfile = baseProfile.key;
-        enemy.flavor = baseProfile.label;
+        enemy.flavor = baseProfile.summary || baseProfile.label;
         applyEnemyModifiers(enemy, baseProfile.modifiers);
       }
 
@@ -7306,6 +7439,7 @@ function maybeAutoSave(reason = "auto") {
       const payload = cloneState(state);
       replaceObject(player, payload.player || {});
       replaceObject(game, payload.game || {});
+      if (!game.legendaryRecords) game.legendaryRecords = {};
       mergeSkillsFromSave(payload.skills || {});
       normalizeOwnedEquipment();
       calculateSkillBonuses();
@@ -8928,6 +9062,11 @@ function maybeAutoSave(reason = "auto") {
     }
 
     const enemyModal = document.getElementById("enemy-modal");
+    const modalFeature = document.getElementById("modal-feature");
+    const modalLegendarySection = document.getElementById("modal-legendary-section");
+    const modalLegendaryName = document.getElementById("modal-legendary-name");
+    const modalLegendaryStatus = document.getElementById("modal-legendary-status");
+    const modalLegendaryStats = document.getElementById("modal-legendary-stats");
     const potionModal = document.getElementById("potion-modal");
     const skillInfoModal = document.getElementById("skill-info-modal");
     const playerModal = document.getElementById("player-modal");
@@ -9038,6 +9177,93 @@ function maybeAutoSave(reason = "auto") {
     const archetypeModalAbilities = document.getElementById("archetype-modal-abilities");
     const archetypeCloseButton = document.getElementById("archetype-close");
 
+    function formatLegendaryStatValue(value, def) {
+      const unit = def?.unit || "";
+      const precision = def?.precision ?? (unit === "%" ? 1 : 0);
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return `--${unit}`;
+      const formatted = precision ? numeric.toFixed(precision) : Math.round(numeric).toString();
+      return `${formatted}${unit}`;
+    }
+
+    function renderBossLegendarySection(enemy) {
+      if (!modalLegendarySection || !modalLegendaryName || !modalLegendaryStatus || !modalLegendaryStats) return;
+      if (!enemy?.isBoss) {
+        modalLegendarySection.classList.add("hidden");
+        modalLegendaryStats.innerHTML = "";
+        return;
+      }
+
+      const legendaryKey = enemy.bossLegendaryKey || BOSS_DEFINITIONS[game.floor]?.legendaryKey || "";
+      const template = getLegendaryTemplateByKey(legendaryKey);
+      const record = legendaryKey ? game.legendaryRecords?.[legendaryKey] : null;
+      const hasDrop = !!record?.drops;
+
+      modalLegendarySection.classList.remove("hidden");
+      modalLegendaryName.textContent = hasDrop ? template?.name || "？？？" : "？？？";
+      modalLegendaryStatus.textContent = hasDrop ? `ドロップ記録: ${record.drops}回` : "未入手 (？？？)";
+      modalLegendaryStats.innerHTML = "";
+
+      if (!hasDrop) {
+        const placeholder = document.createElement("div");
+        placeholder.className = "option-value";
+        placeholder.textContent = "ドロップ履歴なし";
+        modalLegendaryStats.appendChild(placeholder);
+        return;
+      }
+
+      const ranges = record.baseRanges || {};
+      const orderedKeys = (template?.base || []).map((entry) => entry.key);
+      const extraKeys = Object.keys(ranges).filter((key) => !orderedKeys.includes(key));
+      const keys = [...orderedKeys, ...extraKeys];
+
+      if (!keys.length) {
+        const note = document.createElement("div");
+        note.className = "option-value";
+        note.textContent = "基礎ステータスの記録がありません";
+        modalLegendaryStats.appendChild(note);
+        return;
+      }
+
+      const rarityDef = EQUIPMENT_RARITIES.legendary;
+      const templateBounds = Object.fromEntries(
+        (template?.base || []).map((entry) => {
+          const merged = { ...EQUIPMENT_STAT_BY_KEY[entry.key], ...entry };
+          return [entry.key, computeStatRollBounds(merged, rarityDef)];
+        })
+      );
+
+      keys.forEach((key) => {
+        const range = ranges[key];
+        if (!range) return;
+        const templateDef = (template?.base || []).find((entry) => entry.key === key) || {};
+        const def = { ...EQUIPMENT_STAT_BY_KEY[key], ...templateDef };
+        const row = document.createElement("div");
+        row.className = "legendary-record-row";
+        const label = document.createElement("div");
+        label.textContent = def.label || key;
+        const value = document.createElement("div");
+        const minText = formatLegendaryStatValue(range.min, def);
+        const maxText = formatLegendaryStatValue(range.max, def);
+        const valueText = document.createElement("span");
+        valueText.textContent = `${minText}〜${maxText}`;
+        value.appendChild(valueText);
+        const bounds = templateBounds[key];
+        const marks = [];
+        if (bounds && range.min === bounds.min) marks.push("★最小");
+        if (bounds && range.max === bounds.max) marks.push("★最大");
+        if (marks.length) {
+          const badge = document.createElement("span");
+          badge.className = "legendary-extreme";
+          badge.textContent = marks.join(" / ");
+          value.appendChild(badge);
+        }
+        row.appendChild(label);
+        row.appendChild(value);
+        modalLegendaryStats.appendChild(row);
+      });
+    }
+
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
       document.getElementById("modal-hp").textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
@@ -9054,6 +9280,12 @@ function maybeAutoSave(reason = "auto") {
       } else {
         tag.style.display = "none";
       }
+      if (modalFeature) {
+        const feature = enemy.flavor || "特徴情報なし";
+        modalFeature.textContent = feature;
+        modalFeature.classList.toggle("hidden", !feature);
+      }
+      renderBossLegendarySection(enemy);
       enemyModal.classList.remove("hidden");
     }
 
