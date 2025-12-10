@@ -869,6 +869,135 @@
       margin-top: 8px;
     }
 
+    .enhance-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 50%, rgba(52, 211, 153, 0.16), rgba(0, 0, 0, 0.6));
+      padding: 12px;
+      z-index: 4;
+      cursor: pointer;
+    }
+
+    .enhance-overlay-card {
+      width: min(440px, 92%);
+      padding: 16px 14px;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      display: grid;
+      gap: 6px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .enhance-overlay-card::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 10px;
+      background: radial-gradient(circle at 30% 30%, rgba(52, 211, 153, 0.15), transparent 45%),
+        radial-gradient(circle at 70% 70%, rgba(96, 165, 250, 0.12), transparent 40%);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+
+    .enhance-overlay-icon {
+      font-size: 30px;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+    }
+
+    .enhance-overlay-title {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .enhance-overlay-detail {
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .enhance-overlay-gain {
+      font-weight: 800;
+      color: #bef264;
+      text-shadow: 0 2px 10px rgba(190, 242, 100, 0.3);
+    }
+
+    .enhance-overlay-hint {
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.8;
+    }
+
+    .enhance-overlay.is-progress .enhance-overlay-icon {
+      animation: forgeShake 0.42s ease-in-out infinite;
+    }
+
+    .enhance-overlay.is-success .enhance-overlay-card {
+      border-color: rgba(52, 211, 153, 0.65);
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35), 0 12px 30px rgba(52, 211, 153, 0.2);
+    }
+
+    .enhance-overlay.is-success .enhance-overlay-icon {
+      animation: resultPulse 0.9s ease-in-out infinite;
+    }
+
+    .enhance-overlay.is-fail .enhance-overlay-card {
+      border-color: rgba(239, 68, 68, 0.45);
+      box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25), 0 12px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .enhance-overlay.is-fail .enhance-overlay-gain {
+      color: #fca5a5;
+      text-shadow: 0 2px 10px rgba(239, 68, 68, 0.25);
+    }
+
+    .enhance-overlay.is-broken .enhance-overlay-icon {
+      animation: brokenShake 0.18s ease-in-out 0s 6;
+    }
+
+    @keyframes forgeShake {
+      0%,
+      100% {
+        transform: rotate(-6deg) translateY(0);
+      }
+      50% {
+        transform: rotate(4deg) translateY(-3px);
+      }
+    }
+
+    @keyframes resultPulse {
+      0% {
+        transform: scale(0.96);
+        filter: drop-shadow(0 0 0 rgba(52, 211, 153, 0.4));
+      }
+      50% {
+        transform: scale(1.04);
+        filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.45));
+      }
+      100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 4px rgba(52, 211, 153, 0.35));
+      }
+    }
+
+    @keyframes brokenShake {
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(-4px);
+      }
+      75% {
+        transform: translateX(4px);
+      }
+    }
+
     .favorite-badge {
       color: #fcd34d;
       font-weight: 900;
@@ -2045,6 +2174,15 @@
       <div class="modal-body-title" style="margin-top: 12px;">次の強化ステップ</div>
       <div id="weapon-enhance-table" class="enhance-table"></div>
     </div>
+    <div id="weapon-enhance-animation" class="enhance-overlay hidden">
+      <div class="enhance-overlay-card">
+        <div id="weapon-enhance-animation-icon" class="enhance-overlay-icon">🔨</div>
+        <div id="weapon-enhance-animation-title" class="enhance-overlay-title">鍛冶開始</div>
+        <div id="weapon-enhance-animation-detail" class="enhance-overlay-detail"></div>
+        <div id="weapon-enhance-animation-gain" class="enhance-overlay-gain"></div>
+        <div class="enhance-overlay-hint">タップでスキップ</div>
+      </div>
+    </div>
   </div>
 
   <div id="inventory-modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -2308,6 +2446,7 @@ function generateId(prefix = "id") {
     let inventorySortMode = "acquire";
     let inventoryAcquireSequence = 0;
     let weaponEnhanceTarget = null;
+    let enhanceAnimationState = { active: false, phase: "idle", timers: [], pendingOutcome: null, completed: false };
     let currentInventorySelection = null;
 
     const EQUIPMENT_SLOTS = {
@@ -8470,6 +8609,135 @@ function maybeAutoSave(reason = "auto") {
       }
     }
 
+    function clearEnhanceAnimationTimers() {
+      enhanceAnimationState.timers.forEach((timer) => clearTimeout(timer));
+      enhanceAnimationState.timers = [];
+    }
+
+    function applyEnhanceOutcomeIfNeeded() {
+      const outcome = enhanceAnimationState.pendingOutcome;
+      if (!outcome || enhanceAnimationState.completed) return;
+      enhanceAnimationState.completed = true;
+      const { equipment, success, broken, penalty, newLevel, oldLevel, cost } = outcome;
+      if (success) {
+        equipment.enhanceBroken = false;
+        equipment.enhanceLevel = newLevel;
+        log(`🔨 ${equipment.name} を強化成功！ +${oldLevel} → +${newLevel}`, "good");
+      } else {
+        if (broken) {
+          equipment.enhanceBroken = true;
+          log(`⚠️ ${equipment.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
+        } else if (penalty === "downgrade") {
+          equipment.enhanceBroken = false;
+          equipment.enhanceLevel = newLevel;
+          log(`⚠️ ${equipment.name} の強化失敗… +${oldLevel} → +${newLevel}`, "warning");
+        } else {
+          equipment.enhanceBroken = false;
+          log(`⚠️ ${equipment.name} の強化失敗…ペナルティなし`, "warning");
+        }
+      }
+      const derived = recalcDerivedStats();
+      updateUI(derived);
+      renderInventory();
+      renderWeaponEnhancePanel();
+      rerenderInventoryItemModal();
+      maybeAutoSave("装備強化");
+    }
+
+    function finishEnhanceAnimation() {
+      clearEnhanceAnimationTimers();
+      applyEnhanceOutcomeIfNeeded();
+      if (weaponEnhanceAnimation) {
+        weaponEnhanceAnimation.classList.add("hidden");
+        weaponEnhanceAnimation.classList.remove("is-progress", "is-success", "is-fail", "is-broken");
+        weaponEnhanceAnimation.onclick = null;
+      }
+      enhanceAnimationState = { active: false, phase: "idle", timers: [], pendingOutcome: null, completed: true };
+    }
+
+    function showEnhanceAnimationResult(outcome, { skipped = false } = {}) {
+      if (!weaponEnhanceAnimation) {
+        finishEnhanceAnimation();
+        return;
+      }
+      clearEnhanceAnimationTimers();
+      enhanceAnimationState.phase = "result";
+      weaponEnhanceAnimation.classList.remove("is-progress", "is-success", "is-fail", "is-broken");
+      const deltaText =
+        outcome.statDelta === 0
+          ? "ステータス変化なし"
+          : `ステータス ${outcome.statDelta > 0 ? "+" : ""}${outcome.statDelta}%`;
+      if (outcome.success) {
+        weaponEnhanceAnimation.classList.add("is-success");
+        weaponEnhanceAnimationIcon.textContent = "✨";
+        weaponEnhanceAnimationTitle.textContent = "強化成功！";
+        weaponEnhanceAnimationDetail.textContent = `+${outcome.oldLevel} → +${outcome.newLevel}`;
+        weaponEnhanceAnimationGain.textContent = deltaText;
+      } else {
+        weaponEnhanceAnimation.classList.add("is-fail");
+        if (outcome.broken) weaponEnhanceAnimation.classList.add("is-broken");
+        weaponEnhanceAnimationIcon.textContent = outcome.broken ? "💥" : "😢";
+        weaponEnhanceAnimationTitle.textContent = outcome.broken ? "破損..." : "強化失敗";
+        weaponEnhanceAnimationDetail.textContent = outcome.broken
+          ? `${outcome.equipment.name} は修理が必要です`
+          : outcome.penalty === "downgrade"
+          ? `+${outcome.oldLevel} → +${outcome.newLevel} に低下`
+          : `${outcome.equipment.name} は据え置きでした`;
+        weaponEnhanceAnimationGain.textContent = outcome.broken && outcome.penalty !== "downgrade" ? "効果なし" : deltaText;
+      }
+      const nextDelay = skipped ? 450 : 1400;
+      enhanceAnimationState.timers.push(setTimeout(() => finishEnhanceAnimation(), nextDelay));
+    }
+
+    function startEnhanceAnimation(outcome) {
+      if (!weaponEnhanceAnimation) {
+        enhanceAnimationState.pendingOutcome = outcome;
+        finishEnhanceAnimation();
+        return;
+      }
+      clearEnhanceAnimationTimers();
+      enhanceAnimationState = {
+        active: true,
+        phase: "progress",
+        timers: [],
+        pendingOutcome: outcome,
+        completed: false,
+      };
+      weaponEnhanceAnimation.classList.remove("hidden", "is-success", "is-fail", "is-broken");
+      weaponEnhanceAnimation.classList.add("is-progress");
+      weaponEnhanceAnimationIcon.textContent = "🔨";
+      weaponEnhanceAnimationTitle.textContent = "鍛冶中...";
+      weaponEnhanceAnimationDetail.textContent = `${outcome.equipment.name} をカンカン叩いています`;
+      weaponEnhanceAnimationGain.textContent = "火花が散っている...";
+      enhanceAnimationState.timers.push(setTimeout(() => showEnhanceAnimationResult(outcome), 1100));
+      weaponEnhanceAnimation.onclick = () => {
+        if (enhanceAnimationState.phase === "progress") {
+          showEnhanceAnimationResult(outcome, { skipped: true });
+        } else {
+          finishEnhanceAnimation();
+        }
+      };
+    }
+
+    function prepareEnhanceOutcome(equipment, level, step, cost) {
+      const roll = Math.random() * 100;
+      const success = roll < step.success;
+      const outcome = { equipment, success, broken: false, penalty: "none", oldLevel: level, newLevel: level, cost };
+      if (success) {
+        outcome.newLevel = step.to;
+      } else if (level >= 10) {
+        outcome.broken = true;
+        outcome.penalty = "broken";
+      } else if (level >= 6) {
+        outcome.penalty = "downgrade";
+        outcome.newLevel = Math.max(0, level - 1);
+      }
+      const beforeEffect = describeEnhanceEffect(level);
+      const afterEffect = describeEnhanceEffect(outcome.newLevel);
+      outcome.statDelta = Math.round((afterEffect.bonusPercent - beforeEffect.bonusPercent) * 10) / 10;
+      return outcome;
+    }
+
     function attemptWeaponEnhance() {
       const equipment = normalizeEquipmentItem(weaponEnhanceTarget || player.equipment?.weapon);
       if (!equipment) {
@@ -8493,27 +8761,8 @@ function maybeAutoSave(reason = "auto") {
       }
 
       player.gold -= cost;
-      const roll = Math.random() * 100;
-      if (roll < step.success) {
-        equipment.enhanceLevel = step.to;
-        log(`🔨 ${equipment.name} を強化成功！ +${level} → +${step.to}`, "good");
-      } else {
-        if (level >= 10) {
-          equipment.enhanceBroken = true;
-          log(`⚠️ ${equipment.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
-        } else if (level >= 6) {
-          equipment.enhanceLevel = Math.max(0, level - 1);
-          log(`⚠️ ${equipment.name} の強化失敗… +${level} → +${equipment.enhanceLevel}`, "warning");
-        } else {
-          log(`⚠️ ${equipment.name} の強化失敗…ペナルティなし`, "warning");
-        }
-      }
-      const derived = recalcDerivedStats();
-      updateUI(derived);
-      renderInventory();
-      renderWeaponEnhancePanel();
-      rerenderInventoryItemModal();
-      maybeAutoSave("装備強化");
+      const outcome = prepareEnhanceOutcome(equipment, level, step, cost);
+      startEnhanceAnimation(outcome);
     }
 
     function repairWeapon() {
@@ -8597,6 +8846,11 @@ function maybeAutoSave(reason = "auto") {
     const playerModal = document.getElementById("player-modal");
     const skillsModal = document.getElementById("skills-modal");
     const weaponEnhanceModal = document.getElementById("weapon-enhance-modal");
+    const weaponEnhanceAnimation = document.getElementById("weapon-enhance-animation");
+    const weaponEnhanceAnimationTitle = document.getElementById("weapon-enhance-animation-title");
+    const weaponEnhanceAnimationDetail = document.getElementById("weapon-enhance-animation-detail");
+    const weaponEnhanceAnimationGain = document.getElementById("weapon-enhance-animation-gain");
+    const weaponEnhanceAnimationIcon = document.getElementById("weapon-enhance-animation-icon");
     const inventoryModal = document.getElementById("inventory-modal");
     const inventoryItemModal = document.getElementById("inventory-item-modal");
     const closeModalButton = document.getElementById("modal-close");
@@ -8866,6 +9120,9 @@ function maybeAutoSave(reason = "auto") {
 
     function closeWeaponEnhanceModal() {
       weaponEnhanceTarget = null;
+      if (enhanceAnimationState.active) {
+        finishEnhanceAnimation();
+      }
       weaponEnhanceModal?.classList.add("hidden");
     }
 
