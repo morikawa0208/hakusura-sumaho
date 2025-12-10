@@ -2330,6 +2330,13 @@
             </label>
             <button id="debug-apply-hp">反映</button>
           </div>
+          <div class="debug-selects">
+            <label>
+              所持金:
+              <input id="debug-gold-input" type="number" min="0" step="1" inputmode="numeric" />
+            </label>
+            <button id="debug-apply-gold">反映</button>
+          </div>
         </div>
         <div class="debug-section">
           <h4>階層調整</h4>
@@ -2339,6 +2346,14 @@
               <input id="debug-floor-input" type="number" min="1" step="1" inputmode="numeric" />
             </label>
             <button id="debug-apply-floor">移動</button>
+          </div>
+          <div class="debug-selects" style="align-items: flex-start;">
+            <div style="font-size: 12px; color: var(--muted);">ボス階直行:</div>
+            <div class="inline-buttons" style="margin-top: 0;">
+              <button data-debug-boss-floor="50">50F</button>
+              <button data-debug-boss-floor="100">100F</button>
+              <button data-debug-boss-floor="200">200F</button>
+            </div>
           </div>
         </div>
         <div class="debug-section">
@@ -7075,6 +7090,7 @@ function generateId(prefix = "id") {
     function syncDebugAdjustInputs() {
       if (debugLevelInput) debugLevelInput.value = player.level;
       if (debugHpInput) debugHpInput.value = Math.round(player.hp);
+      if (debugGoldInput) debugGoldInput.value = Math.max(0, Math.round(player.gold));
       if (debugFloorInput) debugFloorInput.value = game.floor;
       if (debugForceLegendaryCheckbox)
         debugForceLegendaryCheckbox.checked = !!debugForceBossLegendaryDrop;
@@ -7114,11 +7130,25 @@ function generateId(prefix = "id") {
       maybeAutoSave("デバッグ:HP調整");
     }
 
-    function applyDebugFloorChange() {
-      if (!debugFloorInput) return;
-      const requested = Number(debugFloorInput.value);
+    function applyDebugGoldChange() {
+      if (!debugGoldInput) return;
+      const requested = Number(debugGoldInput.value);
+      if (Number.isNaN(requested)) return;
+      const nextGold = Math.max(0, Math.floor(requested));
+      player.gold = nextGold;
+      updateUI();
+      log(`💰 所持金を ${formatGold(nextGold)}G に設定`, "info");
+      maybeAutoSave("デバッグ:所持金変更");
+    }
+
+    function applyDebugFloorChange(forcedFloor) {
+      if (!debugFloorInput && forcedFloor === undefined) return;
+      const requested = forcedFloor ?? Number(debugFloorInput.value);
       if (Number.isNaN(requested)) return;
       const nextFloor = Math.max(1, Math.floor(requested));
+      if (debugFloorInput && forcedFloor !== undefined) {
+        debugFloorInput.value = nextFloor;
+      }
       if (nextFloor !== game.floor) {
         game.floor = nextFloor;
         game.turnQueue = [];
@@ -8934,11 +8964,14 @@ function maybeAutoSave(reason = "auto") {
     const debugRerollPotionButton = document.getElementById("debug-reroll-potion");
     const debugLevelInput = document.getElementById("debug-level-input");
     const debugHpInput = document.getElementById("debug-hp-input");
+    const debugGoldInput = document.getElementById("debug-gold-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
     const debugForceLegendaryCheckbox = document.getElementById("debug-force-legendary");
     const debugApplyLevelButton = document.getElementById("debug-apply-level");
     const debugApplyHpButton = document.getElementById("debug-apply-hp");
+    const debugApplyGoldButton = document.getElementById("debug-apply-gold");
     const debugApplyFloorButton = document.getElementById("debug-apply-floor");
+    const debugBossFloorButtons = document.querySelectorAll("[data-debug-boss-floor]");
     const debugNewRunButton = document.getElementById("debug-new-run");
     const inventoryOpenButton = document.getElementById("btn-inventory");
     const archetypeModal = document.getElementById("archetype-modal");
@@ -10068,7 +10101,15 @@ function handlePlayerDefeat() {
 
     debugApplyLevelButton?.addEventListener("click", applyDebugLevelChange);
     debugApplyHpButton?.addEventListener("click", applyDebugHpChange);
+    debugApplyGoldButton?.addEventListener("click", applyDebugGoldChange);
     debugApplyFloorButton?.addEventListener("click", applyDebugFloorChange);
+    debugBossFloorButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const floor = Number(btn.dataset.debugBossFloor);
+        if (Number.isNaN(floor)) return;
+        applyDebugFloorChange(floor);
+      });
+    });
     debugForceLegendaryCheckbox?.addEventListener("change", () => {
       debugForceBossLegendaryDrop = !!debugForceLegendaryCheckbox.checked;
     });
