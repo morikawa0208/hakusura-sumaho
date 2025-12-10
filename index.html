@@ -824,7 +824,13 @@
     }
 
     .enhance-badge.broken {
-      color: #f87171;
+      color: #cbd5e1;
+      opacity: 0.9;
+    }
+
+    .broken-text {
+      color: #cbd5e1 !important;
+      opacity: 0.88;
     }
 
     .enhance-info-grid {
@@ -4314,7 +4320,7 @@ function generateId(prefix = "id") {
     }
 
     function getWeaponEnhanceMultiplier(item) {
-      if (!item || item.type !== "equipment") return 1;
+      if (!item || item.type !== "equipment" || item.enhanceBroken) return 1;
       const level = Math.max(0, item?.enhanceLevel || 0);
       return 1 + level * WEAPON_ENHANCE_POWER_PER_LEVEL;
     }
@@ -4441,6 +4447,7 @@ function generateId(prefix = "id") {
       if (!element) return;
       const classNames = ["rarity-normal", "rarity-magic", "rarity-rare", "rarity-legendary"];
       classNames.forEach((cls) => element.classList.remove(cls));
+      element.classList.toggle("broken-text", !!item?.enhanceBroken);
       const rarityKey = item?.equipment?.rarity || item?.potion?.rarity;
       if (rarityKey && (EQUIPMENT_RARITIES[rarityKey] || POTION_RARITIES[rarityKey])) {
         element.classList.add(`rarity-${rarityKey}`);
@@ -6219,8 +6226,24 @@ function generateId(prefix = "id") {
       return false;
     }
 
+    function unequipItemById(item) {
+      if (!item?.id || !player.equipment) return false;
+      let removed = false;
+      Object.keys(player.equipment).forEach((slot) => {
+        if (player.equipment[slot]?.id === item.id) {
+          player.equipment[slot] = null;
+          removed = true;
+        }
+      });
+      return removed;
+    }
+
     function equipItem(slot, item) {
       if (!player.equipment || !(slot in player.equipment)) return;
+      if (item?.enhanceBroken) {
+        log(`⚠️ ${item.name} は破損しているため装備できません`, "warning");
+        return;
+      }
       if (!canEquipInSlot(item?.equipment?.slot, slot)) return;
       player.equipment[slot] = item ?? null;
       const derived = recalcDerivedStats();
@@ -8678,7 +8701,11 @@ function maybeAutoSave(reason = "auto") {
       } else {
         if (broken) {
           equipment.enhanceBroken = true;
+          const wasEquipped = unequipItemById(equipment);
           log(`⚠️ ${equipment.name} の強化失敗…破損しました (修理費 ${formatGold(cost * 2)}G)`, "danger");
+          if (wasEquipped) {
+            log(`🧤 ${equipment.name} を装備から外しました`, "warning");
+          }
         } else if (penalty === "downgrade") {
           equipment.enhanceBroken = false;
           equipment.enhanceLevel = newLevel;
@@ -9447,9 +9474,14 @@ function maybeAutoSave(reason = "auto") {
             const slotName = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotLabel;
             const equipped = player.equipment?.[slotKey];
             const isSame = equipped?.id === item.id;
+            const broken = !!item.enhanceBroken;
             const equipBtn = document.createElement("button");
-            equipBtn.textContent = isSame ? `${slotName}（装備中）` : `${slotName}に装備`;
-            equipBtn.disabled = isSame;
+            equipBtn.textContent = broken
+              ? `${slotName}に装備できません（破損中）`
+              : isSame
+              ? `${slotName}（装備中）`
+              : `${slotName}に装備`;
+            equipBtn.disabled = isSame || broken;
             equipBtn.onclick = () => {
               equipItem(slotKey, item);
               log(`🛡️ ${item.name} を${slotName}に装備した`, "good");
