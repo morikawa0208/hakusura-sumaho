@@ -2967,6 +2967,106 @@
       },
     };
 
+    const BOSS_SKILLS = {
+      10: {
+        name: "毒翼の奇襲",
+        cooldown: 3,
+        action: () => {
+          const effects = [];
+          if (applyStatus(player, "poison", { duration: 3, chance: 75 })) {
+            effects.push("毒付与");
+          }
+          if (applyStatus(player, "speedDown", { duration: 2, chance: 60 })) {
+            effects.push("速度低下");
+          }
+          return { message: effects.join(" / ") || "毒煙をまとって急襲" };
+        },
+      },
+      50: {
+        name: "黄金の護膜",
+        cooldown: 4,
+        action: (enemy) => {
+          const healed = Math.min(Math.round(enemy.maxHp * 0.12), enemy.maxHp - enemy.hp);
+          if (healed > 0) {
+            enemy.hp = Math.min(enemy.maxHp, enemy.hp + healed);
+            updateEnemyCardHp(enemy);
+          }
+          const debuffed = applyStatus(player, "physAttackDown", { duration: 3, chance: 70, potency: 0.22 });
+          const effects = [];
+          if (healed > 0) effects.push(`自己回復+${healed}`);
+          if (debuffed) effects.push("物理攻撃低下");
+          return { message: effects.join(" / ") || "鱗を硬化させた" };
+        },
+      },
+      100: {
+        name: "焦熱の波動",
+        cooldown: 3,
+        action: () => {
+          const effects = [];
+          if (applyStatus(player, "burn", { duration: 3, chance: 80 })) {
+            effects.push("火傷");
+          }
+          if (applyStatus(player, "magDefenseDown", { duration: 3, chance: 70, potency: 0.22 })) {
+            effects.push("魔防低下");
+          }
+          return { message: effects.join(" / ") || "灼熱の気配" };
+        },
+      },
+      200: {
+        name: "深渦の律動",
+        cooldown: 3,
+        action: () => {
+          const effects = [];
+          if (applyStatus(player, "speedDown", { duration: 2, chance: 70, potency: 0.3 })) {
+            effects.push("鈍化");
+          }
+          if (applyStatus(player, "sleep", { duration: 1, chance: 35 })) {
+            effects.push("一瞬の眠り");
+          }
+          return { message: effects.join(" / ") || "潮のうねりを溜め込む" };
+        },
+      },
+      500: {
+        name: "虚星の審問",
+        cooldown: 4,
+        action: () => {
+          const effects = [];
+          if (applyStatus(player, "curse", { duration: 3, chance: 100, potency: 0.14 })) {
+            effects.push("呪縛");
+          }
+          if (applyStatus(player, "silence", { duration: 2, chance: 50 })) {
+            effects.push("沈黙");
+          }
+          return { message: effects.join(" / ") || "魔眼が光を放つ" };
+        },
+      },
+      700: {
+        name: "雷礫の連鎖",
+        cooldown: 3,
+        action: (enemy) => {
+          const effects = ["追撃+1" ];
+          const baseAttacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 1));
+          enemy.attacksRemaining = baseAttacks + 1;
+          if (applyStatus(player, "stun", { duration: 1, chance: 45 })) {
+            effects.push("感電スタン");
+          }
+          return { message: effects.join(" / " ), extraAttacks: 0 };
+        },
+      },
+      1000: {
+        name: "黎明の終焉",
+        cooldown: 2,
+        action: () => {
+          const effects = [];
+          if (applyStatus(player, "burn", { duration: 3, chance: 75 })) effects.push("焼灼");
+          if (applyStatus(player, "curse", { duration: 3, chance: 100, potency: 0.18 })) effects.push("終焉の呪詛");
+          if (applyStatus(player, "knockdown", { duration: 1, chance: 60 })) effects.push("行動遅延");
+          if (applyStatus(player, "silence", { duration: 1, chance: 50 })) effects.push("静寂");
+          return { message: effects.join(" / ") || "光が収束する" };
+        },
+      },
+    };
+
     const BOSS_LEGENDARY_POTIONS = {
       50: ["phoenixCryst", "zealChalice"],
       100: ["herosLegacy", "judgementBrew"],
@@ -6927,6 +7027,9 @@ function inferLegendaryKeyFromItem(item) {
           enemy.baseFlavor = bossDef.flavor;
           enemy.flavor = enemy.baseFlavor;
           enemy.bossLegendaryKey = bossDef.legendaryKey;
+          enemy.bossSkillKey = game.floor;
+          enemy.bossSkillDef = BOSS_SKILLS[game.floor];
+          enemy.bossSkillCooldown = 0;
           const { modifiers = {} } = bossDef;
           applyEnemyModifiers(enemy, modifiers);
         }
@@ -6952,6 +7055,24 @@ function inferLegendaryKeyFromItem(item) {
       game.awaitingInput = true;
       updateUI(derived);
       promptPlayerTurn();
+    }
+
+    function tryBossSkill(enemy) {
+      if (!enemy?.isBoss) return false;
+      const skill = enemy.bossSkillDef || (enemy.bossSkillKey ? BOSS_SKILLS[enemy.bossSkillKey] : null);
+      if (!skill) return false;
+      enemy.bossSkillDef = skill;
+      enemy.bossSkillCooldown = Math.max(0, enemy.bossSkillCooldown || 0);
+      if (enemy.bossSkillCooldown > 0) return false;
+      const result = skill.action ? skill.action(enemy) || {} : {};
+      const effectText = result.message ? ` ${result.message}` : "";
+      log(`💢 ${enemy.name} は「${skill.name}」を発動！${effectText}`, "enemy");
+      if (result.extraAttacks && result.extraAttacks > 0) {
+        const baseAttacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 1));
+        enemy.attacksRemaining = baseAttacks + result.extraAttacks;
+      }
+      enemy.bossSkillCooldown = skill.cooldown ?? 2;
+      return true;
     }
 
     function getEffectiveSpeed(entity, type) {
@@ -10584,6 +10705,12 @@ function handlePlayerDefeat() {
 
     function enemyAction(enemy) {
       if (enemy.hp <= 0) return false;
+      if (enemy.isBoss) {
+        if (enemy.bossSkillCooldown > 0) {
+          enemy.bossSkillCooldown = Math.max(0, enemy.bossSkillCooldown - 1);
+        }
+        tryBossSkill(enemy);
+      }
       const attacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 0));
       if (attacks <= 0) return false;
       enemy.attacksRemaining = attacks;
