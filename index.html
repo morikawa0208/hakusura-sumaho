@@ -2477,23 +2477,23 @@
       debuff: "debuff",
     };
 
-function generateId(prefix = "id") {
-  let uuid;
+    function generateId(prefix = "id") {
+      let uuid;
 
-  // crypto.randomUUID が使える環境ならそのまま呼び出す
-  if (
-    typeof globalThis !== "undefined" &&
-    globalThis.crypto &&
-    typeof globalThis.crypto.randomUUID === "function"
-  ) {
-    uuid = globalThis.crypto.randomUUID();
-  } else {
-    // フォールバック（簡易ID）
-    uuid = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
+      // crypto.randomUUID が使える環境ならそのまま呼び出す
+      if (
+        typeof globalThis !== "undefined" &&
+        globalThis.crypto &&
+        typeof globalThis.crypto.randomUUID === "function"
+      ) {
+        uuid = globalThis.crypto.randomUUID();
+      } else {
+        // フォールバック（簡易ID）
+        uuid = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
 
-  return prefix ? `${prefix}-${uuid}` : uuid;
-}
+      return prefix ? `${prefix}-${uuid}` : uuid;
+    }
 
 
     const POTION_REFILL_ON_KILL = 12;
@@ -6587,54 +6587,53 @@ function inferLegendaryKeyFromItem(item) {
 
         if (!item) continue;
 
-droppedCount += 1;
-player.inventory.items.push(item);
+      droppedCount += 1;
+      player.inventory.items.push(item);
 
-// ------------------------------
-// ログ（HTML対応）＋レア演出
-// ------------------------------
-if (item.type === "potion" && item.potion) {
-  const label = item.potion?.short || item.name || "ポーション";
-  const rarityKey = item.potion?.rarity || "normal";
+      // ------------------------------
+      // ログ（HTML対応）＋レア演出
+      // ------------------------------
+      if (item.type === "potion" && item.potion) {
+        const label = item.potion?.short || item.name || "ポーション";
+        const rarityKey = item.potion?.rarity || "normal";
 
-  const coloredLabel = `<span class="rarity-${rarityKey}">${label}</span>`;
+        const coloredLabel = `<span class="rarity-${rarityKey}">${label}</span>`;
 
-  log(
-    `🧪 ${enemy.name} が ${coloredLabel} を落とした！`,
-    "good",
-    { asHtml: true }
-  );
+        log(
+          `🧪 ${enemy.name} が ${coloredLabel} を落とした！`,
+          "good",
+          { asHtml: true }
+        );
 
-  triggerDropCelebration(item); // レア／レジェなら演出出る
-} else {
-  const rarityKey = item.equipment?.rarity || "normal";
+        triggerDropCelebration(item); // レア／レジェなら演出出る
+      } else {
+        const rarityKey = item.equipment?.rarity || "normal";
 
-  const rarityLabel =
-    rarityKey === "legendary"
-      ? "🌈レジェンダリー"
-      : rarityKey === "rare"
-      ? "💎レア"
-      : rarityKey === "magic"
-      ? "✨マジック"
-      : "ノーマル";
+        const rarityLabel =
+          rarityKey === "legendary"
+            ? "🌈レジェンダリー"
+            : rarityKey === "rare"
+            ? "💎レア"
+            : rarityKey === "magic"
+            ? "✨マジック"
+            : "ノーマル";
 
-  const coloredName = `<span class="rarity-${rarityKey}">${item.name}</span>`;
+        const coloredName = `<span class="rarity-${rarityKey}">${item.name}</span>`;
 
-  log(
-    `🎁 ${enemy.name} が ${rarityLabel}装備「${coloredName}」を落とした！`,
-    "good",
-    { asHtml: true }
-  );
+        log(
+          `🎁 ${enemy.name} が ${rarityLabel}装備「${coloredName}」を落とした！`,
+          "good",
+          { asHtml: true }
+        );
 
-  triggerDropCelebration(item); // レア／レジェなら演出出る
-}
-
-
+        triggerDropCelebration(item); // レア／レジェなら演出出る
+      }
 
       if (droppedCount > 0) {
         renderInventory();
       }
     }
+  }
 
     function recalcDerivedStats() {
       const equipmentBonuses = collectEquipmentBonuses();
