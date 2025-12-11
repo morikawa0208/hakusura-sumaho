@@ -4524,64 +4524,153 @@ function inferLegendaryKeyFromItem(item) {
       return { multiplier, bonusPercent };
     }
 
-    function createEquipmentItem(slotKey, rarityKey, { legendaryKey = "", titleBonus = 0, enhanceLevel = 0 } = {}) {
-      const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
-      const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
-      const template = rarityKey === "legendary" ? pickLegendaryEquipment(slot, legendaryKey) : pickEquipmentTemplate(slot);
-      const base = template?.base?.length
-        ? rollTemplateOptions(template.base, rarity)
-        : generateEquipmentOptions(rarity, rarity.baseOptions);
-      const random = generateEquipmentOptions(rarity, rarity.randomOptions);
-      const prefixRoll = rollEquipmentTitle(EQUIPMENT_TITLE_PREFIXES, rarity, titleBonus, TITLE_BASE_CHANCE.prefix);
-      const suffixRoll = rollEquipmentTitle(EQUIPMENT_TITLE_SUFFIXES, rarity, titleBonus, TITLE_BASE_CHANCE.suffix);
-      const prefixTitle = prefixRoll.title;
-      const suffixTitle = suffixRoll.title;
-      const prefixOptions = prefixRoll.options || { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() };
-      const suffixOptions = suffixRoll.options || { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() };
-      const uniqueOption = rarityKey === "legendary" ? rollLegendaryUniqueOption(template) : null;
+    function createEquipmentItem(arg1, arg2, arg3) {
+  // ---------------------------
+  // 引数の解釈
+  // ---------------------------
+  let slotKey;
+  let rarityKey;
+  let legendaryKey = "";
+  let titleBonus = 0;
+  let enhanceLevel = 0;
+  let isDungeonDrop = false;
 
-      const primaryBonus = createEmptyPrimaryBonus();
-      const bonus = createEmptyBonus();
-      [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach((entry) => {
-        applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
-      });
+  // 1) ドロップ用: createEquipmentItem({ floor, isBoss, rarityBonus, forceLegendaryKey })
+  if (typeof arg1 === "object" && arg1 !== null && !Array.isArray(arg1)) {
+    const {
+      floor = game.floor || 1,
+      isBoss = false,
+      rarityBonus = 0,
+      forceLegendaryKey = "",
+    } = arg1;
 
-      const name = buildEquipmentName(slot, rarity, prefixTitle, suffixTitle, template?.name || uniqueOption?.itemName);
+    isDungeonDrop = true;
 
-      const clampedEnhanceLevel = Math.max(0, Math.min(MAX_ENHANCE_LEVEL, Math.floor(enhanceLevel || 0)));
+    // この階層・ボスかどうかに応じてドロップ部位を決定
+    slotKey = resolveDropSlotForFloor(floor, isBoss);
 
-      const prefixAffix = prefixTitle
-        ? { ...prefixTitle, options: prefixOptions.entries }
-        : null;
-      const suffixAffix = suffixTitle
-        ? { ...suffixTitle, options: suffixOptions.entries }
-        : null;
-
-      return ensureAcquiredOrder({
-        id: generateId("eq"),
-        type: "equipment",
-        slot,
-        name,
-        desc: "デバッグで生成した装備品",
-        rarity: rarity.rank,
-        enhanceLevel: clampedEnhanceLevel,
-        enhanceBroken: false,
-        equipment: {
-          slot,
-          rarity: rarity.key,
-          rarityLabel: rarity.label,
-          color: rarity.color,
-          legendaryKey: rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
-          baseOptions: base.entries,
-          randomOptions: random.entries,
-          prefix: prefixAffix,
-          suffix: suffixAffix,
-          uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
-        },
-        primaryBonus,
-        bonus,
-      });
+    if (forceLegendaryKey) {
+      // ボス用デバッグ「レジェ確定」など
+      rarityKey = "legendary";
+      legendaryKey = forceLegendaryKey;
+    } else {
+      // 通常ドロップ：ベースのレア度＋レア度ボーナスでアップ判定
+      const baseKey = rollBaseDropRarity(isBoss);
+      rarityKey = upgradeRarityWithBonus(baseKey, rarityBonus);
     }
+  } else {
+    // 2) デバッグ生成用: createEquipmentItem(slotKey, rarityKey, { legendaryKey, titleBonus, enhanceLevel })
+    slotKey = arg1;
+    rarityKey = arg2 || "normal";
+    const opts = arg3 || {};
+    legendaryKey = opts.legendaryKey || "";
+    titleBonus = opts.titleBonus || 0;
+    enhanceLevel = opts.enhanceLevel || 0;
+  }
+
+  // ---------------------------
+  // ここから元の生成ロジック
+  // ---------------------------
+  const slot = EQUIPMENT_SLOTS[slotKey] ? slotKey : "weapon";
+  const rarity = EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
+
+  const template =
+    rarityKey === "legendary"
+      ? pickLegendaryEquipment(slot, legendaryKey)
+      : pickEquipmentTemplate(slot);
+
+  const base = template?.base?.length
+    ? rollTemplateOptions(template.base, rarity)
+    : generateEquipmentOptions(rarity, rarity.baseOptions);
+
+  const random = generateEquipmentOptions(rarity, rarity.randomOptions);
+
+  const prefixRoll = rollEquipmentTitle(
+    EQUIPMENT_TITLE_PREFIXES,
+    rarity,
+    titleBonus,
+    TITLE_BASE_CHANCE.prefix
+  );
+  const suffixRoll = rollEquipmentTitle(
+    EQUIPMENT_TITLE_SUFFIXES,
+    rarity,
+    titleBonus,
+    TITLE_BASE_CHANCE.suffix
+  );
+
+  const prefixTitle = prefixRoll.title;
+  const suffixTitle = suffixRoll.title;
+
+  const prefixOptions =
+    prefixRoll.options || {
+      entries: [],
+      primaryBonus: createEmptyPrimaryBonus(),
+      bonus: createEmptyBonus(),
+    };
+  const suffixOptions =
+    suffixRoll.options || {
+      entries: [],
+      primaryBonus: createEmptyPrimaryBonus(),
+      bonus: createEmptyBonus(),
+    };
+
+  const uniqueOption =
+    rarityKey === "legendary" ? rollLegendaryUniqueOption(template) : null;
+
+  const primaryBonus = createEmptyPrimaryBonus();
+  const bonus = createEmptyBonus();
+
+  [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach(
+    (entry) => {
+      applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
+    }
+  );
+
+  const name = buildEquipmentName(
+    slot,
+    rarity,
+    prefixTitle,
+    suffixTitle,
+    template?.name || uniqueOption?.itemName
+  );
+
+  const clampedEnhanceLevel = Math.max(
+    0,
+    Math.min(MAX_ENHANCE_LEVEL, Math.floor(enhanceLevel || 0))
+  );
+
+  const prefixAffix = prefixTitle ? { ...prefixTitle, options: prefixOptions.entries } : null;
+  const suffixAffix = suffixTitle ? { ...suffixTitle, options: suffixOptions.entries } : null;
+
+  const baseItem = ensureAcquiredOrder({
+    id: generateId("eq"),
+    type: "equipment",
+    slot,
+    name,
+    desc: isDungeonDrop ? "ダンジョンで拾った装備品" : "デバッグで生成した装備品",
+    rarity: rarity.rank,
+    enhanceLevel: clampedEnhanceLevel,
+    enhanceBroken: false,
+    equipment: {
+      slot,
+      rarity: rarity.key,
+      rarityLabel: rarity.label,
+      color: rarity.color,
+      legendaryKey:
+        rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
+      baseOptions: base.entries,
+      randomOptions: random.entries,
+      prefix: prefixAffix,
+      suffix: suffixAffix,
+      uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
+    },
+    primaryBonus,
+    bonus,
+  });
+
+  return baseItem;
+}
+
 
     function applyItemRarityColor(element, item) {
       if (!element) return;
