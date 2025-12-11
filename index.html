@@ -6079,17 +6079,52 @@ function inferLegendaryKeyFromItem(item) {
       const lifeStealBase = 0;
       const barrierBase = 0;
 
-      // ---- トレハン系（運ベースの減衰＋インフレ想定） ----
-      // ステータス側は「そこそこ」、装備・スキルで大きく伸ばす前提。
-      // （どれも下限0。上限は「効果側」で掛ける想定）
-      const dropRateBase = Math.max(0, Math.sqrt(luck) * 4 + luck * 0.15);
-      //   例：LUK100 → 4*10 + 15 = 55% 前後（装備で100%超えを狙う）
-      const rarityBase = Math.max(0, Math.sqrt(luck) * 2.4 + luck * 0.08);
-      const titleChanceBase = Math.max(0, Math.sqrt(luck) * 3 + luck * 0.12);
-      const namedRateBase = Math.max(0, 5 + Math.sqrt(luck) * 2.2 + luck * 0.16);
+      // ---- トレハン系（運ベース）----
+      // 方針：
+      //  ・LUKが低くても「ごくわずかには」増える（5振って約1%）
+      //  ・しきい値を超えたあたりからグッと伸びる二段階カーブ
 
-      // ゴールド倍率は「基礎100%＋ボーナス」のまま
+      const baseSlope = 0.2; // 全トレハン共通の「低LUK帯のゆるい伸び」(LUK5→+1%)
+
+      // しきい値を超えた分には、追加の傾きを足して「高LUK帯で伸びやすく」する
+      // （数字は「LUK100での目安」がだいたい以前のバランスに近くなるように調整）
+
+      // ドロップ数寄り（LUK30から本格的に効き始めるイメージ）
+      const dropExtraSlope = 0.32;
+      const dropThreshold = 30;
+
+      // レアリティUP（LUK40からじわじわ）
+      const rarityExtraSlope = 0.07;
+      const rarityThreshold = 40;
+
+      // 称号付与率（LUK40からそこそこ伸びる）
+      const titleExtraSlope = 0.17;
+      const titleThreshold = 40;
+
+      // ネームド遭遇（他より少し効きやすい）
+      const namedExtraSlope = 0.45;
+      const namedThreshold = 20;
+
+      // 実際の計算
+      const dropRateBase =
+        luck * baseSlope +
+        Math.max(0, luck - dropThreshold) * dropExtraSlope;
+
+      const rarityBase =
+        luck * baseSlope +
+        Math.max(0, luck - rarityThreshold) * rarityExtraSlope;
+
+      const titleChanceBase =
+        luck * baseSlope +
+        Math.max(0, luck - titleThreshold) * titleExtraSlope;
+
+      const namedRateBase =
+        luck * baseSlope +
+        Math.max(0, luck - namedThreshold) * namedExtraSlope;
+
+      // ゴールド率は「基礎100%」のまま
       const goldChanceBase = 100;
+
 
       return {
         // ---- 基礎系 ----
@@ -7491,24 +7526,44 @@ function inferLegendaryKeyFromItem(item) {
       maybeAutoSave("デバッグ:所持金変更");
     }
 
-    function applyDebugFloorChange(forcedFloor) {
-      if (!debugFloorInput && forcedFloor === undefined) return;
-      const requested = forcedFloor ?? Number(debugFloorInput.value);
-      if (Number.isNaN(requested)) return;
-      const nextFloor = Math.max(1, Math.floor(requested));
-      if (debugFloorInput && forcedFloor !== undefined) {
-        debugFloorInput.value = nextFloor;
-      }
-      if (nextFloor !== game.floor) {
-        game.floor = nextFloor;
-        game.turnQueue = [];
-        spawnEnemies();
-        log(`🌀 ${nextFloor}F へジャンプ`, "info");
-        maybeAutoSave("デバッグ:階層変更");
-      } else {
-        log("現在の階層と同じです", "info");
-      }
-    }
+function applyDebugFloorChange(forcedFloor) {
+  if (!debugFloorInput && forcedFloor === undefined) return;
+
+  // まず「元の値」を一旦取り出す（数値でも文字列でもOK）
+  const raw = forcedFloor ?? debugFloorInput.value;
+
+  // ここで必ず Number(...) に通して数値化する
+  const requested = Number(raw);
+
+  // 数値に変換できなかったら何もしない（NaN汚染を防ぐ）
+  if (!Number.isFinite(requested)) {
+    log("⚠️ 階層の指定が数値として解釈できませんでした", "warn");
+    return;
+  }
+
+  const nextFloor = Math.max(1, Math.floor(requested));
+
+  // ボスジャンプボタンなどから呼ばれたときは、入力欄にも反映
+  if (debugFloorInput && forcedFloor !== undefined) {
+    debugFloorInput.value = nextFloor;
+  }
+
+  // 既に floor が変な値（NaNなど）だった場合の保険
+  if (!Number.isFinite(game.floor) || game.floor <= 0) {
+    game.floor = 1;
+  }
+
+  if (nextFloor !== game.floor) {
+    game.floor = nextFloor;
+    game.turnQueue = [];
+    spawnEnemies();
+    log(`🌀 ${nextFloor}F へジャンプ`, "info");
+    maybeAutoSave("デバッグ:階層変更");
+  } else {
+    log("現在の階層と同じです", "info");
+  }
+}
+
 
     const SAVE_VERSION = 1;
     const SAVE_SLOTS = [
@@ -7611,6 +7666,13 @@ function maybeAutoSave(reason = "auto") {
       const payload = cloneState(state);
       replaceObject(player, payload.player || {});
       replaceObject(game, payload.game || {});
+
+
+      // ここから追記: 階層が変な値だった場合の保険
+      if (!Number.isFinite(game.floor) || game.floor <= 0) {
+        game.floor = 1;
+      }
+      
       if (!game.legendaryRecords) game.legendaryRecords = {};
       mergeSkillsFromSave(payload.skills || {});
       normalizeOwnedEquipment();
