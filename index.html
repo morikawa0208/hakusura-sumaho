@@ -9496,9 +9496,12 @@ function maybeAutoSave(reason = "auto") {
       const newPotion = { ...entry.potion };
       const previous = player.potions[slotIndex];
       player.potions[slotIndex] = newPotion;
-      items.splice(inventoryIndex, 1);
 
-      if (previous) {
+      const alreadyHasPrevious = items.some(
+        (it, idx) => idx !== inventoryIndex && it.type === "potion" && it.potion?.id === previous?.id
+      );
+
+      if (previous && !alreadyHasPrevious) {
         items.push(
           ensureAcquiredOrder(
             createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
