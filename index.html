@@ -6587,19 +6587,46 @@ function inferLegendaryKeyFromItem(item) {
         // ログ出力（複数ドロップに対応）
         if (item.type === "potion" && item.potion) {
           const label = item.potion?.short || item.name || "ポーション";
-          log(`🧪 ${enemy.name} が ${label} を落とした！`, "good");
+          const rarityKey = item.potion?.rarity || "normal";
+          const coloredLabel =
+            rarityKey
+              ? `<span class="rarity-${rarityKey}">${label}</span>`
+              : label;
+
+          // ポーション名をレアカラーで表示
+          log(
+            `🧪 ${enemy.name} が ${coloredLabel} を落とした！`,
+            "good",
+            { asHtml: true }
+          );
+
+          // レア・レジェのみドロップ演出（関数側でフィルタ）
+          triggerDropCelebration(item);
         } else {
+          const rarityKey = item.equipment?.rarity || "normal";
+
           const rarityLabel =
-            item.rarity === "legendary"
+            rarityKey === "legendary"
               ? "🌈レジェンダリー"
-              : item.rarity === "rare"
+              : rarityKey === "rare"
               ? "💎レア"
-              : item.rarity === "magic"
+              : rarityKey === "magic"
               ? "✨マジック"
               : "ノーマル";
-          log(`🎁 ${enemy.name} が ${rarityLabel}装備「${item.name}」を落とした！`, "good");
+
+          // アイテム名だけレアカラーにする（.rarity-◯◯ は既存CSSを利用）
+          const coloredName = `<span class="rarity-${rarityKey}">${item.name}</span>`;
+
+          log(
+            `🎁 ${enemy.name} が ${rarityLabel}装備「${coloredName}」を落とした！`,
+            "good",
+            { asHtml: true }
+          );
+
+          // レア・レジェのときだけアニメが出る（trigger側で判定）
+          triggerDropCelebration(item);
         }
-      }
+
 
       if (droppedCount > 0) {
         renderInventory();
