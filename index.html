@@ -10637,7 +10637,7 @@ function handlePlayerDefeat() {
     debugApplyLevelButton?.addEventListener("click", applyDebugLevelChange);
     debugApplyHpButton?.addEventListener("click", applyDebugHpChange);
     debugApplyGoldButton?.addEventListener("click", applyDebugGoldChange);
-    debugApplyFloorButton?.addEventListener("click", applyDebugFloorChange);
+    debugApplyFloorButton?.addEventListener("click", () => applyDebugFloorChange());
     debugBossFloorButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         const floor = Number(btn.dataset.debugBossFloor);
