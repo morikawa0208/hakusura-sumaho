@@ -4470,22 +4470,28 @@ function inferLegendaryKeyFromItem(item) {
     }
 
     function applyEnhanceScaling(primary, secondary, item) {
-      const multiplier = getWeaponEnhanceMultiplier(item);
-      if (multiplier === 1) return { primary, secondary };
-      const scaledPrimary = { ...createEmptyPrimaryBonus(), ...primary };
-      const scaledSecondary = { ...createEmptyBonus(), ...secondary };
-      Object.keys(scaledPrimary).forEach((key) => {
-        if (typeof scaledPrimary[key] === "number") {
-          scaledPrimary[key] = Number((scaledPrimary[key] * multiplier).toFixed(2));
-        }
-      });
-      Object.keys(scaledSecondary).forEach((key) => {
-        if (typeof scaledSecondary[key] === "number") {
-          scaledSecondary[key] = Number((scaledSecondary[key] * multiplier).toFixed(2));
-        }
-      });
-      return { primary: scaledPrimary, secondary: scaledSecondary };
-    }
+    const multiplier = getWeaponEnhanceMultiplier(item);
+    if (multiplier === 1) return { primary, secondary };
+  
+    // ベースの空ボーナスに、渡された値をマージしてから倍率を掛ける
+    const scaledPrimary = { ...createEmptyPrimaryBonus(), ...primary };
+    const scaledSecondary = { ...createEmptyBonus(), ...secondary };
+  
+    Object.keys(scaledPrimary).forEach((key) => {
+      if (typeof scaledPrimary[key] === "number") {
+        scaledPrimary[key] = Number((scaledPrimary[key] * multiplier).toFixed(2));
+      }
+    });
+  
+    Object.keys(scaledSecondary).forEach((key) => {
+      if (typeof scaledSecondary[key] === "number") {
+        scaledSecondary[key] = Number((scaledSecondary[key] * multiplier).toFixed(2));
+      }
+    });
+  
+    return { primary: scaledPrimary, secondary: scaledSecondary };
+  }
+
 
     function getEnhancedEntry(entry, item) {
       if (!entry || typeof entry.value !== "number") return entry;
