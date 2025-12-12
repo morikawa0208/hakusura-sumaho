@@ -687,6 +687,10 @@
       animation: orderPop 0.32s ease;
     }
 
+    .turn-badge.steady {
+      animation: none;
+    }
+
     .turn-badge.player {
       color: #a5f3fc;
       text-shadow: 0 1px 4px rgba(96, 165, 250, 0.4);
@@ -713,7 +717,7 @@
     }
 
     .turn-order-list.turn-order-refresh {
-      animation: orderShuffle 0.35s ease;
+      animation: orderShuffle 0.32s ease;
     }
 
     .turn-order-empty {
@@ -734,13 +738,13 @@
 
     @keyframes orderShuffle {
       0% {
-        transform: translateY(2px);
+        transform: translateX(6px);
       }
       50% {
-        transform: translateY(-2px);
+        transform: translateX(-4px);
       }
       100% {
-        transform: translateY(0);
+        transform: translateX(0);
       }
     }
 
@@ -7266,6 +7270,7 @@ function inferLegendaryKeyFromItem(item) {
       const list = document.getElementById("turn-order-list");
       const card = document.getElementById("turn-order-card");
       if (!list || !card) return;
+      const isInitialRender = list.dataset.initialized !== "true";
       normalizeTurnOrderPreview();
       list.innerHTML = "";
 
@@ -7281,7 +7286,7 @@ function inferLegendaryKeyFromItem(item) {
         return;
       }
 
-      if (changed) {
+      if (changed && !isInitialRender) {
         list.classList.remove("turn-order-refresh");
         void list.offsetWidth;
         list.classList.add("turn-order-refresh");
@@ -7290,11 +7295,16 @@ function inferLegendaryKeyFromItem(item) {
       turnOrderPreview.forEach((entry, index) => {
         const badge = document.createElement("div");
         badge.className = `turn-badge ${entry.type === "player" ? "player" : "enemy"}`;
+        if (!isInitialRender) {
+          badge.classList.add("steady");
+        }
         const label = getTurnBadgeLabel(entry);
         badge.textContent = label;
         badge.title = entry.type === "player" ? "プレイヤー" : `敵 ${label}`;
         badge.setAttribute("aria-label", badge.title);
-        badge.style.animationDelay = `${index * 30}ms`;
+        if (isInitialRender) {
+          badge.style.animationDelay = `${index * 30}ms`;
+        }
         if (index === 0) badge.classList.add("next");
         if (currentActorEntry && isSameTurnEntry(entry, currentActorEntry) && index === 0) {
           badge.classList.add("acting");
@@ -7304,6 +7314,8 @@ function inferLegendaryKeyFromItem(item) {
         }
         list.appendChild(badge);
       });
+
+      list.dataset.initialized = "true";
     }
 
     function advanceTurnOrderPreview(actor) {
