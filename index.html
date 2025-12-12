@@ -7166,9 +7166,9 @@ function inferLegendaryKeyFromItem(item) {
       });
       log(`${game.floor}F 侵入。${count}体の敵が現れた！`);
       buildTurnQueue();
-      game.awaitingInput = true;
+      game.awaitingInput = false;
       updateUI(derived);
-      promptPlayerTurn();
+      nextTurn();
     }
 
     function tryBossSkill(enemy) {
