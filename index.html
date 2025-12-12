@@ -2675,6 +2675,14 @@
           </label>
           <div class="subtle">デバッグ専用。再読み込みでオフに戻ります。</div>
         </div>
+        <div class="debug-section">
+          <h4>図鑑</h4>
+          <label class="debug-checkbox">
+            <input id="debug-codex-unlock" type="checkbox" />
+            図鑑を全解放
+          </label>
+          <div class="subtle">デバッグ専用。再読み込みでセーブの状態に戻ります。</div>
+        </div>
         <div class="modal-actions">
           <button id="debug-new-run">新しく始める</button>
         </div>
@@ -8167,6 +8175,7 @@ function inferLegendaryKeyFromItem(item) {
       if (debugFloorInput) debugFloorInput.value = game.floor;
       if (debugForceLegendaryCheckbox)
         debugForceLegendaryCheckbox.checked = !!debugForceBossLegendaryDrop;
+      if (debugCodexUnlockCheckbox) debugCodexUnlockCheckbox.checked = !!debugCodexFullyUnlocked;
     }
 
     function applyDebugLevelChange() {
@@ -8364,6 +8373,9 @@ function maybeAutoSave(reason = "auto") {
 
       if (!game.legendaryRecords) game.legendaryRecords = {};
       ensureCodexState();
+      debugCodexSnapshot = null;
+      debugCodexFullyUnlocked = false;
+      if (debugCodexUnlockCheckbox) debugCodexUnlockCheckbox.checked = false;
       mergeSkillsFromSave(payload.skills || {});
       normalizeOwnedEquipment();
       hydrateCodexFromOwned();
@@ -8601,6 +8613,8 @@ function maybeAutoSave(reason = "auto") {
     let lastGeneratedEquipment = null;
     let lastGeneratedPotion = null;
     let debugForceBossLegendaryDrop = false;
+    let debugCodexSnapshot = null;
+    let debugCodexFullyUnlocked = false;
 
     function renderDebugGearPreview(item) {
       if (!debugGearPreview) return;
@@ -10102,6 +10116,7 @@ function maybeAutoSave(reason = "auto") {
     const debugGoldInput = document.getElementById("debug-gold-input");
     const debugFloorInput = document.getElementById("debug-floor-input");
     const debugForceLegendaryCheckbox = document.getElementById("debug-force-legendary");
+    const debugCodexUnlockCheckbox = document.getElementById("debug-codex-unlock");
     const debugApplyLevelButton = document.getElementById("debug-apply-level");
     const debugApplyHpButton = document.getElementById("debug-apply-hp");
     const debugApplyGoldButton = document.getElementById("debug-apply-gold");
@@ -10455,6 +10470,73 @@ function maybeAutoSave(reason = "auto") {
             });
         default:
           return entries.slice();
+      }
+    }
+
+    function collectAllCodexKeys() {
+      const keys = {
+        enemyBases: [],
+        enemyVariants: [],
+        bosses: [],
+        equipment: [],
+        potions: [],
+        titles: [],
+      };
+
+      ENEMY_BASE_PROFILES.forEach((profile) => keys.enemyBases.push(profile.key));
+      ENEMY_VARIANTS.forEach((variant) => keys.enemyVariants.push(variant.key));
+      keys.bosses = Object.keys(BOSS_DEFINITIONS);
+
+      Object.values(EQUIPMENT_TEMPLATE_LIBRARY).forEach((templates) => {
+        templates.forEach((template) => keys.equipment.push(template.key));
+      });
+      Object.values(LEGENDARY_EQUIPMENT_LIBRARY).forEach((templates) => {
+        templates.forEach((template) => keys.equipment.push(template.key));
+      });
+
+      Object.values(POTION_BASE_TEMPLATES).forEach((template) => {
+        (template.variants || []).forEach((variant) => {
+          keys.potions.push(`potion:${template.key}:${variant.key}`);
+        });
+      });
+      LEGENDARY_POTIONS.forEach((potion) => keys.potions.push(`legendary:${potion.key}`));
+
+      EQUIPMENT_TITLE_PREFIXES.forEach((title) => keys.titles.push(`prefix:${title.key}`));
+      EQUIPMENT_TITLE_SUFFIXES.forEach((title) => keys.titles.push(`suffix:${title.key}`));
+
+      return keys;
+    }
+
+    function applyDebugCodexUnlock(enabled) {
+      if (enabled) {
+        debugCodexSnapshot = cloneState(ensureCodexState());
+        const codex = ensureCodexState();
+        const allKeys = collectAllCodexKeys();
+        Object.entries(allKeys).forEach(([category, keyList]) => {
+          if (!codex[category]) codex[category] = {};
+          keyList.forEach((key) => {
+            if (key !== undefined && key !== null) {
+              codex[category][key] = true;
+            }
+          });
+        });
+        debugCodexFullyUnlocked = true;
+        log("🐞 図鑑を全解放しました", "info");
+      } else {
+        if (debugCodexSnapshot) {
+          game.codex = cloneState(debugCodexSnapshot);
+        } else {
+          game.codex = { enemyBases: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
+        }
+        ensureCodexState();
+        debugCodexSnapshot = null;
+        debugCodexFullyUnlocked = false;
+        log("🐞 図鑑の解放状態を元に戻しました", "info");
+      }
+
+      if (!codexModal?.classList.contains("hidden")) {
+        renderCodexTabs();
+        renderCodexList();
       }
     }
 
@@ -11759,6 +11841,9 @@ function handlePlayerDefeat() {
     });
     debugForceLegendaryCheckbox?.addEventListener("change", () => {
       debugForceBossLegendaryDrop = !!debugForceLegendaryCheckbox.checked;
+    });
+    debugCodexUnlockCheckbox?.addEventListener("change", () => {
+      applyDebugCodexUnlock(!!debugCodexUnlockCheckbox.checked);
     });
     debugNewRunButton?.addEventListener("click", () => startNewRun(activeSaveSlotId));
     saveSlotList?.addEventListener("click", handleSaveAction);
