@@ -2010,6 +2010,113 @@
       white-space: nowrap;
     }
 
+    .codex-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .codex-tab {
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .codex-tab.active {
+      background: linear-gradient(135deg, rgba(52, 211, 153, 0.18), rgba(96, 165, 250, 0.16));
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .codex-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .codex-entry {
+      width: 100%;
+      text-align: left;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .codex-entry:hover {
+      border-color: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .codex-entry .codex-name {
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .codex-entry .codex-name .pill {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .codex-entry .codex-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .codex-entry.undiscovered {
+      opacity: 0.72;
+      filter: grayscale(0.35);
+    }
+
+    .codex-detail-body {
+      display: grid;
+      gap: 8px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .codex-detail-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .codex-detail-row .label {
+      min-width: 70px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .codex-detail-row .value {
+      font-weight: 700;
+    }
+
+    .codex-detail-empty {
+      text-align: center;
+      padding: 20px 10px;
+      color: var(--muted);
+    }
+
   </style>
 </head>
 <body>
@@ -2057,6 +2164,7 @@
       <button id="btn-player-modal">プレイヤー詳細</button>
       <button id="btn-skill-tree">スキル</button>
       <button id="btn-inventory">アイテム</button>
+      <button id="btn-codex">図鑑</button>
       <button id="btn-debug">デバッグ</button>
     </nav>
 
@@ -2377,6 +2485,33 @@
         ></div>
         <div id="inventory-compare-result" class="equipment-option-list" style="margin-top: 8px; display: none;"></div>
         <div id="inventory-item-actions" class="inline-buttons" style="margin-top: 10px;"></div>
+    </div>
+  </div>
+
+  <div id="codex-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">図鑑</div>
+          <div style="font-weight: 700;">発見した情報を一覧で確認</div>
+        </div>
+        <button id="codex-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="codex-tabs" class="codex-tabs"></div>
+      <div id="codex-list" class="codex-grid"></div>
+    </div>
+  </div>
+
+  <div id="codex-detail-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div class="section-title" style="margin: 0;">詳細</div>
+          <div id="codex-detail-name" style="font-weight: 700;"></div>
+        </div>
+        <button id="codex-detail-close" class="modal-close" aria-label="閉じる">×</button>
+      </div>
+      <div id="codex-detail-body" class="codex-detail-body"></div>
     </div>
   </div>
 
@@ -4249,6 +4384,52 @@ function inferLegendaryKeyFromItem(item) {
       return item;
     }
 
+    function ensureCodexState() {
+      if (!game.codex) {
+        game.codex = { enemyBases: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
+      }
+      return game.codex;
+    }
+
+    function markCodexEntry(type, key) {
+      if (!key) return;
+      const codex = ensureCodexState();
+      if (!codex[type]) codex[type] = {};
+      if (!codex[type][key]) {
+        codex[type][key] = true;
+      }
+    }
+
+    function registerCodexDiscovery(item) {
+      if (!item) return;
+      ensureCodexState();
+      if (item.equipment) {
+        const templateKey = item.equipment.templateKey || item.equipment.legendaryKey || item.slot || item.equipment.slot;
+        if (templateKey) markCodexEntry("equipment", templateKey);
+        if (item.equipment.prefix?.key) markCodexEntry("titles", `prefix:${item.equipment.prefix.key}`);
+        if (item.equipment.suffix?.key) markCodexEntry("titles", `suffix:${item.equipment.suffix.key}`);
+      }
+      if (item.potion) {
+        const potionKey =
+          item.potion.legendaryKey || item.potion.rarity === "legendary"
+            ? `legendary:${item.potion.legendaryKey || item.potion.key || item.potion.variant}`
+            : (() => {
+                const rawKey = item.potion.key || "";
+                const [rawTemplate, rawVariant] = rawKey.includes(":") ? rawKey.split(":") : [rawKey, ""];
+                const templateId = item.potion.templateKey || item.potion.baseLabel || rawTemplate;
+                const variantId = item.potion.variantKey || item.potion.variant || rawVariant;
+                return `potion:${templateId}:${variantId}`;
+              })();
+        markCodexEntry("potions", potionKey);
+      }
+    }
+
+    function hydrateCodexFromOwned() {
+      ensureCodexState();
+      (player.inventory?.items || []).forEach((entry) => registerCodexDiscovery(entry));
+      (player.potions || []).forEach((potion) => registerCodexDiscovery({ potion }));
+    }
+
     function getAcquiredOrder(item, fallback) {
       if (typeof item?.acquiredOrder === "number") return item.acquiredOrder;
       return fallback;
@@ -4357,6 +4538,7 @@ function inferLegendaryKeyFromItem(item) {
       const maxFullness = def.maxFullness ?? 100;
       const potion = {
         id: generateId(`potion-legendary-${def.key}`),
+        legendaryKey: def.key,
         baseLabel: def.name,
         name: def.name,
         short: def.name,
@@ -4402,6 +4584,9 @@ function inferLegendaryKeyFromItem(item) {
           : variant.effectText;
       const potion = {
         id: generateId(`potion-${template.key}-${variant.key}`),
+        templateKey: template.key,
+        variantKey: variant.key,
+        key: `${template.key}:${variant.key}`,
         baseLabel: template.label,
         name: template.label,
         short: variant.short,
@@ -4865,25 +5050,26 @@ function inferLegendaryKeyFromItem(item) {
   const prefixAffix = prefixTitle ? { ...prefixTitle, options: prefixOptions.entries } : null;
   const suffixAffix = suffixTitle ? { ...suffixTitle, options: suffixOptions.entries } : null;
 
-  const baseItem = ensureAcquiredOrder({
-    id: generateId("eq"),
-    type: "equipment",
-    slot,
-    name,
+    const baseItem = ensureAcquiredOrder({
+      id: generateId("eq"),
+      type: "equipment",
+      slot,
+      name,
     desc: isDungeonDrop ? "ダンジョンで拾った装備品" : "デバッグで生成した装備品",
     rarity: rarity.rank,
     enhanceLevel: clampedEnhanceLevel,
     enhanceBroken: false,
-    equipment: {
-      slot,
-      rarity: rarity.key,
-      rarityLabel: rarity.label,
-      color: rarity.color,
-      legendaryKey:
-        rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
-      baseOptions: base.entries,
-      randomOptions: random.entries,
-      prefix: prefixAffix,
+      equipment: {
+        slot,
+        rarity: rarity.key,
+        rarityLabel: rarity.label,
+        color: rarity.color,
+        templateKey: template?.key || "",
+        legendaryKey:
+          rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
+        baseOptions: base.entries,
+        randomOptions: random.entries,
+        prefix: prefixAffix,
       suffix: suffixAffix,
       uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
     },
@@ -4982,15 +5168,15 @@ function inferLegendaryKeyFromItem(item) {
     }
 
     function createPotionInventoryItem(potion, { description } = {}) {
-      const kind = potion.type === "mp" ? "MP" : "HP";
-      const desc = description || `${kind}を${potion.amount}回復 / 消費${potion.useCost ?? 25}%`;
-      return {
+      const desc = description || `${describePotionEffect(potion)} / 消費${potion.useCost ?? 25}%`;
+      return ensureAcquiredOrder({
         id: `inv-${potion.id}`,
         name: potion.name,
         desc,
         type: "potion",
+        rarity: typeof potion.rarityRank === "number" ? potion.rarityRank : 0,
         potion: { ...potion },
-      };
+      });
     }
 
       // グローバル再評価時でも再宣言エラーを出さないよう、グローバルオブジェクト経由で初期化
@@ -5123,6 +5309,14 @@ function inferLegendaryKeyFromItem(item) {
       awaitingInput: false,
       defeatedBosses: 0,
       legendaryRecords: {},
+      codex: {
+        enemyBases: {},
+        enemyVariants: {},
+        bosses: {},
+        equipment: {},
+        potions: {},
+        titles: {},
+      },
     };
 
     let lastDerivedStats = null;
@@ -6812,6 +7006,7 @@ function inferLegendaryKeyFromItem(item) {
         droppedCount += 1;
         recordLegendaryDrop(item, enemy);
         player.inventory.items.push(item);
+        registerCodexDiscovery(item);
 
         // ------------------------------
         // ログ（HTML対応）＋レア演出
@@ -7157,6 +7352,11 @@ function inferLegendaryKeyFromItem(item) {
           applyEnemyModifiers(enemy, modifiers);
         }
       }
+
+      ensureCodexState();
+      if (enemy.baseProfile) markCodexEntry("enemyBases", enemy.baseProfile);
+      if (enemy.variant) markCodexEntry("enemyVariants", enemy.variant);
+      if (isBoss) markCodexEntry("bosses", String(game.floor));
 
       enemy.attacksRemaining = enemy.attackCount;
 
@@ -7890,16 +8090,17 @@ function inferLegendaryKeyFromItem(item) {
       const slotIndex = slotValue === "" ? -1 : Number(slotValue);
       const item = createPotionInventoryItem(potion, { description: "デバッグで生成したポーション" });
       player.inventory.items.push(item);
+      registerCodexDiscovery(item);
 
       if (Number.isInteger(slotIndex) && slotIndex >= 0) {
         const previous = player.potions?.[slotIndex];
         player.potions[slotIndex] = potion;
         if (previous) {
-          player.inventory.items.push(
-            ensureAcquiredOrder(
-              createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
-            )
+          const removed = ensureAcquiredOrder(
+            createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
           );
+          player.inventory.items.push(removed);
+          registerCodexDiscovery(removed);
         }
         log(`💧 ${potion.name} を生成しスロット${slotIndex + 1}に装備`, "info");
       } else {
@@ -8160,10 +8361,12 @@ function maybeAutoSave(reason = "auto") {
       if (!Number.isFinite(game.floor) || game.floor <= 0) {
         game.floor = 1;
       }
-      
+
       if (!game.legendaryRecords) game.legendaryRecords = {};
+      ensureCodexState();
       mergeSkillsFromSave(payload.skills || {});
       normalizeOwnedEquipment();
+      hydrateCodexFromOwned();
       calculateSkillBonuses();
       const derived = recalcDerivedStats();
       const battleActive = game.awaitingInput || (game.enemies || []).some((e) => e.hp > 0);
@@ -8480,6 +8683,7 @@ function maybeAutoSave(reason = "auto") {
       const item = createEquipmentItem(slotKey, rarityKey, { legendaryKey, enhanceLevel });
       lastGeneratedEquipment = item;
       player.inventory.items.push(item);
+      registerCodexDiscovery(item);
       log(`🛠️ ${item.name} を生成しインベントリへ追加`, "info");
       renderInventory();
       renderDebugGearPreview(item);
@@ -9743,6 +9947,7 @@ function maybeAutoSave(reason = "auto") {
       if (!player.potions?.length || !player.potions[slotIndex]) return;
 
       const newPotion = { ...entry.potion };
+      registerCodexDiscovery(entry);
       const previous = player.potions[slotIndex];
       player.potions[slotIndex] = newPotion;
 
@@ -9751,11 +9956,11 @@ function maybeAutoSave(reason = "auto") {
       );
 
       if (previous && !alreadyHasPrevious) {
-        items.push(
-          ensureAcquiredOrder(
-            createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
-          )
+        const removed = ensureAcquiredOrder(
+          createPotionInventoryItem(previous, { description: "スロットから外したポーション" })
         );
+        items.push(removed);
+        registerCodexDiscovery(removed);
       }
 
       log(`💧 ${newPotion.name} をスロット${slotIndex + 1}に装備した`, "info");
@@ -9804,6 +10009,8 @@ function maybeAutoSave(reason = "auto") {
     const weaponEnhanceAnimationIcon = document.getElementById("weapon-enhance-animation-icon");
     const inventoryModal = document.getElementById("inventory-modal");
     const inventoryItemModal = document.getElementById("inventory-item-modal");
+    const codexModal = document.getElementById("codex-modal");
+    const codexDetailModal = document.getElementById("codex-detail-modal");
     const closeModalButton = document.getElementById("modal-close");
     const potionModalCloseButton = document.getElementById("potion-close");
     const skillInfoCloseButton = document.getElementById("skill-info-close");
@@ -9823,6 +10030,12 @@ function maybeAutoSave(reason = "auto") {
     const potionModalPrefix = document.getElementById("potion-modal-prefix");
     const potionModalSuffix = document.getElementById("potion-modal-suffix");
     const potionModalDesc = document.getElementById("potion-modal-desc");
+    const codexTabs = document.getElementById("codex-tabs");
+    const codexList = document.getElementById("codex-list");
+    const codexDetailName = document.getElementById("codex-detail-name");
+    const codexDetailBody = document.getElementById("codex-detail-body");
+    const codexCloseButton = document.getElementById("codex-close");
+    const codexDetailCloseButton = document.getElementById("codex-detail-close");
     const skillInfoName = document.getElementById("skill-info-name");
     const skillInfoType = document.getElementById("skill-info-type");
     const skillInfoCooldown = document.getElementById("skill-info-cooldown");
@@ -9896,6 +10109,7 @@ function maybeAutoSave(reason = "auto") {
     const debugBossFloorButtons = document.querySelectorAll("[data-debug-boss-floor]");
     const debugNewRunButton = document.getElementById("debug-new-run");
     const inventoryOpenButton = document.getElementById("btn-inventory");
+    const codexOpenButton = document.getElementById("btn-codex");
     const archetypeModal = document.getElementById("archetype-modal");
     const archetypeModalName = document.getElementById("archetype-modal-name");
     const archetypeModalDesc = document.getElementById("archetype-modal-desc");
@@ -9987,6 +10201,324 @@ function maybeAutoSave(reason = "auto") {
         row.appendChild(value);
         modalLegendaryStats.appendChild(row);
       });
+    }
+
+    const CODEX_CATEGORIES = [
+      { key: "enemy", label: "敵" },
+      { key: "boss", label: "ボス" },
+      { key: "equipment", label: "装備" },
+      { key: "potion", label: "アイテム" },
+      { key: "title", label: "称号" },
+    ];
+
+    let currentCodexCategory = "enemy";
+
+    function formatStatLabel(key) {
+      return EQUIPMENT_STAT_BY_KEY[key]?.label || key;
+    }
+
+    function formatOptionRangeForCodex(option) {
+      if (!option) return "";
+      const [min, max] = option.range || [option.min ?? 0, option.max ?? 0];
+      const unit = option.unit || EQUIPMENT_STAT_BY_KEY[option.key]?.unit || "";
+      const label = formatStatLabel(option.key);
+      const minText = typeof min === "number" ? min : "?";
+      const maxText = typeof max === "number" ? max : "?";
+      return `${label} ${minText}${unit}〜${maxText}${unit}`;
+    }
+
+    function buildEnemyCodexEntries() {
+      const codex = ensureCodexState();
+      const bases = ENEMY_BASE_PROFILES.map((profile) => ({
+        key: `base:${profile.key}`,
+        name: profile.label,
+        summary: profile.summary,
+        detailRows: [
+          { label: "タイプ", value: "ベース" },
+          { label: "特徴", value: profile.summary || "" },
+          { label: "補正", value: describeModifiers(profile.modifiers) || "なし" },
+        ],
+        discovered: !!codex.enemyBases?.[profile.key],
+      }));
+
+      const variants = ENEMY_VARIANTS.map((variant) => {
+        const abilityText = (variant.abilities || [])
+          .map((ability) => ability.label)
+          .filter(Boolean)
+          .join(" / ");
+        return {
+          key: `variant:${variant.key}`,
+          name: variant.label,
+          summary: variant.description,
+          detailRows: [
+            { label: "タイプ", value: "アーキタイプ" },
+            { label: "特徴", value: variant.description || "" },
+            { label: "アビリティ", value: abilityText || "不明" },
+          ],
+          discovered: !!codex.enemyVariants?.[variant.key],
+        };
+      });
+
+      return [...bases, ...variants];
+    }
+
+    function buildBossCodexEntries() {
+      const codex = ensureCodexState();
+      return BOSS_FLOORS.map((floor) => {
+        const def = BOSS_DEFINITIONS[floor];
+        const discovered = !!codex.bosses?.[floor];
+        return {
+          key: `boss:${floor}`,
+          name: def?.name || `${floor}F ボス`,
+          summary: def?.flavor || "強力な階層ボス",
+          detailRows: [
+            { label: "階層", value: `${floor}F` },
+            { label: "特徴", value: def?.flavor || "未知" },
+            {
+              label: "伝説",
+              value: def?.legendaryKey ? getLegendaryTemplateByKey(def.legendaryKey)?.name || "？？？" : "--",
+            },
+          ],
+          discovered,
+        };
+      });
+    }
+
+    function buildEquipmentCodexEntries() {
+      const codex = ensureCodexState();
+      const entries = [];
+      Object.entries(EQUIPMENT_TEMPLATE_LIBRARY).forEach(([slotKey, templates]) => {
+        templates.forEach((template) => {
+          const optionText = (template.base || []).map((opt) => formatOptionRangeForCodex(opt)).join(" / ");
+          entries.push({
+            key: template.key,
+            name: template.name,
+            summary: optionText,
+            detailRows: [
+              { label: "部位", value: PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey },
+              { label: "基礎", value: optionText || "--" },
+            ],
+            discovered: !!codex.equipment?.[template.key],
+          });
+        });
+      });
+
+      Object.entries(LEGENDARY_EQUIPMENT_LIBRARY).forEach(([slotKey, templates]) => {
+        templates.forEach((template) => {
+          const optionText = (template.base || []).map((opt) => formatOptionRangeForCodex(opt)).join(" / ");
+          const uniqueText = template.unique?.effect ? `${template.unique.name} / ${template.unique.effect}` : "";
+          entries.push({
+            key: template.key,
+            name: template.name,
+            summary: uniqueText || optionText,
+            detailRows: [
+              { label: "部位", value: PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey },
+              { label: "基礎", value: optionText || "--" },
+              { label: "固有", value: uniqueText || "--" },
+            ],
+            discovered: !!codex.equipment?.[template.key],
+          });
+        });
+      });
+
+      return entries;
+    }
+
+    function buildPotionCodexEntries() {
+      const codex = ensureCodexState();
+      const entries = [];
+      Object.values(POTION_BASE_TEMPLATES).forEach((template) => {
+        (template.variants || []).forEach((variant) => {
+          const key = `potion:${template.key}:${variant.key}`;
+          const effectText = variant.effectText || template.summary || "ポーション";
+          entries.push({
+            key,
+            name: `${template.label} (${variant.label})`,
+            summary: effectText,
+            detailRows: [
+              { label: "区分", value: template.category === "buff" ? "バフ" : template.type === "hp" ? "HP" : "MP" },
+              { label: "概要", value: effectText },
+            ],
+            discovered: !!codex.potions?.[`potion:${template.key}:${variant.key}`],
+          });
+        });
+      });
+
+      LEGENDARY_POTIONS.forEach((potion) => {
+        entries.push({
+          key: `legendary:${potion.key}`,
+          name: potion.name,
+          summary: potion.summary || potion.tagline,
+          detailRows: [
+            { label: "区分", value: "レジェンダリー" },
+            { label: "概要", value: potion.summary || potion.tagline || "特殊効果" },
+          ],
+          discovered: !!codex.potions?.[`legendary:${potion.key}`],
+        });
+      });
+
+      return entries;
+    }
+
+    function buildTitleCodexEntries() {
+      const codex = ensureCodexState();
+      const entries = [];
+      EQUIPMENT_TITLE_PREFIXES.forEach((title) => {
+        const stats = (title.options || [])
+          .map((opt) => formatStatLabel(opt))
+          .join(" / ");
+        entries.push({
+          key: `prefix:${title.key}`,
+          name: `${title.name} (前)`,
+          summary: stats,
+          detailRows: [
+            { label: "ランク", value: `★${title.rank}` },
+            { label: "効果", value: stats || "--" },
+          ],
+          discovered: !!codex.titles?.[`prefix:${title.key}`],
+        });
+      });
+
+      EQUIPMENT_TITLE_SUFFIXES.forEach((title) => {
+        const stats = (title.options || [])
+          .map((opt) => formatStatLabel(opt))
+          .join(" / ");
+        entries.push({
+          key: `suffix:${title.key}`,
+          name: `${title.name} (後)`,
+          summary: stats,
+          detailRows: [
+            { label: "ランク", value: `★${title.rank}` },
+            { label: "効果", value: stats || "--" },
+          ],
+          discovered: !!codex.titles?.[`suffix:${title.key}`],
+        });
+      });
+
+      return entries;
+    }
+
+    function buildCodexEntries(categoryKey) {
+      switch (categoryKey) {
+        case "enemy":
+          return buildEnemyCodexEntries();
+        case "boss":
+          return buildBossCodexEntries();
+        case "equipment":
+          return buildEquipmentCodexEntries();
+        case "potion":
+          return buildPotionCodexEntries();
+        case "title":
+          return buildTitleCodexEntries();
+        default:
+          return [];
+      }
+    }
+
+    function renderCodexTabs() {
+      if (!codexTabs) return;
+      codexTabs.innerHTML = "";
+      CODEX_CATEGORIES.forEach((cat) => {
+        const btn = document.createElement("button");
+        btn.className = `codex-tab ${currentCodexCategory === cat.key ? "active" : ""}`;
+        btn.textContent = cat.label;
+        btn.onclick = () => {
+          currentCodexCategory = cat.key;
+          renderCodexTabs();
+          renderCodexList();
+        };
+        codexTabs.appendChild(btn);
+      });
+    }
+
+    function renderCodexList() {
+      if (!codexList) return;
+      const entries = buildCodexEntries(currentCodexCategory);
+      codexList.innerHTML = "";
+
+      if (!entries.length) {
+        const empty = document.createElement("div");
+        empty.className = "codex-detail-empty";
+        empty.textContent = "情報がありません";
+        codexList.appendChild(empty);
+        return;
+      }
+
+      entries
+        .slice()
+        .sort((a, b) => {
+          if (a.discovered !== b.discovered) return a.discovered ? -1 : 1;
+          return a.name.localeCompare(b.name, "ja");
+        })
+        .forEach((entry) => {
+          const card = document.createElement("button");
+          card.className = `codex-entry ${entry.discovered ? "" : "undiscovered"}`;
+
+          const nameRow = document.createElement("div");
+          nameRow.className = "codex-name";
+          const name = document.createElement("span");
+          name.textContent = entry.discovered ? entry.name : "？？？";
+          const pill = document.createElement("span");
+          pill.className = "pill";
+          pill.textContent = entry.discovered ? "確認済" : "未発見";
+          nameRow.appendChild(name);
+          nameRow.appendChild(pill);
+
+          const desc = document.createElement("div");
+          desc.className = "codex-desc";
+          desc.textContent = entry.discovered ? entry.summary : "？？？";
+
+          card.appendChild(nameRow);
+          card.appendChild(desc);
+          card.onclick = () => openCodexDetail(entry);
+          codexList.appendChild(card);
+        });
+    }
+
+    function openCodexDetail(entry) {
+      if (!codexDetailModal || !codexDetailBody || !codexDetailName) return;
+      const discovered = !!entry.discovered;
+      codexDetailName.textContent = discovered ? entry.name : "？？？";
+      codexDetailBody.innerHTML = "";
+
+      if (!discovered) {
+        const row = document.createElement("div");
+        row.className = "codex-detail-empty";
+        row.textContent = "未発見のため詳細不明";
+        codexDetailBody.appendChild(row);
+      } else {
+        (entry.detailRows || []).forEach((detail) => {
+          const row = document.createElement("div");
+          row.className = "codex-detail-row";
+          const label = document.createElement("div");
+          label.className = "label";
+          label.textContent = detail.label;
+          const value = document.createElement("div");
+          value.className = "value";
+          value.textContent = detail.value || "--";
+          row.appendChild(label);
+          row.appendChild(value);
+          codexDetailBody.appendChild(row);
+        });
+      }
+
+      codexDetailModal.classList.remove("hidden");
+    }
+
+    function closeCodexDetail() {
+      codexDetailModal?.classList.add("hidden");
+    }
+
+    function openCodexModal() {
+      ensureCodexState();
+      renderCodexTabs();
+      renderCodexList();
+      codexModal?.classList.remove("hidden");
+    }
+
+    function closeCodexModal() {
+      codexModal?.classList.add("hidden");
+      closeCodexDetail();
     }
 
     function openEnemyModal(enemy) {
@@ -11150,6 +11682,7 @@ function handlePlayerDefeat() {
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
     document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
     inventoryOpenButton?.addEventListener("click", openInventoryModal);
+    codexOpenButton?.addEventListener("click", openCodexModal);
     debugOpenButton?.addEventListener("click", openDebugModal);
     debugCloseButton?.addEventListener("click", closeDebugModal);
     archetypeCloseButton?.addEventListener("click", closeArchetypeModal);
@@ -11256,6 +11789,9 @@ function handlePlayerDefeat() {
       if (e.target === memoModal) memoModal.classList.add("hidden");
     });
 
+    codexCloseButton?.addEventListener("click", closeCodexModal);
+    codexDetailCloseButton?.addEventListener("click", closeCodexDetail);
+
     statStepButton.addEventListener("click", () => {
       currentStepIndex = (currentStepIndex + 1) % stepOptions.length;
       updateStepButton();
@@ -11340,6 +11876,12 @@ function handlePlayerDefeat() {
     });
     inventoryItemModal?.addEventListener("click", (e) => {
       if (e.target === inventoryItemModal) closeInventoryItemModal();
+    });
+    codexModal?.addEventListener("click", (e) => {
+      if (e.target === codexModal) closeCodexModal();
+    });
+    codexDetailModal?.addEventListener("click", (e) => {
+      if (e.target === codexDetailModal) closeCodexDetail();
     });
     debugModal?.addEventListener("click", (e) => {
       if (e.target === debugModal) closeDebugModal();
