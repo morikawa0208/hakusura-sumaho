@@ -2012,7 +2012,7 @@
 
     .codex-tabs {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
       gap: 6px;
       margin-bottom: 10px;
     }
@@ -10205,6 +10205,7 @@ function maybeAutoSave(reason = "auto") {
 
     const CODEX_CATEGORIES = [
       { key: "enemy", label: "敵" },
+      { key: "archetype", label: "アーキタイプ" },
       { key: "boss", label: "ボス" },
       { key: "equipment", label: "装備" },
       { key: "potion", label: "アイテム" },
@@ -10212,6 +10213,9 @@ function maybeAutoSave(reason = "auto") {
     ];
 
     let currentCodexCategory = "enemy";
+
+    const EQUIPMENT_SLOT_ORDER = Object.keys(PLAYER_EQUIPMENT_SLOTS);
+    const TITLE_GROUP_ORDER = ["normal", "legendary", "potion"];
 
     function formatStatLabel(key) {
       return EQUIPMENT_STAT_BY_KEY[key]?.label || key;
@@ -10229,19 +10233,22 @@ function maybeAutoSave(reason = "auto") {
 
     function buildEnemyCodexEntries() {
       const codex = ensureCodexState();
-      const bases = ENEMY_BASE_PROFILES.map((profile) => ({
+      return ENEMY_BASE_PROFILES.map((profile) => ({
         key: `base:${profile.key}`,
         name: profile.label,
         summary: profile.summary,
         detailRows: [
-          { label: "タイプ", value: "ベース" },
+          { label: "種別", value: "雑魚敵" },
           { label: "特徴", value: profile.summary || "" },
           { label: "補正", value: describeModifiers(profile.modifiers) || "なし" },
         ],
         discovered: !!codex.enemyBases?.[profile.key],
       }));
+    }
 
-      const variants = ENEMY_VARIANTS.map((variant) => {
+    function buildArchetypeCodexEntries() {
+      const codex = ensureCodexState();
+      return ENEMY_VARIANTS.map((variant) => {
         const abilityText = (variant.abilities || [])
           .map((ability) => ability.label)
           .filter(Boolean)
@@ -10251,15 +10258,14 @@ function maybeAutoSave(reason = "auto") {
           name: variant.label,
           summary: variant.description,
           detailRows: [
-            { label: "タイプ", value: "アーキタイプ" },
+            { label: "種別", value: "アーキタイプ" },
             { label: "特徴", value: variant.description || "" },
             { label: "アビリティ", value: abilityText || "不明" },
           ],
           discovered: !!codex.enemyVariants?.[variant.key],
+          minFloor: variant.minFloor || 0,
         };
       });
-
-      return [...bases, ...variants];
     }
 
     function buildBossCodexEntries() {
@@ -10280,6 +10286,7 @@ function maybeAutoSave(reason = "auto") {
             },
           ],
           discovered,
+          floor,
         };
       });
     }
@@ -10299,6 +10306,7 @@ function maybeAutoSave(reason = "auto") {
               { label: "基礎", value: optionText || "--" },
             ],
             discovered: !!codex.equipment?.[template.key],
+            slotKey,
           });
         });
       });
@@ -10317,6 +10325,7 @@ function maybeAutoSave(reason = "auto") {
               { label: "固有", value: uniqueText || "--" },
             ],
             discovered: !!codex.equipment?.[template.key],
+            slotKey,
           });
         });
       });
@@ -10363,37 +10372,33 @@ function maybeAutoSave(reason = "auto") {
     function buildTitleCodexEntries() {
       const codex = ensureCodexState();
       const entries = [];
-      EQUIPMENT_TITLE_PREFIXES.forEach((title) => {
+      const buildTitleEntry = (title, kind) => {
         const stats = (title.options || [])
           .map((opt) => formatStatLabel(opt))
           .join(" / ");
+        const group = title.group || "normal";
+        const rank = title.rank || 1;
+        const kindLabel = kind === "prefix" ? "前" : "後";
         entries.push({
-          key: `prefix:${title.key}`,
-          name: `${title.name} (前)`,
+          key: `${kind}:${title.key}`,
+          name: `${title.name} (${kindLabel})`,
           summary: stats,
           detailRows: [
-            { label: "ランク", value: `★${title.rank}` },
+            { label: "位置", value: kindLabel },
+            { label: "ランク", value: `★${rank}` },
             { label: "効果", value: stats || "--" },
+            { label: "区分", value: group === "legendary" ? "レジェンド用" : group === "potion" ? "ポーション用" : "通常" },
           ],
-          discovered: !!codex.titles?.[`prefix:${title.key}`],
+          discovered: !!codex.titles?.[`${kind}:${title.key}`],
+          group,
+          rank,
+          kind,
         });
-      });
+      };
 
-      EQUIPMENT_TITLE_SUFFIXES.forEach((title) => {
-        const stats = (title.options || [])
-          .map((opt) => formatStatLabel(opt))
-          .join(" / ");
-        entries.push({
-          key: `suffix:${title.key}`,
-          name: `${title.name} (後)`,
-          summary: stats,
-          detailRows: [
-            { label: "ランク", value: `★${title.rank}` },
-            { label: "効果", value: stats || "--" },
-          ],
-          discovered: !!codex.titles?.[`suffix:${title.key}`],
-        });
-      });
+      EQUIPMENT_TITLE_PREFIXES.forEach((title) => buildTitleEntry(title, "prefix"));
+
+      EQUIPMENT_TITLE_SUFFIXES.forEach((title) => buildTitleEntry(title, "suffix"));
 
       return entries;
     }
@@ -10402,6 +10407,8 @@ function maybeAutoSave(reason = "auto") {
       switch (categoryKey) {
         case "enemy":
           return buildEnemyCodexEntries();
+        case "archetype":
+          return buildArchetypeCodexEntries();
         case "boss":
           return buildBossCodexEntries();
         case "equipment":
@@ -10412,6 +10419,42 @@ function maybeAutoSave(reason = "auto") {
           return buildTitleCodexEntries();
         default:
           return [];
+      }
+    }
+
+    function sortCodexEntries(entries, categoryKey) {
+      switch (categoryKey) {
+        case "boss":
+          return entries.slice().sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0));
+        case "equipment":
+          return entries
+            .slice()
+            .sort((a, b) => {
+              const slotOrderA = EQUIPMENT_SLOT_ORDER.indexOf(a.slotKey);
+              const slotOrderB = EQUIPMENT_SLOT_ORDER.indexOf(b.slotKey);
+              if (slotOrderA !== slotOrderB) return slotOrderA - slotOrderB;
+              return a.name.localeCompare(b.name, "ja");
+            });
+        case "title":
+          return entries
+            .slice()
+            .sort((a, b) => {
+              const groupA = TITLE_GROUP_ORDER.indexOf(a.group);
+              const groupB = TITLE_GROUP_ORDER.indexOf(b.group);
+              if (groupA !== groupB) return groupA - groupB;
+              if (a.rank !== b.rank) return (a.rank || 0) - (b.rank || 0);
+              if (a.kind !== b.kind) return a.kind === "prefix" ? -1 : 1;
+              return a.name.localeCompare(b.name, "ja");
+            });
+        case "archetype":
+          return entries
+            .slice()
+            .sort((a, b) => {
+              if ((a.minFloor || 0) !== (b.minFloor || 0)) return (a.minFloor || 0) - (b.minFloor || 0);
+              return a.name.localeCompare(b.name, "ja");
+            });
+        default:
+          return entries.slice();
       }
     }
 
@@ -10433,7 +10476,7 @@ function maybeAutoSave(reason = "auto") {
 
     function renderCodexList() {
       if (!codexList) return;
-      const entries = buildCodexEntries(currentCodexCategory);
+      const entries = sortCodexEntries(buildCodexEntries(currentCodexCategory), currentCodexCategory);
       codexList.innerHTML = "";
 
       if (!entries.length) {
@@ -10444,35 +10487,29 @@ function maybeAutoSave(reason = "auto") {
         return;
       }
 
-      entries
-        .slice()
-        .sort((a, b) => {
-          if (a.discovered !== b.discovered) return a.discovered ? -1 : 1;
-          return a.name.localeCompare(b.name, "ja");
-        })
-        .forEach((entry) => {
-          const card = document.createElement("button");
-          card.className = `codex-entry ${entry.discovered ? "" : "undiscovered"}`;
+      entries.forEach((entry) => {
+        const card = document.createElement("button");
+        card.className = `codex-entry ${entry.discovered ? "" : "undiscovered"}`;
 
-          const nameRow = document.createElement("div");
-          nameRow.className = "codex-name";
-          const name = document.createElement("span");
-          name.textContent = entry.discovered ? entry.name : "？？？";
-          const pill = document.createElement("span");
-          pill.className = "pill";
-          pill.textContent = entry.discovered ? "確認済" : "未発見";
-          nameRow.appendChild(name);
-          nameRow.appendChild(pill);
+        const nameRow = document.createElement("div");
+        nameRow.className = "codex-name";
+        const name = document.createElement("span");
+        name.textContent = entry.discovered ? entry.name : "？？？";
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        pill.textContent = entry.discovered ? "確認済" : "未発見";
+        nameRow.appendChild(name);
+        nameRow.appendChild(pill);
 
-          const desc = document.createElement("div");
-          desc.className = "codex-desc";
-          desc.textContent = entry.discovered ? entry.summary : "？？？";
+        const desc = document.createElement("div");
+        desc.className = "codex-desc";
+        desc.textContent = entry.discovered ? entry.summary : "？？？";
 
-          card.appendChild(nameRow);
-          card.appendChild(desc);
-          card.onclick = () => openCodexDetail(entry);
-          codexList.appendChild(card);
-        });
+        card.appendChild(nameRow);
+        card.appendChild(desc);
+        card.onclick = () => openCodexDetail(entry);
+        codexList.appendChild(card);
+      });
     }
 
     function openCodexDetail(entry) {
