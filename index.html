@@ -659,18 +659,31 @@
       margin-bottom: 4px;
     }
 
-    .turn-order-card {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
     .turn-order-list {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
       min-height: 42px;
+    }
+
+    .turn-order-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 2px;
+    }
+
+    .turn-order-bar .turn-order-list {
+      flex: 1;
+    }
+
+    .turn-order-hint {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .turn-badge {
@@ -2014,6 +2027,10 @@
     </section>
 
     <section class="card enemy-panel">
+      <div class="turn-order-bar" aria-label="行動順">
+        <div id="turn-order-list" class="turn-order-list" aria-live="polite"></div>
+        <div class="turn-order-hint">敵タップで詳細表示</div>
+      </div>
       <div id="enemies" class="enemy-list"></div>
     </section>
 
@@ -7268,8 +7285,7 @@ function inferLegendaryKeyFromItem(item) {
 
     function renderTurnOrder() {
       const list = document.getElementById("turn-order-list");
-      const card = document.getElementById("turn-order-card");
-      if (!list || !card) return;
+      if (!list) return;
       const isInitialRender = list.dataset.initialized !== "true";
       normalizeTurnOrderPreview();
       list.innerHTML = "";
