@@ -4401,8 +4401,9 @@ function inferLegendaryKeyFromItem(item) {
 
     function ensureCodexState() {
       if (!game.codex) {
-        game.codex = { enemyBases: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
+        game.codex = { enemyMonsters: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
       }
+      if (!game.codex.enemyMonsters) game.codex.enemyMonsters = {};
       return game.codex;
     }
 
@@ -5325,7 +5326,7 @@ function inferLegendaryKeyFromItem(item) {
       defeatedBosses: 0,
       legendaryRecords: {},
       codex: {
-        enemyBases: {},
+        enemyMonsters: {},
         enemyVariants: {},
         bosses: {},
         equipment: {},
@@ -7369,7 +7370,7 @@ function inferLegendaryKeyFromItem(item) {
       }
 
       ensureCodexState();
-      if (enemy.baseProfile) markCodexEntry("enemyBases", enemy.baseProfile);
+      if (enemy.name && !isBoss) markCodexEntry("enemyMonsters", enemy.name);
       if (enemy.variant) markCodexEntry("enemyVariants", enemy.variant);
       if (isBoss) markCodexEntry("bosses", String(game.floor));
 
@@ -10256,19 +10257,24 @@ function maybeAutoSave(reason = "auto") {
 
     function buildEnemyCodexEntries() {
       const codex = ensureCodexState();
-      const nameLines = ENEMY_NAME_POOLS.map((pool) => `${pool.min}F〜${pool.max}F: ${pool.names.join(" / ")}`);
-      return ENEMY_BASE_PROFILES.map((profile) => ({
-        key: `base:${profile.key}`,
-        name: profile.label,
-        summary: profile.summary,
-        detailRows: [
-          { label: "種別", value: "雑魚敵" },
-          { label: "特徴", value: profile.summary || "" },
-          { label: "補正", value: describeModifiers(profile.modifiers) || "なし" },
-          { label: "モンスター", value: nameLines.join(" / ") },
-        ],
-        discovered: !!codex.enemyBases?.[profile.key],
-      }));
+      const entries = [];
+      ENEMY_NAME_POOLS.forEach((pool) => {
+        pool.names.forEach((name) => {
+          entries.push({
+            key: `monster:${name}`,
+            name,
+            summary: `${pool.min}F〜${pool.max}F に出現する雑魚敵。`,
+            detailRows: [
+              { label: "種別", value: "雑魚敵" },
+              { label: "階層", value: `${pool.min}F〜${pool.max}F` },
+              { label: "備考", value: "タイプやアーキタイプにより性質が変化する。" },
+            ],
+            discovered: !!codex.enemyMonsters?.[name],
+            minFloor: pool.min,
+          });
+        });
+      });
+      return entries;
     }
 
     function buildArchetypeCodexEntries() {
@@ -10467,6 +10473,13 @@ function maybeAutoSave(reason = "auto") {
 
     function sortCodexEntries(entries, categoryKey) {
       switch (categoryKey) {
+        case "enemy":
+          return entries
+            .slice()
+            .sort((a, b) => {
+              if ((a.minFloor || 0) !== (b.minFloor || 0)) return (a.minFloor || 0) - (b.minFloor || 0);
+              return a.name.localeCompare(b.name, "ja");
+            });
         case "boss":
           return entries.slice().sort((a, b) => (a.floor ?? 0) - (b.floor ?? 0));
         case "equipment":
@@ -10504,7 +10517,7 @@ function maybeAutoSave(reason = "auto") {
 
     function collectAllCodexKeys() {
       const keys = {
-        enemyBases: [],
+        enemyMonsters: [],
         enemyVariants: [],
         bosses: [],
         equipment: [],
@@ -10512,7 +10525,9 @@ function maybeAutoSave(reason = "auto") {
         titles: [],
       };
 
-      ENEMY_BASE_PROFILES.forEach((profile) => keys.enemyBases.push(profile.key));
+      ENEMY_NAME_POOLS.forEach((pool) => {
+        pool.names.forEach((name) => keys.enemyMonsters.push(name));
+      });
       ENEMY_VARIANTS.forEach((variant) => keys.enemyVariants.push(variant.key));
       keys.bosses = Object.keys(BOSS_DEFINITIONS);
 
@@ -10555,7 +10570,7 @@ function maybeAutoSave(reason = "auto") {
         if (debugCodexSnapshot) {
           game.codex = cloneState(debugCodexSnapshot);
         } else {
-          game.codex = { enemyBases: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
+          game.codex = { enemyMonsters: {}, enemyVariants: {}, bosses: {}, equipment: {}, potions: {}, titles: {} };
         }
         ensureCodexState();
         debugCodexSnapshot = null;
