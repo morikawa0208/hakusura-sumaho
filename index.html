@@ -659,6 +659,100 @@
       margin-bottom: 4px;
     }
 
+    .turn-order-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .turn-order-list {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 42px;
+    }
+
+    .turn-badge {
+      min-width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      background: linear-gradient(140deg, rgba(52, 211, 153, 0.18), rgba(96, 165, 250, 0.16));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      animation: orderPop 0.32s ease;
+    }
+
+    .turn-badge.player {
+      color: #a5f3fc;
+      text-shadow: 0 1px 4px rgba(96, 165, 250, 0.4);
+    }
+
+    .turn-badge.enemy {
+      color: #fef3c7;
+      background: linear-gradient(140deg, rgba(251, 191, 36, 0.2), rgba(248, 113, 113, 0.18));
+      border-color: rgba(251, 191, 36, 0.3);
+    }
+
+    .turn-badge.next {
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.25), 0 10px 24px rgba(0, 0, 0, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .turn-badge.acting {
+      animation: orderPulse 0.9s ease-in-out infinite;
+    }
+
+    .turn-badge.acted {
+      opacity: 0.72;
+      filter: saturate(0.9);
+    }
+
+    .turn-order-list.turn-order-refresh {
+      animation: orderShuffle 0.35s ease;
+    }
+
+    .turn-order-empty {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @keyframes orderPop {
+      from {
+        transform: scale(0.84) translateY(6px);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes orderShuffle {
+      0% {
+        transform: translateY(2px);
+      }
+      50% {
+        transform: translateY(-2px);
+      }
+      100% {
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes orderPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4);
+      }
+      100% {
+        box-shadow: 0 0 0 10px rgba(52, 211, 153, 0);
+      }
+    }
+
     .panel-title {
       font-weight: 800;
       letter-spacing: 0.04em;
@@ -1905,6 +1999,14 @@
   <div class="phone">
     <section class="card log-card">
       <div id="log"></div>
+    </section>
+
+    <section id="turn-order-card" class="card turn-order-card" aria-label="行動順">
+      <div class="panel-header">
+        <div class="panel-title">行動順</div>
+        <div class="panel-hint">次の1ターンの順番</div>
+      </div>
+      <div id="turn-order-list" class="turn-order-list" aria-live="polite"></div>
     </section>
 
     <section class="card enemy-panel">
@@ -5011,6 +5113,11 @@ function inferLegendaryKeyFromItem(item) {
     };
 
     let lastDerivedStats = null;
+    let turnOrderPreview = [];
+    let lastTurnOrderSignature = "";
+    let currentActorEntry = null;
+    let lastActedEntry = null;
+    let activeTurnActor = null;
 
     const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
@@ -7115,6 +7222,117 @@ function inferLegendaryKeyFromItem(item) {
       });
     }
 
+    function isSameTurnEntry(a, b) {
+      if (!a || !b) return false;
+      if (a.type !== b.type) return false;
+      if (a.type === "player") return true;
+      return (a.id ?? null) === (b.id ?? null);
+    }
+
+    function setCurrentActorEntry(actor) {
+      currentActorEntry = actor ? { type: actor.type, id: actor.id ?? null } : null;
+    }
+
+    function getTurnBadgeLabel(entry) {
+      if (!entry) return "?";
+      if (entry.type === "player") return "P";
+      const index = game.enemies.findIndex((enemy) => enemy.id === entry.id);
+      return index >= 0 ? String(index + 1) : "?";
+    }
+
+    function normalizeTurnOrderPreview() {
+      const aliveEnemyIds = new Set(game.enemies.filter((e) => e.hp > 0).map((e) => e.id));
+      turnOrderPreview = (turnOrderPreview || []).filter((entry) => {
+        if (entry.type === "player") return player.hp > 0;
+        return aliveEnemyIds.has(entry.id);
+      });
+    }
+
+    function applyTurnOrderFromQueue(queue = game.turnQueue) {
+      const source = Array.isArray(queue) ? queue : [];
+      turnOrderPreview = source.map((entry) => ({ type: entry.type, id: entry.id ?? null }));
+      lastActedEntry = null;
+      activeTurnActor = null;
+      setCurrentActorEntry(null);
+      normalizeTurnOrderPreview();
+      renderTurnOrder();
+    }
+
+    function clearTurnOrderPreview() {
+      applyTurnOrderFromQueue([]);
+    }
+
+    function renderTurnOrder() {
+      const list = document.getElementById("turn-order-list");
+      const card = document.getElementById("turn-order-card");
+      if (!list || !card) return;
+      normalizeTurnOrderPreview();
+      list.innerHTML = "";
+
+      const signature = turnOrderPreview.map((entry) => `${entry.type}-${entry.id ?? "player"}`).join(",");
+      const changed = signature !== lastTurnOrderSignature;
+      lastTurnOrderSignature = signature;
+
+      if (!turnOrderPreview.length) {
+        const empty = document.createElement("div");
+        empty.className = "turn-order-empty";
+        empty.textContent = "行動順を計算中…";
+        list.appendChild(empty);
+        return;
+      }
+
+      if (changed) {
+        list.classList.remove("turn-order-refresh");
+        void list.offsetWidth;
+        list.classList.add("turn-order-refresh");
+      }
+
+      turnOrderPreview.forEach((entry, index) => {
+        const badge = document.createElement("div");
+        badge.className = `turn-badge ${entry.type === "player" ? "player" : "enemy"}`;
+        const label = getTurnBadgeLabel(entry);
+        badge.textContent = label;
+        badge.title = entry.type === "player" ? "プレイヤー" : `敵 ${label}`;
+        badge.setAttribute("aria-label", badge.title);
+        badge.style.animationDelay = `${index * 30}ms`;
+        if (index === 0) badge.classList.add("next");
+        if (currentActorEntry && isSameTurnEntry(entry, currentActorEntry) && index === 0) {
+          badge.classList.add("acting");
+        }
+        if (lastActedEntry && isSameTurnEntry(entry, lastActedEntry) && index === turnOrderPreview.length - 1) {
+          badge.classList.add("acted");
+        }
+        list.appendChild(badge);
+      });
+    }
+
+    function advanceTurnOrderPreview(actor) {
+      normalizeTurnOrderPreview();
+      if (!actor) {
+        lastActedEntry = null;
+        renderTurnOrder();
+        return;
+      }
+      const isActorAlive =
+        actor.type === "player"
+          ? player.hp > 0
+          : game.enemies.some((e) => e.id === actor.id && e.hp > 0);
+      const matchIndex = turnOrderPreview.findIndex((entry) => isSameTurnEntry(entry, actor));
+      let moving = actor.type === "player" ? { type: "player", id: null } : { type: "enemy", id: actor.id };
+      if (matchIndex >= 0) {
+        [moving] = turnOrderPreview.splice(matchIndex, 1);
+      }
+      if (isActorAlive) {
+        turnOrderPreview.push(moving);
+        lastActedEntry = moving;
+      } else {
+        lastActedEntry = null;
+      }
+      setCurrentActorEntry(null);
+      activeTurnActor = null;
+      renderTurnOrder();
+    }
+
     function buildTurnQueue() {
       const queue = [];
       if (player.hp > 0) {
@@ -7125,6 +7343,7 @@ function inferLegendaryKeyFromItem(item) {
       });
       queue.sort((a, b) => b.speed - a.speed);
       game.turnQueue = queue;
+      applyTurnOrderFromQueue(queue);
     }
 
     function applyStatus(target, key, { duration = 2, chance = 100, potency, payload, ignoreResist = false } = {}) {
@@ -7289,6 +7508,7 @@ function inferLegendaryKeyFromItem(item) {
       renderSkills();
       renderStatusList(document.getElementById("player-status-list"), player);
       renderWeaponEnhancePanel();
+      renderTurnOrder();
     }
 
     function renderStatusList(container, entity) {
@@ -7802,6 +8022,7 @@ function applyDebugFloorChange(forcedFloor) {
 
   if (nextFloor !== game.floor) {
     game.floor = nextFloor;
+    clearTurnOrderPreview();
     game.turnQueue = [];
     spawnEnemies();
     log(`🌀 ${nextFloor}F へジャンプ`, "info");
@@ -10287,6 +10508,11 @@ function maybeAutoSave(reason = "auto") {
     function promptPlayerTurn() {
       restoreAttackCounts();
       game.awaitingInput = true;
+      if (!activeTurnActor) {
+        activeTurnActor = { type: "player", id: null };
+      }
+      setCurrentActorEntry(activeTurnActor);
+      renderTurnOrder();
       renderActions();
     }
 
@@ -10294,6 +10520,7 @@ function maybeAutoSave(reason = "auto") {
       game.awaitingInput = false;
       finalizeTurn(player);
       renderActions();
+      advanceTurnOrderPreview(activeTurnActor || { type: "player", id: null });
       setTimeout(() => nextTurn(), 350);
     }
 
@@ -10687,6 +10914,7 @@ function maybeAutoSave(reason = "auto") {
         slot.cooldownRemaining = 0;
       });
       game.enemies = [];
+      clearTurnOrderPreview();
       game.turnQueue = [];
       game.awaitingInput = false;
     }
@@ -10784,9 +11012,17 @@ function handlePlayerDefeat() {
         buildTurnQueue();
       }
       const actor = game.turnQueue.shift();
-      if (!actor) return;
+      if (!actor) {
+        setCurrentActorEntry(null);
+        renderTurnOrder();
+        return;
+      }
+      activeTurnActor = actor;
+      setCurrentActorEntry(actor);
+      renderTurnOrder();
       const entity = actor.type === "player" ? player : game.enemies.find(e => e.id === actor.id);
       if (!entity) {
+        advanceTurnOrderPreview(actor);
         nextTurn();
         return;
       }
@@ -10803,12 +11039,14 @@ function handlePlayerDefeat() {
           handlePlayerDefeat();
           return;
         }
+        advanceTurnOrderPreview(actor);
         setTimeout(() => nextTurn(), 380);
         return;
       }
 
       if (turnState.skipTurn) {
         finalizeTurn(entity);
+        advanceTurnOrderPreview(actor);
         setTimeout(() => nextTurn(), 380);
         return;
       }
@@ -10818,13 +11056,19 @@ function handlePlayerDefeat() {
         return;
       }
       const playerFell = enemyAction(entity);
-      if (playerFell) return;
+      if (playerFell) {
+        activeTurnActor = null;
+        setCurrentActorEntry(null);
+        renderTurnOrder();
+        return;
+      }
       finalizeTurn(entity);
       updateUI();
       if (player.hp <= 0) {
         handlePlayerDefeat();
         return;
       }
+      advanceTurnOrderPreview(actor);
       setTimeout(() => nextTurn(), 380);
     }
 
@@ -10834,6 +11078,7 @@ function handlePlayerDefeat() {
       player.mp = Math.min(player.maxMp, player.mp + mpGain);
       log(`✨ 戦闘に勝利し、MPを ${mpGain} 回復した`, "good");
       game.awaitingInput = false;
+      clearTurnOrderPreview();
       game.turnQueue = [];
       updateUI();
       maybeAutoSave("ステージクリア");
@@ -10875,6 +11120,7 @@ function handlePlayerDefeat() {
       }
       game.floor += 1;
       player.buffs.guard = 0;
+      clearTurnOrderPreview();
       game.turnQueue = [];
       spawnEnemies();
       updateUI();
