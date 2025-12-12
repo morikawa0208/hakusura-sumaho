@@ -1288,6 +1288,11 @@
       color: #bfdbfe;
     }
 
+    .damage-popup.heal {
+      color: #a5f3fc;
+      text-shadow: 0 1px 6px rgba(45, 212, 191, 0.5);
+    }
+
     @keyframes damageFloat {
       0% {
         opacity: 0;
@@ -2987,13 +2992,10 @@
         cooldown: 4,
         action: (enemy) => {
           const healed = Math.min(Math.round(enemy.maxHp * 0.12), enemy.maxHp - enemy.hp);
-          if (healed > 0) {
-            enemy.hp = Math.min(enemy.maxHp, enemy.hp + healed);
-            updateEnemyCardHp(enemy);
-          }
+          const healedAmount = applyHealing(enemy, healed);
           const debuffed = applyStatus(player, "physAttackDown", { duration: 3, chance: 70, potency: 0.22 });
           const effects = [];
-          if (healed > 0) effects.push(`自己回復+${healed}`);
+          if (healedAmount > 0) effects.push(`自己回復+${healedAmount}`);
           if (debuffed) effects.push("物理攻撃低下");
           return { message: effects.join(" / ") || "鱗を硬化させた" };
         },
@@ -7214,13 +7216,18 @@ function inferLegendaryKeyFromItem(item) {
     }
 
     function showDamagePopup(container, amount, variant = "enemy") {
-      if (!container) return;
+      if (!container || !amount) return;
       const popup = document.createElement("div");
       popup.className = `damage-popup ${variant}`;
       const numeric = Math.abs(amount);
       popup.textContent = amount >= 0 ? `-${numeric}` : `+${numeric}`;
       container.appendChild(popup);
       popup.addEventListener("animationend", () => popup.remove());
+    }
+
+    function showHealPopup(container, amount, variant = "heal") {
+      if (!container || amount <= 0) return;
+      showDamagePopup(container, -Math.abs(amount), variant);
     }
 
     function consumeMp(cost) {
@@ -10375,6 +10382,26 @@ function maybeAutoSave(reason = "auto") {
       return final;
     }
 
+    function applyHealing(target, amount) {
+      if (!target || amount <= 0) return 0;
+      const maxHp = Math.max(0, Math.round(target.maxHp ?? 0));
+      if (maxHp <= 0) return 0;
+      const missing = Math.max(0, maxHp - target.hp);
+      const healed = Math.min(Math.max(0, Math.round(amount)), missing);
+      if (healed <= 0) return 0;
+      target.hp = Math.min(maxHp, target.hp + healed);
+      if (target === player) {
+        flashBar("hp-bar");
+        const playerBar = document.getElementById("hp-bar")?.parentElement;
+        showHealPopup(playerBar, healed);
+      } else {
+        updateEnemyCardHp(target);
+        const card = findEnemyCard(target);
+        showHealPopup(card, healed);
+      }
+      return healed;
+    }
+
     function onEnemyDefeated(enemy, { cause = "" } = {}) {
       if (!enemy || enemy.defeated) return;
       enemy.defeated = true;
@@ -10412,8 +10439,8 @@ function maybeAutoSave(reason = "auto") {
           return;
         }
         const heal = Math.min(potion.amount, derived.maxHp.total - player.hp);
-        player.hp = Math.min(derived.maxHp.total, player.hp + heal);
-        log(`${potion.icon || "🧪"} ${potion.name}を飲んでHPを${heal}回復`, "good");
+        const healed = applyHealing(player, heal);
+        log(`${potion.icon || "🧪"} ${potion.name}を飲んでHPを${healed}回復`, "good");
       } else if (potion.type === "mp") {
         if (player.mp >= derived.maxMp.total) {
           log("MPは十分に残っている", "info");
@@ -10592,8 +10619,8 @@ function maybeAutoSave(reason = "auto") {
       }
       consumeMp(4);
       const healAmount = Math.max(6, Math.round(player.maxHp * 0.12 + (player.buffs.focus ? 5 : 0)));
-      player.hp = Math.min(player.maxHp, player.hp + healAmount);
-      log(`✨ ヒール！ HPが ${healAmount} 回復`, "good");
+      const healed = applyHealing(player, healAmount);
+      log(`✨ ヒール！ HPが ${healed} 回復`, "good");
       updateUI();
       endPlayerTurn();
     }
