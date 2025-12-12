@@ -3234,6 +3234,7 @@
       10: {
         name: "毒翼の奇襲",
         cooldown: 3,
+        description: "高速突撃+毒と速度低下をばら撒く",
         action: () => {
           const effects = [];
           if (applyStatus(player, "poison", { duration: 3, chance: 75 })) {
@@ -3248,6 +3249,7 @@
       50: {
         name: "黄金の護膜",
         cooldown: 4,
+        description: "自己回復しつつ物理攻撃を鈍らせる",
         action: (enemy) => {
           const healed = Math.min(Math.round(enemy.maxHp * 0.12), enemy.maxHp - enemy.hp);
           const healedAmount = applyHealing(enemy, healed);
@@ -3261,6 +3263,7 @@
       100: {
         name: "焦熱の波動",
         cooldown: 3,
+        description: "火傷と魔法防御低下を与える灼熱波",
         action: () => {
           const effects = [];
           if (applyStatus(player, "burn", { duration: 3, chance: 80 })) {
@@ -3275,6 +3278,7 @@
       200: {
         name: "深渦の律動",
         cooldown: 3,
+        description: "速度低下と短時間の眠りを誘う波動",
         action: () => {
           const effects = [];
           if (applyStatus(player, "speedDown", { duration: 2, chance: 70, potency: 0.3 })) {
@@ -3289,6 +3293,7 @@
       500: {
         name: "虚星の審問",
         cooldown: 4,
+        description: "呪いと沈黙で弱体化させる暗黒審問",
         action: () => {
           const effects = [];
           if (applyStatus(player, "curse", { duration: 3, chance: 100, potency: 0.14 })) {
@@ -3303,6 +3308,7 @@
       700: {
         name: "雷礫の連鎖",
         cooldown: 3,
+        description: "追撃とスタンを伴う雷撃連鎖",
         action: (enemy) => {
           const effects = ["追撃+1" ];
           const baseAttacks = Math.max(0, Math.floor(enemy.attacksRemaining ?? enemy.attackCount ?? 1));
@@ -3316,6 +3322,7 @@
       1000: {
         name: "黎明の終焉",
         cooldown: 2,
+        description: "焼灼・呪詛・行動遅延をまとめて叩き込む",
         action: () => {
           const effects = [];
           if (applyStatus(player, "burn", { duration: 3, chance: 75 })) effects.push("焼灼");
@@ -10224,7 +10231,8 @@ function maybeAutoSave(reason = "auto") {
       { key: "boss", label: "ボス" },
       { key: "equipment", label: "装備" },
       { key: "potion", label: "アイテム" },
-      { key: "title", label: "称号" },
+      { key: "titlePrefix", label: "称号(前)" },
+      { key: "titleSuffix", label: "称号(後)" },
     ];
 
     let currentCodexCategory = "enemy";
@@ -10248,6 +10256,7 @@ function maybeAutoSave(reason = "auto") {
 
     function buildEnemyCodexEntries() {
       const codex = ensureCodexState();
+      const nameLines = ENEMY_NAME_POOLS.map((pool) => `${pool.min}F〜${pool.max}F: ${pool.names.join(" / ")}`);
       return ENEMY_BASE_PROFILES.map((profile) => ({
         key: `base:${profile.key}`,
         name: profile.label,
@@ -10256,6 +10265,7 @@ function maybeAutoSave(reason = "auto") {
           { label: "種別", value: "雑魚敵" },
           { label: "特徴", value: profile.summary || "" },
           { label: "補正", value: describeModifiers(profile.modifiers) || "なし" },
+          { label: "モンスター", value: nameLines.join(" / ") },
         ],
         discovered: !!codex.enemyBases?.[profile.key],
       }));
@@ -10265,7 +10275,10 @@ function maybeAutoSave(reason = "auto") {
       const codex = ensureCodexState();
       return ENEMY_VARIANTS.map((variant) => {
         const abilityText = (variant.abilities || [])
-          .map((ability) => ability.label)
+          .map((ability) => {
+            const detail = describeModifiers(ability.modifiers);
+            return detail ? `${ability.label}: ${detail}` : ability.label;
+          })
           .filter(Boolean)
           .join(" / ");
         return {
@@ -10288,6 +10301,10 @@ function maybeAutoSave(reason = "auto") {
       return BOSS_FLOORS.map((floor) => {
         const def = BOSS_DEFINITIONS[floor];
         const discovered = !!codex.bosses?.[floor];
+        const skill = BOSS_SKILLS[floor];
+        const skillText = skill ? `${skill.name}${skill.description ? `: ${skill.description}` : ""}` : "--";
+        const dropInfo = BOSS_LEGENDARY_DROPS[floor];
+        const dropTemplate = dropInfo?.legendaryKey ? getLegendaryTemplateByKey(dropInfo.legendaryKey) : null;
         return {
           key: `boss:${floor}`,
           name: def?.name || `${floor}F ボス`,
@@ -10298,6 +10315,14 @@ function maybeAutoSave(reason = "auto") {
             {
               label: "伝説",
               value: def?.legendaryKey ? getLegendaryTemplateByKey(def.legendaryKey)?.name || "？？？" : "--",
+            },
+            { label: "スキル", value: skillText },
+            {
+              label: "ドロップ",
+              value: discovered && dropTemplate ? dropTemplate.name : dropInfo ? "？？？" : "--",
+              interactive: discovered && dropTemplate,
+              dropTemplate,
+              dropSlot: dropInfo?.slot,
             },
           ],
           discovered,
@@ -10384,10 +10409,11 @@ function maybeAutoSave(reason = "auto") {
       return entries;
     }
 
-    function buildTitleCodexEntries() {
+    function buildTitleCodexEntries(kindFilter = null) {
       const codex = ensureCodexState();
       const entries = [];
       const buildTitleEntry = (title, kind) => {
+        if (kindFilter && kind !== kindFilter) return;
         const stats = (title.options || [])
           .map((opt) => formatStatLabel(opt))
           .join(" / ");
@@ -10430,8 +10456,10 @@ function maybeAutoSave(reason = "auto") {
           return buildEquipmentCodexEntries();
         case "potion":
           return buildPotionCodexEntries();
-        case "title":
-          return buildTitleCodexEntries();
+        case "titlePrefix":
+          return buildTitleCodexEntries("prefix");
+        case "titleSuffix":
+          return buildTitleCodexEntries("suffix");
         default:
           return [];
       }
@@ -10450,7 +10478,8 @@ function maybeAutoSave(reason = "auto") {
               if (slotOrderA !== slotOrderB) return slotOrderA - slotOrderB;
               return a.name.localeCompare(b.name, "ja");
             });
-        case "title":
+        case "titlePrefix":
+        case "titleSuffix":
           return entries
             .slice()
             .sort((a, b) => {
@@ -10594,6 +10623,40 @@ function maybeAutoSave(reason = "auto") {
       });
     }
 
+    function renderCodexEquipmentPreview(template, slotKey) {
+      if (!codexDetailBody || !template) return;
+      const slotLabel = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey || "部位不明";
+      const preview = document.createElement("div");
+      preview.className = "help-panel";
+
+      const heading = document.createElement("div");
+      heading.className = "option-label";
+      heading.textContent = `${template.name} (${slotLabel})`;
+      preview.appendChild(heading);
+
+      const baseText = (template.base || [])
+        .map((opt) => formatOptionRangeForCodex(opt))
+        .filter(Boolean)
+        .join(" / ");
+      const baseRow = document.createElement("div");
+      baseRow.className = "option-value";
+      baseRow.textContent = baseText ? `基礎: ${baseText}` : "基礎情報なし";
+      preview.appendChild(baseRow);
+
+      if (template.unique?.name || template.unique?.effect) {
+        const uniqueRow = document.createElement("div");
+        uniqueRow.className = "option-value";
+        const effectText = [template.unique?.name, template.unique?.effect].filter(Boolean).join(" / ");
+        uniqueRow.textContent = effectText ? `固有: ${effectText}` : "固有効果不明";
+        preview.appendChild(uniqueRow);
+      }
+
+      const existingPreview = codexDetailBody.querySelector(".codex-preview-block");
+      if (existingPreview) existingPreview.remove();
+      preview.classList.add("codex-preview-block");
+      codexDetailBody.appendChild(preview);
+    }
+
     function openCodexDetail(entry) {
       if (!codexDetailModal || !codexDetailBody || !codexDetailName) return;
       const discovered = !!entry.discovered;
@@ -10614,7 +10677,17 @@ function maybeAutoSave(reason = "auto") {
           label.textContent = detail.label;
           const value = document.createElement("div");
           value.className = "value";
-          value.textContent = detail.value || "--";
+
+          if (detail.interactive && detail.dropTemplate) {
+            const btn = document.createElement("button");
+            btn.className = "mini-btn";
+            btn.textContent = detail.value || "表示";
+            btn.onclick = () => renderCodexEquipmentPreview(detail.dropTemplate, detail.dropSlot);
+            value.appendChild(btn);
+          } else {
+            value.textContent = detail.value || "--";
+          }
+
           row.appendChild(label);
           row.appendChild(value);
           codexDetailBody.appendChild(row);
