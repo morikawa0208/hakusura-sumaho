@@ -7232,6 +7232,7 @@ function inferLegendaryKeyFromItem(item) {
       player.resist.control = derived.controlResist.total;
       player.resist.dot = derived.dotResist.total;
       player.resist.debuff = derived.debuffResist.total;
+      player.lifeSteal = Math.max(0, derived.lifeSteal.total);
 
       return derived;
     }
@@ -11689,7 +11690,11 @@ function maybeAutoSave(reason = "auto") {
       return Math.max(1, Math.round(raw));
     }
 
-    function applyDamage(target, amount, { type = "physical", source = "", isDot = false } = {}) {
+    function applyDamage(
+      target,
+      amount,
+      { type = "physical", source = "", isDot = false, attacker = null } = {}
+    ) {
       let final = amount;
       if (target === player && player.buffs.guard > 0 && !hasStatus(player, "seal")) {
         final = Math.round(final * 0.7);
@@ -11709,6 +11714,20 @@ function maybeAutoSave(reason = "auto") {
       } else {
         if (final > 0) triggerEnemyHit(target, final);
         updateEnemyCardHp(target);
+      }
+
+      const canLifeSteal =
+        !isDot &&
+        attacker &&
+        attacker !== target &&
+        typeof attacker.lifeSteal === "number" &&
+        attacker.lifeSteal > 0 &&
+        attacker.maxHp;
+      if (canLifeSteal) {
+        const healAmount = Math.floor(final * (attacker.lifeSteal / 100));
+        if (healAmount > 0) {
+          applyHealing(attacker, healAmount);
+        }
       }
       return final;
     }
@@ -11827,7 +11846,7 @@ function maybeAutoSave(reason = "auto") {
           continue;
         }
         const dmg = calcDamage(player, target, { includeKnowledgeForPlayer: true });
-        const dealt = applyDamage(target, dmg, { source: "player" });
+        const dealt = applyDamage(target, dmg, { source: "player", attacker: player });
         const targetName = target === player ? "自分" : target.name;
         log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
         if (target !== player && target.hp <= 0) {
@@ -11889,7 +11908,7 @@ function maybeAutoSave(reason = "auto") {
       const baseDamage = calcDamage(player, target);
       const multiplier = 1.1 + skill.level * 0.02;
       const dmg = Math.round(baseDamage * multiplier);
-      const dealt = applyDamage(target, dmg, { source: skill.name });
+      const dealt = applyDamage(target, dmg, { source: skill.name, attacker: player });
       log(`🌀 ${skill.name}${effectLabel}！ ${target.name} に ${dealt} ダメージ`, "player");
 
       if (target.hp <= 0) {
@@ -11924,7 +11943,7 @@ function maybeAutoSave(reason = "auto") {
         return;
       }
       const dmg = Math.round(calcDamage(player, target) * 1.6 + (player.buffs.focus ? 6 : 0));
-      const dealt = applyDamage(target, dmg, { source: "player" });
+      const dealt = applyDamage(target, dmg, { source: "player", attacker: player });
       log(`🌌 パワーストライク！ ${target.name} に ${dealt} ダメージ`, "player");
       if (target.hp <= 0) {
         log(`${target.name} を粉砕！`, "good");
@@ -12089,7 +12108,7 @@ function handlePlayerDefeat() {
         const dmg = calcDamage(enemy, target);
         const isCrit = Math.random() < 0.12;
         const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
-        const dealt = applyDamage(target, finalDmg, { source: enemy.name });
+        const dealt = applyDamage(target, finalDmg, { source: enemy.name, attacker: enemy });
         const critText = isCrit ? " (会心！)" : "";
         log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
           if (target !== player && target.hp <= 0) {
