@@ -2209,6 +2209,9 @@
         <div>ATK <span id="modal-atk"></span></div>
         <div>DEF <span id="modal-def"></span></div>
         <div>SPD <span id="modal-spd"></span></div>
+        <div>命中 <span id="modal-acc"></span></div>
+        <div>回避 <span id="modal-evd"></span></div>
+        <div>耐性 <span id="modal-resist"></span></div>
       </div>
       <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
       <div id="modal-feature" class="help-panel" style="margin-top: 10px;"></div>
@@ -3341,44 +3344,6 @@
       500: ["sanctuaryChalice", "shadowcloneAmbrosia"],
     };
 
-    const ENEMY_BASE_PROFILES = [
-      {
-        key: "balanced",
-        label: "標準",
-        summary: "攻防ともに平均的な標準タイプ。",
-        weight: 4,
-        modifiers: {},
-      },
-      {
-        key: "ironhide",
-        label: "硬質",
-        summary: "硬い装甲で粘る守り重視の敵。",
-        weight: 2,
-        modifiers: { hp: 1.12, def: 1.18, spd: 0.9 },
-      },
-      {
-        key: "feral",
-        label: "獰猛",
-        summary: "素早い攻めで押してくる獰猛な敵。",
-        weight: 2,
-        modifiers: { atk: 1.16, spd: 1.1, evade: 1.08, def: 0.88 },
-      },
-      {
-        key: "stalker",
-        label: "狡猾",
-        summary: "命中と回避に長け、隙を突く狡猾さ。",
-        weight: 1,
-        modifiers: { accuracy: 1.14, evade: 1.14, hp: 0.9, def: 0.88 },
-      },
-      {
-        key: "warded",
-        label: "呪纏",
-        summary: "呪気をまとい、異常耐性が高め。",
-        weight: 1,
-        modifiers: { atk: 1.06, resist: { control: 1.14, debuff: 1.14, dot: 1.12 } },
-      },
-    ];
-
     const ARCHETYPE_RANK_WEIGHTS = [
       { rank: 1, weight: 55 },
       { rank: 2, weight: 30 },
@@ -3480,6 +3445,68 @@
         names: ["雷尾スコーピオン", "霧歩きの影獣", "虚ろの魔騎兵", "灰燼の獣王", "空隙ワーム"],
       },
     ];
+    const ENEMY_MONSTER_DEFINITIONS = {
+      洞窟オオコウモリ: {
+        flavor: "音もなく舞う素早い翼獣。",
+        modifiers: { spd: 1.18, evade: 1.12, hp: 0.9, def: 0.9 },
+      },
+      朽ちた槍兵: {
+        flavor: "錆びた槍でも狙いは正確。",
+        modifiers: { atk: 1.08, accuracy: 1.12, def: 1.05, spd: 0.96 },
+      },
+      原野の狼: {
+        flavor: "牙で食らいつく俊敏な群れ狼。",
+        modifiers: { atk: 1.16, spd: 1.1, evade: 1.05, hp: 0.95 },
+      },
+      石守のスライム: {
+        flavor: "岩肌をまとい鈍重だが固い。",
+        modifiers: { hp: 1.18, def: 1.24, spd: 0.82, accuracy: 0.95 },
+      },
+      巡回する鎧: {
+        flavor: "空の鎧が淡々と巡回する。",
+        modifiers: { def: 1.12, hp: 1.06, accuracy: 1.04, spd: 0.94, resist: { control: 1.1, debuff: 1.08 } },
+      },
+      深層トカゲ: {
+        flavor: "長い尾で素早く間合いを詰める。",
+        modifiers: { spd: 1.12, evade: 1.08, hp: 1.05 },
+      },
+      鉱脈のゴーレム: {
+        flavor: "鉱石で組まれた巨体は揺るがない。",
+        modifiers: { hp: 1.26, def: 1.32, spd: 0.78, evade: 0.9 },
+      },
+      闇走りの盗賊: {
+        flavor: "闇に紛れて刃を走らせる。",
+        modifiers: { spd: 1.2, evade: 1.18, accuracy: 1.12, def: 0.88, hp: 0.94 },
+      },
+      夜目の狩人: {
+        flavor: "暗闇でも獲物を逃さない射手。",
+        modifiers: { accuracy: 1.18, atk: 1.12, spd: 1.04, evade: 1.02 },
+      },
+      結晶クラブ: {
+        flavor: "結晶殻で打撃を弾く甲殻種。",
+        modifiers: { def: 1.22, hp: 1.12, spd: 0.9, resist: { dot: 1.16 } },
+      },
+      雷尾スコーピオン: {
+        flavor: "雷尾で素早く二度刺す。",
+        modifiers: { spd: 1.2, atk: 1.12, accuracy: 1.08, attackCountBonus: 1 },
+      },
+      霧歩きの影獣: {
+        flavor: "霧の中で姿を晦まし斬り込む。",
+        modifiers: { evade: 1.26, spd: 1.14, hp: 0.95 },
+      },
+      虚ろの魔騎兵: {
+        flavor: "虚ろな瞳の騎兵が淡々と突撃する。",
+        modifiers: { atk: 1.1, def: 1.12, accuracy: 1.06, resist: { control: 1.14 } },
+      },
+      灰燼の獣王: {
+        flavor: "灰の匂いを纏い豪腕で殴りかかる。",
+        modifiers: { atk: 1.22, hp: 1.18, def: 0.92, spd: 1.05 },
+      },
+      空隙ワーム: {
+        flavor: "空隙を漂いしぶとく噛み付く。",
+        modifiers: { hp: 1.28, def: 1.08, spd: 0.9, accuracy: 0.96, resist: { dot: 1.2, debuff: 1.1 } },
+      },
+    };
     const FLOOR_DROP_TABLE = [
       { min: 1, max: 4, slots: ["weapon", "head", "body", "hands"] },
       { min: 5, max: 9, slots: ["weapon", "subWeapon", "body", "hands", "feet"] },
@@ -7176,11 +7203,6 @@ function inferLegendaryKeyFromItem(item) {
       return primary;
     }
 
-    function pickEnemyBaseProfile(floor) {
-      const pool = ENEMY_BASE_PROFILES.filter((profile) => !profile.minFloor || floor >= profile.minFloor);
-      return weightedRandom(pool, pool[0]);
-    }
-
     function rollArchetype(floor, derived) {
       const baseChance = 24 + Math.min(18, Math.floor(floor / 120) * 3);
       const namedBonus = Math.max(0, derived?.namedRate?.total ?? 0);
@@ -7318,7 +7340,7 @@ function inferLegendaryKeyFromItem(item) {
       const derived = derivedStats || recalcDerivedStats();
       const base = game.floor * 5 + (isBoss ? 20 : 0);
       const baseName = isBoss ? `階層ボス ${game.floor}F` : pickEnemyBaseName(game.floor);
-      const baseProfile = !isBoss ? pickEnemyBaseProfile(game.floor) : null;
+      const monsterProfile = !isBoss ? ENEMY_MONSTER_DEFINITIONS[baseName] : null;
       const archetypeRoll = !isBoss ? rollArchetype(game.floor, derived) : null;
       const enemy = {
         id: generateId("enemy"),
@@ -7343,11 +7365,13 @@ function inferLegendaryKeyFromItem(item) {
         statuses: [],
       };
 
-      if (baseProfile && !isBoss) {
-        enemy.baseProfile = baseProfile.key;
-        enemy.baseFlavor = baseProfile.summary || baseProfile.label;
-        enemy.flavor = enemy.baseFlavor;
-        applyEnemyModifiers(enemy, baseProfile.modifiers);
+      if (!isBoss) {
+        const baseFlavor = monsterProfile?.flavor || `${baseName}がうろついている。`;
+        enemy.baseFlavor = baseFlavor;
+        enemy.flavor = baseFlavor;
+        if (monsterProfile?.modifiers) {
+          applyEnemyModifiers(enemy, monsterProfile.modifiers);
+        }
       }
 
       if (archetypeRoll && !isBoss) {
@@ -10255,19 +10279,102 @@ function maybeAutoSave(reason = "auto") {
       return `${label} ${minText}${unit}〜${maxText}${unit}`;
     }
 
+    function formatRangeValue(min, max, { unit = "", precision = 0 } = {}) {
+      if (min === undefined || max === undefined || min === null || max === null) return `--${unit}`;
+      const format = (value) => {
+        if (precision) return Number(value).toFixed(precision);
+        return Math.round(value).toString();
+      };
+      const minText = format(min);
+      const maxText = format(max);
+      const suffix = unit || "";
+      return minText === maxText ? `${minText}${suffix}` : `${minText}${suffix}〜${maxText}${suffix}`;
+    }
+
+    function formatEnemyResistRange(minResist, maxResist) {
+      if (!minResist || !maxResist) return "--";
+      const control = formatRangeValue(Math.round(minResist.control), Math.round(maxResist.control), { unit: "%" });
+      const dot = formatRangeValue(Math.round(minResist.dot), Math.round(maxResist.dot), { unit: "%" });
+      const debuff = formatRangeValue(Math.round(minResist.debuff), Math.round(maxResist.debuff), { unit: "%" });
+      return `行動${control} / 持続${dot} / 弱体${debuff}`;
+    }
+
+    function createEnemyStatPreview({ floorMin, floorMax, isBoss = false, modifiers = null } = {}) {
+      const build = (floor, spdBonus) => {
+        const base = floor * 5 + (isBoss ? 20 : 0);
+        const enemy = {
+          hp: base + (isBoss ? 30 : 0),
+          maxHp: base + (isBoss ? 30 : 0),
+          atk: 4 + floor * 1.2 + (isBoss ? 3 : 0),
+          def: 2 + floor * 0.55 + (isBoss ? 2 : 0),
+          spd: 4 + spdBonus + (isBoss ? 1.5 : 0),
+          accuracy: 82 + floor * 0.6,
+          evade: Math.min(25, 8 + floor * 0.4 + (isBoss ? 5 : 0)),
+          resist: {
+            control: Math.min(50, 10 + floor * 0.8 + (isBoss ? 8 : 0)),
+            dot: Math.min(50, 8 + floor * 0.7 + (isBoss ? 6 : 0)),
+            debuff: Math.min(50, 8 + floor * 0.6 + (isBoss ? 6 : 0)),
+          },
+          attackCount: 1,
+        };
+
+        if (modifiers) {
+          applyEnemyModifiers(enemy, modifiers);
+        }
+
+        return enemy;
+      };
+
+      const min = build(Math.max(1, floorMin || 1), 0);
+      const max = build(Math.max(floorMin || 1, floorMax || floorMin || 1), 2);
+      return { min, max };
+    }
+
+    function buildEnemyStatDetailRows(statPreview) {
+      if (!statPreview?.min || !statPreview?.max) return [];
+      const { min, max } = statPreview;
+      const hp = formatRangeValue(Math.ceil(min.hp), Math.ceil(max.hp));
+      const atk = formatRangeValue(Math.ceil(min.atk), Math.ceil(max.atk));
+      const def = formatRangeValue(Math.ceil(min.def), Math.ceil(max.def));
+      const spd = formatRangeValue(Number(min.spd.toFixed(1)), Number(max.spd.toFixed(1)), { precision: 1 });
+      const acc = formatRangeValue(Math.round(min.accuracy), Math.round(max.accuracy), { unit: "%" });
+      const evd = formatRangeValue(Math.round(min.evade), Math.round(max.evade), { unit: "%" });
+      const resistText = formatEnemyResistRange(min.resist, max.resist);
+
+      return [
+        { label: "HP", value: hp },
+        { label: "ATK", value: atk },
+        { label: "DEF", value: def },
+        { label: "SPD", value: spd },
+        { label: "命中", value: acc },
+        { label: "回避", value: evd },
+        { label: "耐性", value: resistText },
+      ];
+    }
+
     function buildEnemyCodexEntries() {
       const codex = ensureCodexState();
       const entries = [];
       ENEMY_NAME_POOLS.forEach((pool) => {
         pool.names.forEach((name) => {
+          const def = ENEMY_MONSTER_DEFINITIONS[name];
+          const feature = def?.flavor || "固有の傾向を持つ雑魚敵。";
+          const statPreview = createEnemyStatPreview({
+            floorMin: pool.min,
+            floorMax: pool.max,
+            modifiers: def?.modifiers,
+          });
+          const statRows = buildEnemyStatDetailRows(statPreview);
           entries.push({
             key: `monster:${name}`,
             name,
-            summary: `${pool.min}F〜${pool.max}F に出現する雑魚敵。`,
+            summary: `${feature} (${pool.min}F〜${pool.max}F 出現)`,
             detailRows: [
               { label: "種別", value: "雑魚敵" },
               { label: "階層", value: `${pool.min}F〜${pool.max}F` },
-              { label: "備考", value: "タイプやアーキタイプにより性質が変化する。" },
+              ...statRows,
+              { label: "特徴", value: feature },
+              { label: "備考", value: "アーキタイプ遭遇時はネームド扱いで強化される。" },
             ],
             discovered: !!codex.enemyMonsters?.[name],
             minFloor: pool.min,
@@ -10311,12 +10418,20 @@ function maybeAutoSave(reason = "auto") {
         const skillText = skill ? `${skill.name}${skill.description ? `: ${skill.description}` : ""}` : "--";
         const dropInfo = BOSS_LEGENDARY_DROPS[floor];
         const dropTemplate = dropInfo?.legendaryKey ? getLegendaryTemplateByKey(dropInfo.legendaryKey) : null;
+        const statPreview = createEnemyStatPreview({
+          floorMin: floor,
+          floorMax: floor,
+          isBoss: true,
+          modifiers: def?.modifiers,
+        });
+        const statRows = buildEnemyStatDetailRows(statPreview);
         return {
           key: `boss:${floor}`,
           name: def?.name || `${floor}F ボス`,
           summary: def?.flavor || "強力な階層ボス",
           detailRows: [
             { label: "階層", value: `${floor}F` },
+            ...statRows,
             { label: "特徴", value: def?.flavor || "未知" },
             {
               label: "伝説",
@@ -10734,6 +10849,15 @@ function maybeAutoSave(reason = "auto") {
       document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
       document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
       document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
+      document.getElementById("modal-acc").textContent = `${Math.round(enemy.accuracy)}%`;
+      document.getElementById("modal-evd").textContent = `${Math.round(enemy.evade)}%`;
+      const resist = enemy.resist || {};
+      const resistText = [
+        `行動${Math.round(resist.control ?? 0)}%`,
+        `持続${Math.round(resist.dot ?? 0)}%`,
+        `弱体${Math.round(resist.debuff ?? 0)}%`,
+      ].join(" / ");
+      document.getElementById("modal-resist").textContent = resistText;
       const tag = document.getElementById("modal-tag");
       if (enemy.isBoss) {
         tag.textContent = "BOSS";
