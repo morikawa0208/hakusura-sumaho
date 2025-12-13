@@ -11410,11 +11410,16 @@ function maybeAutoSave(reason = "auto") {
       return Math.random() * 100 < hitChance;
     }
 
-    function calcDamage(attacker, defender, { type = "physical" } = {}) {
+    function calcDamage(attacker, defender, { type = "physical", includeKnowledgeForPlayer = false } = {}) {
       const variance = 0.85 + Math.random() * 0.3;
       const attackDebuff = type === "physical" ? getStatus(attacker, "physAttackDown") : getStatus(attacker, "magAttackDown");
       const baseAttack = type === "physical" ? attacker.atk : attacker.magAtk || attacker.atk;
       let attackPower = baseAttack * (attackDebuff ? 1 - (attackDebuff.potency ?? 0.2) : 1);
+      if (includeKnowledgeForPlayer && type === "physical" && attacker === player) {
+        const knowledge = statTotal("int");
+        const knowledgeBonus = knowledge * 0.5;
+        attackPower += knowledgeBonus;
+      }
       if (hasStatus(attacker, "curse")) {
         attackPower *= 0.9;
       }
@@ -11564,7 +11569,7 @@ function maybeAutoSave(reason = "auto") {
           log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}は外れた…`, "warning");
           continue;
         }
-        const dmg = calcDamage(player, target);
+        const dmg = calcDamage(player, target, { includeKnowledgeForPlayer: true });
         const dealt = applyDamage(target, dmg, { source: "player" });
         const targetName = target === player ? "自分" : target.name;
         log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
