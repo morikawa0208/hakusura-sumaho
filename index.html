@@ -3618,10 +3618,18 @@
     };
 
     const EQUIPMENT_TIER_BOUNDARIES = [
-      { maxFloor: 300, key: "early" },
-      { maxFloor: 600, key: "mid" },
-      { maxFloor: 1000, key: "late" },
+      { maxFloor: 99, key: "tier1", theme: "黎明の", scale: 1 },
+      { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 1.18 },
+      { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 1.35 },
+      { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 1.52 },
+      { maxFloor: 499, key: "tier5", theme: "白光の", scale: 1.69 },
+      { maxFloor: 599, key: "tier6", theme: "影霧の", scale: 1.86 },
+      { maxFloor: 699, key: "tier7", theme: "紅蓮の", scale: 2.03 },
+      { maxFloor: 799, key: "tier8", theme: "星紋の", scale: 2.2 },
+      { maxFloor: 899, key: "tier9", theme: "黎冥の", scale: 2.37 },
+      { maxFloor: 1000, key: "tier10", theme: "天啓の", scale: 2.54 },
     ];
+    const EQUIPMENT_TIER_KEYS = EQUIPMENT_TIER_BOUNDARIES.map((entry) => entry.key);
 
     const TITLE_BASE_CHANCE = { prefix: 55, suffix: 45 };
     const TITLE_RANK_WEIGHTS = [
@@ -3666,351 +3674,304 @@
 
     const EQUIPMENT_STAT_BY_KEY = Object.fromEntries(EQUIPMENT_STAT_POOL.map((s) => [s.key, s]));
 
-    const EQUIPMENT_TEMPLATE_LIBRARY = {
+    const EQUIPMENT_BASE_TEMPLATE_LIBRARY = {
       weapon: [
         {
-          key: "steelSword",
-          name: "鋼の剣",
-          base: [
-            { key: "physAtk", range: [12, 18] },
-            { key: "critRate", range: [4, 8], unit: "%" },
-            { key: "speed", range: [1, 3] },
-          ],
-        },
-        {
-          key: "battleAxe",
-          name: "轟槌の戦斧",
+          key: "swordsmanBlade",
+          name: "剣士の刃",
           base: [
             { key: "physAtk", range: [16, 22] },
-            { key: "critDamage", range: [8, 14], unit: "%" },
-            { key: "str", range: [2, 5] },
+            { key: "critRate", range: [4, 7], unit: "%" },
+            { key: "str", range: [2, 4] },
           ],
         },
         {
-          key: "sageStaff",
-          name: "叡智の杖",
+          key: "mageFocus",
+          name: "術導の杖",
           base: [
-            { key: "magAtk", range: [14, 20] },
-            { key: "mp", range: [14, 24] },
-            { key: "cooldown", range: [2, 6], unit: "%" },
+            { key: "magAtk", range: [18, 24] },
+            { key: "mp", range: [16, 26] },
+            { key: "cooldown", range: [3, 6], unit: "%" },
           ],
         },
         {
-          key: "skybreakerSpear",
-          tier: "mid",
-          name: "蒼穹の穿槍",
+          key: "clericMace",
+          name: "祈祷のメイス",
           base: [
-            { key: "physAtk", range: [28, 38] },
-            { key: "critRate", range: [10, 16], unit: "%" },
-            { key: "speed", range: [3, 6] },
+            { key: "magAtk", range: [12, 18] },
+            { key: "hpRegen", range: [1.2, 2.4], precision: 1 },
+            { key: "vit", range: [2, 4] },
           ],
         },
         {
-          key: "astralSpellblade",
-          tier: "late",
-          name: "星幽の呪刃",
+          key: "vampiricClaw",
+          name: "血契の爪",
           base: [
-            { key: "physAtk", range: [42, 58] },
-            { key: "magAtk", range: [38, 52] },
-            { key: "critDamage", range: [14, 22], unit: "%" },
+            { key: "physAtk", range: [14, 20] },
+            { key: "lifeSteal", range: [2, 4], unit: "%" },
+            { key: "speed", range: [2, 4] },
           ],
         },
       ],
       subWeapon: [
         {
-          key: "guardianShield",
-          name: "守護者の盾",
+          key: "guardianWall",
+          name: "守勢の盾",
           base: [
-            { key: "physDef", range: [8, 14] },
-            { key: "block", range: [4, 8], unit: "%" },
-            { key: "hp", range: [20, 36] },
+            { key: "physDef", range: [10, 16] },
+            { key: "block", range: [3, 6], unit: "%" },
+            { key: "vit", range: [3, 5] },
           ],
         },
         {
-          key: "spellBook",
-          name: "星紋の書",
+          key: "arcaneTome",
+          name: "星読の書",
           base: [
-            { key: "magAtk", range: [8, 14] },
-            { key: "magDef", range: [6, 12] },
-            { key: "mp", range: [10, 18] },
+            { key: "mp", range: [20, 30] },
+            { key: "magAtk", range: [12, 18] },
+            { key: "magPen", range: [2, 4], unit: "%" },
           ],
         },
         {
-          key: "shadowDagger",
-          name: "影走りの短剣",
+          key: "clericCodex",
+          name: "聖律の手引",
           base: [
-            { key: "physAtk", range: [8, 14] },
-            { key: "speed", range: [2, 4] },
-            { key: "critRate", range: [5, 9], unit: "%" },
+            { key: "magDef", range: [10, 16] },
+            { key: "barrier", range: [12, 18] },
+            { key: "debuffResist", range: [4, 8], unit: "%" },
           ],
         },
         {
-          key: "auroraBulwark",
-          tier: "mid",
-          name: "極光の大盾",
+          key: "shadowDirk",
+          name: "影躍りの短刀",
           base: [
-            { key: "physDef", range: [20, 32] },
-            { key: "magDef", range: [14, 26] },
-            { key: "block", range: [10, 16], unit: "%" },
-          ],
-        },
-        {
-          key: "runeboundTome",
-          tier: "late",
-          name: "封刻の書板",
-          base: [
-            { key: "magAtk", range: [28, 40] },
-            { key: "mp", range: [40, 60] },
-            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "physAtk", range: [10, 16] },
+            { key: "critRate", range: [5, 8], unit: "%" },
+            { key: "evade", range: [3, 6], unit: "%" },
           ],
         },
       ],
       head: [
         {
-          key: "scoutHood",
-          name: "斥候のフード",
+          key: "stalwartHelm",
+          name: "堅陣の兜",
           base: [
-            { key: "agi", range: [2, 4] },
-            { key: "evade", range: [4, 9], unit: "%" },
-            { key: "speed", range: [1, 3] },
+            { key: "hp", range: [26, 34] },
+            { key: "physDef", range: [8, 12] },
+            { key: "str", range: [1, 3] },
           ],
         },
         {
-          key: "sageCrown",
-          name: "賢者の冠",
+          key: "sageHood",
+          name: "星辰のフード",
           base: [
-            { key: "int", range: [2, 4] },
-            { key: "magDef", range: [6, 12] },
-            { key: "mp", range: [12, 20] },
+            { key: "mp", range: [18, 26] },
+            { key: "magAtk", range: [10, 14] },
+            { key: "cooldown", range: [2, 5], unit: "%" },
           ],
         },
         {
-          key: "veteranHelm",
-          name: "歴戦の兜",
+          key: "cantorVeil",
+          name: "聖歌のヴェール",
           base: [
-            { key: "vit", range: [2, 5] },
-            { key: "physDef", range: [8, 14] },
-            { key: "hp", range: [18, 32] },
+            { key: "hp", range: [24, 32] },
+            { key: "debuffResist", range: [6, 10], unit: "%" },
+            { key: "vit", range: [2, 4] },
           ],
         },
         {
-          key: "stormwatchHelm",
-          tier: "mid",
-          name: "雷視の兜",
+          key: "duskMask",
+          name: "宵闇の仮面",
           base: [
-            { key: "physDef", range: [18, 28] },
-            { key: "accuracy", range: [10, 18], unit: "%" },
             { key: "speed", range: [3, 5] },
-          ],
-        },
-        {
-          key: "oraclesVisage",
-          tier: "late",
-          name: "神託のヴェイル",
-          base: [
-            { key: "magDef", range: [22, 34] },
-            { key: "int", range: [6, 10] },
-            { key: "cooldown", range: [6, 10], unit: "%" },
+            { key: "critRate", range: [3, 6], unit: "%" },
+            { key: "lifeSteal", range: [1, 3], unit: "%" },
           ],
         },
       ],
       body: [
         {
-          key: "brigandine",
-          name: "旅人のコート",
+          key: "vanguardPlate",
+          name: "盾軍の甲冑",
           base: [
-            { key: "evade", range: [3, 7], unit: "%" },
-            { key: "speed", range: [1, 3] },
-            { key: "hp", range: [18, 30] },
+            { key: "hp", range: [46, 58] },
+            { key: "physDef", range: [12, 18] },
+            { key: "block", range: [4, 7], unit: "%" },
           ],
         },
         {
-          key: "plateArmor",
-          name: "鋼鉄の鎧",
+          key: "astralRobe",
+          name: "蒼星のローブ",
           base: [
-            { key: "physDef", range: [10, 16] },
-            { key: "magDef", range: [6, 12] },
-            { key: "damageReduction", range: [2, 5], unit: "%" },
+            { key: "magDef", range: [12, 18] },
+            { key: "mp", range: [24, 34] },
+            { key: "magAtk", range: [12, 16] },
           ],
         },
         {
-          key: "mageRobe",
-          name: "星霜のローブ",
+          key: "guardianMail",
+          name: "祈守の法衣",
           base: [
-            { key: "magDef", range: [8, 14] },
-            { key: "mp", range: [16, 26] },
-            { key: "cooldown", range: [2, 6], unit: "%" },
+            { key: "hp", range: [40, 52] },
+            { key: "controlResist", range: [6, 10], unit: "%" },
+            { key: "debuffResist", range: [6, 10], unit: "%" },
           ],
         },
         {
-          key: "tempestMail",
-          tier: "mid",
-          name: "暴風の鎧",
+          key: "nightSilk",
+          name: "夜霧の外套",
           base: [
-            { key: "physDef", range: [22, 32] },
-            { key: "hp", range: [40, 62] },
-            { key: "speed", range: [3, 5] },
-          ],
-        },
-        {
-          key: "starseerRaiment",
-          tier: "late",
-          name: "星詠みの法衣",
-          base: [
-            { key: "magDef", range: [28, 40] },
-            { key: "mp", range: [46, 72] },
-            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "evade", range: [6, 10], unit: "%" },
+            { key: "speed", range: [3, 6] },
+            { key: "magDef", range: [10, 14] },
           ],
         },
       ],
       hands: [
         {
-          key: "assassinGloves",
-          name: "夜影のグローブ",
+          key: "strikeGauntlet",
+          name: "斬烈の篭手",
           base: [
-            { key: "critRate", range: [4, 9], unit: "%" },
-            { key: "speed", range: [1, 3] },
-            { key: "physAtk", range: [6, 12] },
+            { key: "physAtk", range: [10, 16] },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+            { key: "str", range: [2, 4] },
           ],
         },
         {
-          key: "sageGloves",
-          name: "術士の手袋",
+          key: "mysticGrips",
+          name: "魔導の手袋",
           base: [
-            { key: "magAtk", range: [6, 12] },
+            { key: "magAtk", range: [10, 16] },
+            { key: "cooldown", range: [3, 6], unit: "%" },
             { key: "magPen", range: [2, 5], unit: "%" },
-            { key: "cooldown", range: [2, 6], unit: "%" },
           ],
         },
         {
-          key: "guardianGauntlet",
-          name: "守護のガントレット",
+          key: "hymnGloves",
+          name: "聖歌の手甲",
           base: [
-            { key: "physDef", range: [6, 12] },
-            { key: "block", range: [3, 7], unit: "%" },
-            { key: "hp", range: [12, 24] },
+            { key: "hpRegen", range: [1.2, 2.4], precision: 1 },
+            { key: "magDef", range: [8, 12] },
+            { key: "vit", range: [2, 4] },
           ],
         },
         {
-          key: "arcShockFist",
-          tier: "mid",
-          name: "電刃の篭手",
+          key: "bloodWeaveClaws",
+          name: "血紋の手甲",
           base: [
-            { key: "physAtk", range: [20, 30] },
+            { key: "critRate", range: [5, 9], unit: "%" },
             { key: "speed", range: [3, 6] },
-            { key: "critDamage", range: [10, 16], unit: "%" },
-          ],
-        },
-        {
-          key: "moonweaveGloves",
-          tier: "late",
-          name: "月織の手袋",
-          base: [
-            { key: "magAtk", range: [22, 34] },
-            { key: "cooldown", range: [6, 10], unit: "%" },
-            { key: "evade", range: [10, 16], unit: "%" },
+            { key: "lifeSteal", range: [1.5, 3], unit: "%", precision: 1 },
           ],
         },
       ],
       feet: [
         {
-          key: "scoutBoots",
-          name: "疾走のブーツ",
+          key: "battleGreaves",
+          name: "戦踏の具足",
           base: [
-            { key: "speed", range: [2, 5] },
-            { key: "evade", range: [4, 8], unit: "%" },
-            { key: "agi", range: [2, 4] },
+            { key: "speed", range: [3, 6] },
+            { key: "physDef", range: [8, 12] },
+            { key: "hp", range: [20, 30] },
           ],
         },
         {
-          key: "heavyGreaves",
-          name: "要塞のグリーブ",
+          key: "arcanistShoes",
+          name: "魔導士の靴",
           base: [
-            { key: "physDef", range: [8, 14] },
-            { key: "magDef", range: [6, 12] },
-            { key: "hp", range: [16, 30] },
-          ],
-        },
-        {
-          key: "mysticSandals",
-          name: "神秘のサンダル",
-          base: [
-            { key: "magDef", range: [8, 12] },
-            { key: "mp", range: [12, 20] },
+            { key: "speed", range: [3, 6] },
+            { key: "mp", range: [14, 22] },
             { key: "cooldown", range: [2, 5], unit: "%" },
           ],
         },
         {
-          key: "sandstormBoots",
-          tier: "mid",
-          name: "砂暴の脚甲",
+          key: "pilgrimBoots",
+          name: "巡礼の足甲",
           base: [
-            { key: "speed", range: [4, 7] },
-            { key: "evade", range: [8, 14], unit: "%" },
-            { key: "agi", range: [4, 7] },
+            { key: "hp", range: [22, 32] },
+            { key: "controlResist", range: [5, 9], unit: "%" },
+            { key: "speed", range: [2, 4] },
           ],
         },
         {
-          key: "auroraStride",
-          tier: "late",
-          name: "黎光の歩み",
+          key: "moonlitStride",
+          name: "月影のブーツ",
           base: [
-            { key: "speed", range: [6, 10] },
-            { key: "critRate", range: [10, 16], unit: "%" },
-            { key: "damageReduction", range: [6, 10], unit: "%" },
+            { key: "evade", range: [6, 10], unit: "%" },
+            { key: "speed", range: [4, 7] },
+            { key: "luck", range: [2, 4] },
           ],
         },
       ],
       accessory: [
         {
-          key: "warriorCharm",
-          name: "武勇の護符",
+          key: "warriorEmblem",
+          name: "斬将の紋章",
           base: [
+            { key: "physAtk", range: [8, 14] },
+            { key: "critRate", range: [4, 8], unit: "%" },
             { key: "str", range: [2, 4] },
-            { key: "physAtk", range: [6, 12] },
-            { key: "critDamage", range: [6, 12], unit: "%" },
           ],
         },
         {
-          key: "sagePendant",
-          name: "賢智のペンダント",
+          key: "crystalFocus",
+          name: "結晶の魔石",
           base: [
-            { key: "int", range: [2, 4] },
-            { key: "magAtk", range: [6, 12] },
-            { key: "mp", range: [12, 22] },
+            { key: "magAtk", range: [8, 14] },
+            { key: "magPen", range: [3, 6], unit: "%" },
+            { key: "mp", range: [12, 20] },
           ],
         },
         {
-          key: "luckyRing",
-          name: "幸運の指輪",
+          key: "sanctumRosary",
+          name: "聖域の数珠",
           base: [
-            { key: "luck", range: [2, 4] },
-            { key: "dropRate", range: [4, 10], unit: "%" },
-            { key: "critRate", range: [3, 7], unit: "%" },
+            { key: "hpRegen", range: [1.4, 2.8], precision: 1 },
+            { key: "barrier", range: [10, 16] },
+            { key: "vit", range: [2, 4] },
           ],
         },
         {
-          key: "timekeepersRing",
-          tier: "mid",
-          name: "時紡ぎの指輪",
+          key: "scarletCharm",
+          name: "緋血の護符",
           base: [
-            { key: "cooldown", range: [6, 10], unit: "%" },
-            { key: "speed", range: [3, 6] },
-            { key: "mp", range: [22, 36] },
-          ],
-        },
-        {
-          key: "dragonsEmbrace",
-          tier: "late",
-          name: "竜抱きの護符",
-          base: [
-            { key: "hp", range: [50, 80] },
-            { key: "damageReduction", range: [8, 12], unit: "%" },
-            { key: "dropRate", range: [8, 16], unit: "%" },
+            { key: "lifeSteal", range: [2.5, 4.5], unit: "%", precision: 1 },
+            { key: "critDamage", range: [8, 12], unit: "%" },
+            { key: "speed", range: [2, 4] },
           ],
         },
       ],
     };
+
+    function scaleOptionRangeForTier(option, scale) {
+      if (!option?.range) return option;
+      const precision = option.precision ?? EQUIPMENT_STAT_BY_KEY[option.key]?.precision ?? 0;
+      const factor = 10 ** precision;
+      return {
+        ...option,
+        range: option.range.map((value) => Math.max(1, Math.round(value * scale * factor) / factor)),
+      };
+    }
+
+    function buildTieredEquipmentTemplates(baseLibrary) {
+      return Object.fromEntries(
+        Object.entries(baseLibrary).map(([slotKey, templates]) => [
+          slotKey,
+          EQUIPMENT_TIER_BOUNDARIES.flatMap((tier) => {
+            const scale = tier.scale ?? 1;
+            return templates.map((template) => ({
+              ...template,
+              tier: tier.key,
+              key: `${template.key}_${tier.key}`,
+              name: `${tier.theme}${template.name}`,
+              base: template.base.map((option) => scaleOptionRangeForTier(option, scale)),
+            }));
+          }),
+        ])
+      );
+    }
+
+    const EQUIPMENT_TEMPLATE_LIBRARY = buildTieredEquipmentTemplates(EQUIPMENT_BASE_TEMPLATE_LIBRARY);
 
     // レジェンド装備定義から、キー→テンプレートの逆引きインデックスを遅延生成する
 let LEGENDARY_TEMPLATE_INDEX = null;
@@ -4863,22 +4824,23 @@ function inferLegendaryKeyFromItem(item) {
 
     function getEquipmentTierKeyForFloor(floor) {
       const boundary = EQUIPMENT_TIER_BOUNDARIES.find((entry) => floor <= entry.maxFloor);
-      return boundary?.key || "late";
+      return boundary?.key || EQUIPMENT_TIER_KEYS[EQUIPMENT_TIER_KEYS.length - 1] || "tier10";
     }
 
     function pickEquipmentTemplate(slotKey) {
       const list = EQUIPMENT_TEMPLATE_LIBRARY[slotKey];
       if (!list?.length) return null;
-      const tierOrder = ["early", "mid", "late"];
+      const tierOrder = EQUIPMENT_TIER_KEYS;
       const currentTier = getEquipmentTierKeyForFloor(game.floor || 1);
       const currentIndex = tierOrder.indexOf(currentTier);
+      const effectiveIndex = currentIndex >= 0 ? currentIndex : tierOrder.length - 1;
       const candidates = list.filter((entry) => {
         if (!entry.tier) return true;
         const idx = tierOrder.indexOf(entry.tier);
-        return idx === -1 ? true : idx <= currentIndex;
+        return idx === -1 ? true : idx <= effectiveIndex;
       });
-      const preferredTier = tierOrder[Math.max(0, currentIndex)];
-      const prioritized = candidates.filter((entry) => (entry.tier || "early") === preferredTier);
+      const preferredTier = tierOrder[Math.max(0, effectiveIndex)] || tierOrder[0];
+      const prioritized = candidates.filter((entry) => (entry.tier || tierOrder[0]) === preferredTier);
       const pool = prioritized.length ? prioritized : candidates.length ? candidates : list;
       return pool[randomInt(0, pool.length - 1)];
     }
