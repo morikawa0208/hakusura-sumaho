@@ -2209,6 +2209,9 @@
         <div>ATK <span id="modal-atk"></span></div>
         <div>DEF <span id="modal-def"></span></div>
         <div>SPD <span id="modal-spd"></span></div>
+        <div>命中 <span id="modal-acc"></span></div>
+        <div>回避 <span id="modal-evd"></span></div>
+        <div>耐性 <span id="modal-resist"></span></div>
       </div>
       <div class="pill" id="modal-tag" style="margin-top: 10px; display: inline-flex;">BOSS</div>
       <div id="modal-feature" class="help-panel" style="margin-top: 10px;"></div>
@@ -10758,6 +10761,15 @@ function maybeAutoSave(reason = "auto") {
       document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
       document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
       document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
+      document.getElementById("modal-acc").textContent = `${Math.round(enemy.accuracy)}%`;
+      document.getElementById("modal-evd").textContent = `${Math.round(enemy.evade)}%`;
+      const resist = enemy.resist || {};
+      const resistText = [
+        `行動${Math.round(resist.control ?? 0)}%`,
+        `持続${Math.round(resist.dot ?? 0)}%`,
+        `弱体${Math.round(resist.debuff ?? 0)}%`,
+      ].join(" / ");
+      document.getElementById("modal-resist").textContent = resistText;
       const tag = document.getElementById("modal-tag");
       if (enemy.isBoss) {
         tag.textContent = "BOSS";
