@@ -4607,6 +4607,8 @@ function inferLegendaryKeyFromItem(item) {
         includeRarity: !hideRarityInName,
       });
       potion.effectText = def.summary || def.tagline || describePotionEffect(potion);
+      if (prefix?.key) markCodexEntry("titles", `potion-prefix:${prefix.key}`);
+      if (suffix?.key) markCodexEntry("titles", `potion-suffix:${suffix.key}`);
       return potion;
     }
 
@@ -4661,6 +4663,8 @@ function inferLegendaryKeyFromItem(item) {
         includeRarity: !hideRarityInName,
       });
       potion.effectText = effectText || describePotionEffect(potion);
+      if (prefix?.key) markCodexEntry("titles", `potion-prefix:${prefix.key}`);
+      if (suffix?.key) markCodexEntry("titles", `potion-suffix:${suffix.key}`);
       return potion;
     }
 
@@ -10279,102 +10283,19 @@ function maybeAutoSave(reason = "auto") {
       return `${label} ${minText}${unit}〜${maxText}${unit}`;
     }
 
-    function formatRangeValue(min, max, { unit = "", precision = 0 } = {}) {
-      if (min === undefined || max === undefined || min === null || max === null) return `--${unit}`;
-      const format = (value) => {
-        if (precision) return Number(value).toFixed(precision);
-        return Math.round(value).toString();
-      };
-      const minText = format(min);
-      const maxText = format(max);
-      const suffix = unit || "";
-      return minText === maxText ? `${minText}${suffix}` : `${minText}${suffix}〜${maxText}${suffix}`;
-    }
-
-    function formatEnemyResistRange(minResist, maxResist) {
-      if (!minResist || !maxResist) return "--";
-      const control = formatRangeValue(Math.round(minResist.control), Math.round(maxResist.control), { unit: "%" });
-      const dot = formatRangeValue(Math.round(minResist.dot), Math.round(maxResist.dot), { unit: "%" });
-      const debuff = formatRangeValue(Math.round(minResist.debuff), Math.round(maxResist.debuff), { unit: "%" });
-      return `行動${control} / 持続${dot} / 弱体${debuff}`;
-    }
-
-    function createEnemyStatPreview({ floorMin, floorMax, isBoss = false, modifiers = null } = {}) {
-      const build = (floor, spdBonus) => {
-        const base = floor * 5 + (isBoss ? 20 : 0);
-        const enemy = {
-          hp: base + (isBoss ? 30 : 0),
-          maxHp: base + (isBoss ? 30 : 0),
-          atk: 4 + floor * 1.2 + (isBoss ? 3 : 0),
-          def: 2 + floor * 0.55 + (isBoss ? 2 : 0),
-          spd: 4 + spdBonus + (isBoss ? 1.5 : 0),
-          accuracy: 82 + floor * 0.6,
-          evade: Math.min(25, 8 + floor * 0.4 + (isBoss ? 5 : 0)),
-          resist: {
-            control: Math.min(50, 10 + floor * 0.8 + (isBoss ? 8 : 0)),
-            dot: Math.min(50, 8 + floor * 0.7 + (isBoss ? 6 : 0)),
-            debuff: Math.min(50, 8 + floor * 0.6 + (isBoss ? 6 : 0)),
-          },
-          attackCount: 1,
-        };
-
-        if (modifiers) {
-          applyEnemyModifiers(enemy, modifiers);
-        }
-
-        return enemy;
-      };
-
-      const min = build(Math.max(1, floorMin || 1), 0);
-      const max = build(Math.max(floorMin || 1, floorMax || floorMin || 1), 2);
-      return { min, max };
-    }
-
-    function buildEnemyStatDetailRows(statPreview) {
-      if (!statPreview?.min || !statPreview?.max) return [];
-      const { min, max } = statPreview;
-      const hp = formatRangeValue(Math.ceil(min.hp), Math.ceil(max.hp));
-      const atk = formatRangeValue(Math.ceil(min.atk), Math.ceil(max.atk));
-      const def = formatRangeValue(Math.ceil(min.def), Math.ceil(max.def));
-      const spd = formatRangeValue(Number(min.spd.toFixed(1)), Number(max.spd.toFixed(1)), { precision: 1 });
-      const acc = formatRangeValue(Math.round(min.accuracy), Math.round(max.accuracy), { unit: "%" });
-      const evd = formatRangeValue(Math.round(min.evade), Math.round(max.evade), { unit: "%" });
-      const resistText = formatEnemyResistRange(min.resist, max.resist);
-
-      return [
-        { label: "HP", value: hp },
-        { label: "ATK", value: atk },
-        { label: "DEF", value: def },
-        { label: "SPD", value: spd },
-        { label: "命中", value: acc },
-        { label: "回避", value: evd },
-        { label: "耐性", value: resistText },
-      ];
-    }
-
     function buildEnemyCodexEntries() {
       const codex = ensureCodexState();
       const entries = [];
       ENEMY_NAME_POOLS.forEach((pool) => {
         pool.names.forEach((name) => {
-          const def = ENEMY_MONSTER_DEFINITIONS[name];
-          const feature = def?.flavor || "固有の傾向を持つ雑魚敵。";
-          const statPreview = createEnemyStatPreview({
-            floorMin: pool.min,
-            floorMax: pool.max,
-            modifiers: def?.modifiers,
-          });
-          const statRows = buildEnemyStatDetailRows(statPreview);
           entries.push({
             key: `monster:${name}`,
             name,
-            summary: `${feature} (${pool.min}F〜${pool.max}F 出現)`,
+            summary: `${pool.min}F〜${pool.max}F に出現する雑魚敵。`,
             detailRows: [
               { label: "種別", value: "雑魚敵" },
               { label: "階層", value: `${pool.min}F〜${pool.max}F` },
-              ...statRows,
-              { label: "特徴", value: feature },
-              { label: "備考", value: "アーキタイプ遭遇時はネームド扱いで強化される。" },
+              { label: "備考", value: "タイプやアーキタイプにより性質が変化する。" },
             ],
             discovered: !!codex.enemyMonsters?.[name],
             minFloor: pool.min,
@@ -10418,20 +10339,12 @@ function maybeAutoSave(reason = "auto") {
         const skillText = skill ? `${skill.name}${skill.description ? `: ${skill.description}` : ""}` : "--";
         const dropInfo = BOSS_LEGENDARY_DROPS[floor];
         const dropTemplate = dropInfo?.legendaryKey ? getLegendaryTemplateByKey(dropInfo.legendaryKey) : null;
-        const statPreview = createEnemyStatPreview({
-          floorMin: floor,
-          floorMax: floor,
-          isBoss: true,
-          modifiers: def?.modifiers,
-        });
-        const statRows = buildEnemyStatDetailRows(statPreview);
         return {
           key: `boss:${floor}`,
           name: def?.name || `${floor}F ボス`,
           summary: def?.flavor || "強力な階層ボス",
           detailRows: [
             { label: "階層", value: `${floor}F` },
-            ...statRows,
             { label: "特徴", value: def?.flavor || "未知" },
             {
               label: "伝説",
@@ -10558,9 +10471,49 @@ function maybeAutoSave(reason = "auto") {
         });
       };
 
-      EQUIPMENT_TITLE_PREFIXES.forEach((title) => buildTitleEntry(title, "prefix"));
+      const buildPotionAffixEntries = (base, kind) => {
+        const typeLabel = kind === "prefix" ? "前" : "後";
+        const categoryLabels = {
+          general: "汎用",
+          recovery: "回復",
+          buff: "バフ",
+          legendaryGeneral: "レジェンド汎用",
+          legendaryRecovery: "レジェンド回復",
+          legendaryBuff: "レジェンドバフ",
+          legendaryCost: "レジェンド消費軽減",
+        };
+        Object.entries(base || {}).forEach(([category, list]) => {
+          (list || []).forEach((affix) => {
+            if (kindFilter && kind !== kindFilter) return;
+            const isLegendary = category.startsWith("legendary");
+            const group = isLegendary ? "legendary" : "potion";
+            const rank = isLegendary ? 3 : 1;
+            const key = `potion-${kind}:${affix.key}`;
+            entries.push({
+              key,
+              name: `${affix.name} (${typeLabel})`,
+              summary: affix.effect || "--",
+              detailRows: [
+                { label: "位置", value: typeLabel },
+                { label: "ランク", value: `★${rank}` },
+                { label: "区分", value: group === "legendary" ? "レジェンド用" : "ポーション用" },
+                { label: "カテゴリ", value: categoryLabels[category] || category },
+                { label: "効果", value: affix.effect || "--" },
+              ],
+              discovered: !!codex.titles?.[key],
+              group,
+              rank,
+              kind,
+            });
+          });
+        });
+      };
 
+      EQUIPMENT_TITLE_PREFIXES.forEach((title) => buildTitleEntry(title, "prefix"));
       EQUIPMENT_TITLE_SUFFIXES.forEach((title) => buildTitleEntry(title, "suffix"));
+
+      buildPotionAffixEntries(POTION_PREFIXES, "prefix");
+      buildPotionAffixEntries(POTION_SUFFIXES, "suffix");
 
       return entries;
     }
@@ -10662,6 +10615,12 @@ function maybeAutoSave(reason = "auto") {
 
       EQUIPMENT_TITLE_PREFIXES.forEach((title) => keys.titles.push(`prefix:${title.key}`));
       EQUIPMENT_TITLE_SUFFIXES.forEach((title) => keys.titles.push(`suffix:${title.key}`));
+      Object.values(POTION_PREFIXES).forEach((list) => {
+        (list || []).forEach((affix) => keys.titles.push(`potion-prefix:${affix.key}`));
+      });
+      Object.values(POTION_SUFFIXES).forEach((list) => {
+        (list || []).forEach((affix) => keys.titles.push(`potion-suffix:${affix.key}`));
+      });
 
       return keys;
     }
