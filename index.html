@@ -1784,6 +1784,25 @@
       gap: 6px;
     }
 
+    .player-modal-page {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .player-modal-actions {
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .player-modal-actions button.active {
+      background: linear-gradient(120deg, rgba(52, 211, 153, 0.16), rgba(96, 165, 250, 0.14));
+      border-color: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    }
+
     .secondary-scroll {
       flex: 1;
       min-height: 0;
@@ -1811,6 +1830,66 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
+    }
+
+    .equipment-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .equipment-row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .equipment-body {
+      display: grid;
+      gap: 6px;
+    }
+
+    .equipment-slot-label {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .equipment-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .equipment-empty {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .equipment-option-list.compact .option-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .equipment-option-list.compact .option-value {
+      font-size: 12px;
+      padding: 0;
+    }
+
+    .equipment-option-list.compact {
+      gap: 4px;
+    }
+
+    .equipment-bonus-list {
+      display: grid;
+      gap: 6px;
     }
 
     .section-title {
@@ -2291,25 +2370,39 @@
         </div>
         <button id="player-close" class="modal-close" aria-label="閉じる">×</button>
       </div>
-      <div class="secondary-scroll">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
-          <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
-        </div>
-        <div id="secondary-stats" class="stat-grid"></div>
-      </div>
-      <div class="primary-fixed">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div class="section-title" style="margin: 2px 0 4px;">一次ステータス</div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-              <div class="inline-buttons">
-                <div class="pill">能力P: <span id="stat-points"></span></div>
-              </div>
-            <button id="stat-step" class="step-button" aria-label="増減幅を切り替え">±1</button>
-            <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
+      <div id="player-status-view" class="player-modal-page">
+        <div class="secondary-scroll">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div class="section-title" style="margin: 8px 0 4px;">二次ステータス</div>
+            <button class="help-icon" id="stat-help" aria-label="計算式メモ">？</button>
           </div>
+          <div id="secondary-stats" class="stat-grid"></div>
         </div>
-        <div id="primary-stats" class="primary-grid"></div>
+        <div class="primary-fixed">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <div class="section-title" style="margin: 2px 0 4px;">一次ステータス</div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <div class="inline-buttons">
+                  <div class="pill">能力P: <span id="stat-points"></span></div>
+                </div>
+              <button id="stat-step" class="step-button" aria-label="増減幅を切り替え">±1</button>
+              <button id="reset-stats" class="help-icon" aria-label="ステータスをリセット">↺</button>
+            </div>
+          </div>
+          <div id="primary-stats" class="primary-grid"></div>
+        </div>
+      </div>
+      <div id="player-equipment-view" class="player-modal-page hidden">
+        <div class="secondary-scroll">
+          <div class="section-title" style="margin: 8px 0 4px;">装備一覧</div>
+          <div id="player-equipment-list" class="equipment-list"></div>
+          <div class="section-title" style="margin: 8px 0 4px;">装備ボーナス</div>
+          <div id="equipment-bonus-summary" class="equipment-bonus-list"></div>
+        </div>
+      </div>
+      <div class="modal-actions player-modal-actions">
+        <button id="player-modal-status-btn" class="active">ステータス</button>
+        <button id="player-modal-equipment-btn">装備</button>
       </div>
     </div>
   </div>
@@ -6566,6 +6659,7 @@ function inferLegendaryKeyFromItem(item) {
     let selectedSkillType = "active";
     let skillSummaryVisible = false;
     let pendingResetSpent = 0;
+    let playerModalPage = "status";
 
     const displayNumber = (num, { isPercent = false } = {}) => {
       if (isPercent) {
@@ -7769,6 +7863,9 @@ function inferLegendaryKeyFromItem(item) {
       renderActions();
       renderSecondaryStats(derived);
       renderPrimaryStats();
+      if (!playerModal.classList.contains("hidden") && playerModalPage === "equipment") {
+        renderEquipmentOverview();
+      }
       renderSkills();
       renderStatusList(document.getElementById("player-status-list"), player);
       renderWeaponEnhancePanel();
@@ -9075,35 +9172,11 @@ function maybeAutoSave(reason = "auto") {
     function renderSecondaryStats(derived) {
       const container = document.getElementById("secondary-stats");
       container.innerHTML = "";
-      const rows = [
-        { label: "物理攻撃力", value: derived.physAtk.total },
-        { label: "魔法攻撃力", value: derived.magAtk.total },
-        { label: "物理貫通", value: derived.physPen.total, unit: "%" },
-        { label: "魔法貫通", value: derived.magPen.total, unit: "%" },
-        { label: "クリティカル率", value: derived.critRate.total, unit: "%" },
-        { label: "クリティカルダメージ", value: derived.critDamage.total, unit: "%" },
-        { label: "命中率", value: derived.accuracy.total, unit: "%" },
-        { label: "回避率", value: derived.evade.total, unit: "%" },
-        { label: "最大HP", value: derived.maxHp.total },
-        { label: "最大MP", value: derived.maxMp.total },
-        { label: "物理防御力", value: derived.physDef.total },
-        { label: "魔法防御力", value: derived.magDef.total },
-        { label: "被ダメージ軽減", value: derived.damageReduction.total, unit: "%" },
-        { label: "ブロック率", value: derived.block.total, unit: "%" },
-        { label: "行動速度", value: derived.speed.total },
-        { label: "クールタイム短縮", value: derived.cooldown.total, unit: "%" },
-        { label: "行動阻害抵抗", value: derived.controlResist.total, unit: "%" },
-        { label: "DoT抵抗", value: derived.dotResist.total, unit: "%" },
-        { label: "弱体化抵抗", value: derived.debuffResist.total, unit: "%" },
-        { label: "HP再生", value: derived.hpRegen.total },
-        { label: "HP吸収", value: derived.lifeSteal.total, unit: "%" },
-        { label: "バリア", value: derived.barrier.total },
-        { label: "ドロップ率UP", value: derived.dropRate.total, unit: "%" },
-        { label: "レアリティUP", value: derived.rarity.total, unit: "%" },
-        { label: "ネームド遭遇率", value: derived.namedRate.total, unit: "%" },
-        { label: "称号付与率UP", value: derived.titleChance.total, unit: "%" },
-        { label: "ゴールド確率", value: derived.goldChance.total, unit: "%" },
-      ];
+      const rows = SECONDARY_STAT_DEFS.map((def) => ({
+        label: def.label,
+        value: derived[def.key]?.total ?? 0,
+        unit: def.unit,
+      }));
 
       rows.forEach((row) => {
         const el = document.createElement("div");
@@ -9213,6 +9286,154 @@ function maybeAutoSave(reason = "auto") {
         row.appendChild(actions);
         container.appendChild(row);
       });
+    }
+
+    function renderEquipmentList() {
+      if (!playerEquipmentList) return;
+      playerEquipmentList.innerHTML = "";
+
+      EQUIPMENT_SLOT_ORDER.forEach((slotKey) => {
+        const slotLabel = PLAYER_EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
+        const row = document.createElement("div");
+        row.className = "equipment-row";
+
+        const slot = document.createElement("div");
+        slot.className = "equipment-slot-label";
+        slot.textContent = slotLabel;
+        row.appendChild(slot);
+
+        const body = document.createElement("div");
+        body.className = "equipment-body";
+        const equipment = normalizeEquipmentItem(player.equipment?.[slotKey]);
+
+        if (equipment?.equipment) {
+          const nameRow = document.createElement("div");
+          nameRow.className = "equipment-name";
+          const label = document.createElement("span");
+          label.textContent = equipment.name;
+          applyItemRarityColor(label, equipment);
+          nameRow.appendChild(label);
+          const badge = createEnhanceBadge(equipment, { includeZero: true });
+          if (badge) nameRow.appendChild(badge);
+          body.appendChild(nameRow);
+
+          const optionList = document.createElement("div");
+          optionList.className = "equipment-option-list compact";
+
+          const appendOptions = (title, options) => {
+            if (!options?.length) return;
+            const heading = document.createElement("div");
+            heading.className = "option-label";
+            heading.textContent = title;
+            optionList.appendChild(heading);
+            options.forEach((opt) => {
+              const line = document.createElement("div");
+              line.className = "option-value";
+              line.textContent = formatEquipmentValue(getEnhancedEntry(opt, equipment));
+              optionList.appendChild(line);
+            });
+          };
+
+          if (equipment.equipment.uniqueOptions?.length) {
+            const heading = document.createElement("div");
+            heading.className = "option-label";
+            heading.textContent = "固有";
+            optionList.appendChild(heading);
+            equipment.equipment.uniqueOptions.forEach((opt) => {
+              const line = document.createElement("div");
+              line.className = "option-value";
+              line.textContent = `${opt.name}: ${opt.effect}`;
+              optionList.appendChild(line);
+            });
+          }
+
+          appendOptions("基礎", equipment.equipment.baseOptions);
+          appendOptions("ランダム", equipment.equipment.randomOptions);
+          if (equipment.equipment.prefix?.options?.length) {
+            appendOptions(`前称号: ${equipment.equipment.prefix.name}`, equipment.equipment.prefix.options);
+          }
+          if (equipment.equipment.suffix?.options?.length) {
+            appendOptions(`後称号: ${equipment.equipment.suffix.name}`, equipment.equipment.suffix.options);
+          }
+
+          if (optionList.childElementCount > 0) {
+            body.appendChild(optionList);
+          }
+        } else {
+          const empty = document.createElement("div");
+          empty.className = "equipment-empty";
+          empty.textContent = "未装備";
+          body.appendChild(empty);
+        }
+
+        row.appendChild(body);
+        playerEquipmentList.appendChild(row);
+      });
+    }
+
+    function renderEquipmentBonusSummary() {
+      if (!equipmentBonusSummary) return;
+      equipmentBonusSummary.innerHTML = "";
+      const { primary, secondary } = collectEquipmentBonuses();
+      const rows = [];
+
+      primaryOrder.forEach((key) => {
+        const value = primary?.[key] ?? 0;
+        if (!value) return;
+        rows.push({ label: player.primary?.[key]?.label || key.toUpperCase(), value, unit: "" });
+      });
+
+      SECONDARY_STAT_DEFS.forEach((def) => {
+        const value = secondary?.[def.key] ?? 0;
+        if (!value) return;
+        rows.push({ label: def.label, value, unit: def.unit || "" });
+      });
+
+      const formatValue = (value, unit = "") => {
+        const isPercent = unit === "%";
+        const total = displayNumber(value, { isPercent });
+        const sign = value >= 0 ? "+" : "";
+        return `<span class="total">${sign}${total}${unit}</span>`;
+      };
+
+      if (!rows.length) {
+        const empty = document.createElement("div");
+        empty.className = "help-panel";
+        empty.textContent = "装備によるステータス加算はありません";
+        equipmentBonusSummary.appendChild(empty);
+        return;
+      }
+
+      rows.forEach((row) => {
+        const el = document.createElement("div");
+        el.className = "stat-row";
+        const left = document.createElement("div");
+        left.className = "stat-label secondary";
+        left.textContent = row.label;
+        const right = document.createElement("div");
+        right.className = "stat-value";
+        right.innerHTML = formatValue(row.value, row.unit);
+        el.appendChild(left);
+        el.appendChild(right);
+        equipmentBonusSummary.appendChild(el);
+      });
+    }
+
+    function renderEquipmentOverview() {
+      renderEquipmentList();
+      renderEquipmentBonusSummary();
+    }
+
+    function setPlayerModalPage(page) {
+      playerModalPage = page === "equipment" ? "equipment" : "status";
+      const isEquipment = playerModalPage === "equipment";
+      playerStatusView?.classList.toggle("hidden", isEquipment);
+      playerEquipmentView?.classList.toggle("hidden", !isEquipment);
+      playerModalStatusButton?.classList.toggle("active", !isEquipment);
+      playerModalEquipmentButton?.classList.toggle("active", isEquipment);
+      if (isEquipment) {
+        renderEquipmentOverview();
+      }
     }
 
     function getActiveSkillSlotIndex(skillKey) {
@@ -10050,6 +10271,10 @@ function maybeAutoSave(reason = "auto") {
     const potionModal = document.getElementById("potion-modal");
     const skillInfoModal = document.getElementById("skill-info-modal");
     const playerModal = document.getElementById("player-modal");
+    const playerStatusView = document.getElementById("player-status-view");
+    const playerEquipmentView = document.getElementById("player-equipment-view");
+    const playerEquipmentList = document.getElementById("player-equipment-list");
+    const equipmentBonusSummary = document.getElementById("equipment-bonus-summary");
     const skillsModal = document.getElementById("skills-modal");
     const weaponEnhanceModal = document.getElementById("weapon-enhance-modal");
     const weaponEnhanceAnimation = document.getElementById("weapon-enhance-animation");
@@ -10107,6 +10332,8 @@ function maybeAutoSave(reason = "auto") {
     const resetButton = document.getElementById("reset-stats");
     const statStepButton = document.getElementById("stat-step");
     const skillStepButton = document.getElementById("skill-step");
+    const playerModalStatusButton = document.getElementById("player-modal-status-btn");
+    const playerModalEquipmentButton = document.getElementById("player-modal-equipment-btn");
     const skillSummaryToggleButton = document.getElementById("skill-summary-toggle");
     const skillDetailView = document.getElementById("skill-detail-view");
     const skillSummaryModal = document.getElementById("skill-summary-modal");
@@ -10267,6 +10494,35 @@ function maybeAutoSave(reason = "auto") {
     let currentCodexCategory = "enemy";
 
     const EQUIPMENT_SLOT_ORDER = Object.keys(PLAYER_EQUIPMENT_SLOTS);
+    const SECONDARY_STAT_DEFS = [
+      { key: "physAtk", label: "物理攻撃力" },
+      { key: "magAtk", label: "魔法攻撃力" },
+      { key: "physPen", label: "物理貫通", unit: "%" },
+      { key: "magPen", label: "魔法貫通", unit: "%" },
+      { key: "critRate", label: "クリティカル率", unit: "%" },
+      { key: "critDamage", label: "クリティカルダメージ", unit: "%" },
+      { key: "accuracy", label: "命中率", unit: "%" },
+      { key: "evade", label: "回避率", unit: "%" },
+      { key: "maxHp", label: "最大HP" },
+      { key: "maxMp", label: "最大MP" },
+      { key: "physDef", label: "物理防御力" },
+      { key: "magDef", label: "魔法防御力" },
+      { key: "damageReduction", label: "被ダメージ軽減", unit: "%" },
+      { key: "block", label: "ブロック率", unit: "%" },
+      { key: "speed", label: "行動速度" },
+      { key: "cooldown", label: "クールタイム短縮", unit: "%" },
+      { key: "controlResist", label: "行動阻害抵抗", unit: "%" },
+      { key: "dotResist", label: "DoT抵抗", unit: "%" },
+      { key: "debuffResist", label: "弱体化抵抗", unit: "%" },
+      { key: "hpRegen", label: "HP再生" },
+      { key: "lifeSteal", label: "HP吸収", unit: "%" },
+      { key: "barrier", label: "バリア" },
+      { key: "dropRate", label: "ドロップ率UP", unit: "%" },
+      { key: "rarity", label: "レアリティUP", unit: "%" },
+      { key: "namedRate", label: "ネームド遭遇率", unit: "%" },
+      { key: "titleChance", label: "称号付与率UP", unit: "%" },
+      { key: "goldChance", label: "ゴールド確率", unit: "%" },
+    ];
     const TITLE_GROUP_ORDER = ["normal", "legendary", "potion"];
 
     function formatStatLabel(key) {
@@ -10970,6 +11226,7 @@ function maybeAutoSave(reason = "auto") {
 
     function openPlayerModal() {
       updateUI();
+      setPlayerModalPage("status");
       playerModal.classList.remove("hidden");
     }
 
@@ -11976,6 +12233,8 @@ function handlePlayerDefeat() {
 
     document.getElementById("btn-skill-tree").addEventListener("click", openSkillsModal);
     document.getElementById("btn-player-modal").addEventListener("click", openPlayerModal);
+    playerModalStatusButton?.addEventListener("click", () => setPlayerModalPage("status"));
+    playerModalEquipmentButton?.addEventListener("click", () => setPlayerModalPage("equipment"));
     inventoryOpenButton?.addEventListener("click", openInventoryModal);
     codexOpenButton?.addEventListener("click", openCodexModal);
     debugOpenButton?.addEventListener("click", openDebugModal);
