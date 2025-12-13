@@ -8159,6 +8159,10 @@ function inferLegendaryKeyFromItem(item) {
       return true;
     }
 
+    function roundBattleValue(value) {
+      return Math.round(value ?? 0);
+    }
+
     function calculateDotDamage(target, status) {
       switch (status.key) {
         case "bleed":
@@ -8194,7 +8198,7 @@ function inferLegendaryKeyFromItem(item) {
       if (entity.hp <= 0) return { defeated: true, skipTurn: true };
       const regenPercent = Math.max(0, entity.hpRegen || 0);
       if (regenPercent > 0 && entity.hp > 0 && entity.maxHp > 0) {
-        const healAmount = Math.floor(entity.maxHp * (regenPercent / 100));
+        const healAmount = roundBattleValue(entity.maxHp * (regenPercent / 100));
         if (healAmount > 0) {
           const healed = applyHealing(entity, healAmount);
           if (healed > 0 && entity === player) {
@@ -8278,9 +8282,11 @@ function inferLegendaryKeyFromItem(item) {
       if (!card) return;
       const fill = card.querySelector(".enemy-bar .fill");
       const label = card.querySelector(".enemy-bar .label");
-      const hpPct = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+      const roundedHp = roundBattleValue(enemy.hp);
+      const roundedMaxHp = Math.max(1, roundBattleValue(enemy.maxHp));
+      const hpPct = Math.max(0, Math.floor((roundedHp / roundedMaxHp) * 100));
       if (fill) fill.style.width = `${hpPct}%`;
-      if (label) label.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+      if (label) label.textContent = `${roundedHp} / ${roundedMaxHp} (${hpPct}%)`;
     }
 
     function updateUI(derivedStats = null) {
@@ -8288,14 +8294,16 @@ function inferLegendaryKeyFromItem(item) {
       lastDerivedStats = derived;
       updateStepButton();
       document.getElementById("floor-inline").textContent = game.floor;
-      document.getElementById("hp-label").textContent = `HP ${Math.ceil(player.hp)} / ${derived.maxHp.total}`;
+      const displayHp = roundBattleValue(player.hp);
+      const displayMaxHp = Math.max(1, roundBattleValue(derived.maxHp.total));
+      document.getElementById("hp-label").textContent = `HP ${displayHp} / ${displayMaxHp}`;
       document.getElementById("mp-label").textContent = `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
       document.getElementById("exp-label").textContent = `EXP ${player.exp} / ${player.expToLevel}`;
       document.getElementById("level").textContent = player.level;
       document.getElementById("gold").textContent = formatGold(player.gold);
       document.getElementById("stat-points").textContent = player.statPoints;
       document.getElementById("skill-points-skill").textContent = player.skillPoints;
-      updateBars("hp-bar", player.hp, derived.maxHp.total, "hp");
+      updateBars("hp-bar", displayHp, displayMaxHp, "hp");
       updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
       updateBars("exp-bar", player.exp, player.expToLevel, "exp");
       const phone = document.querySelector(".phone");
@@ -9372,13 +9380,14 @@ function maybeAutoSave(reason = "auto") {
             : null;
         }
 
-        const hpPct =
-          enemy.maxHp > 0 ? Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100)) : 0;
+        const roundedHp = roundBattleValue(enemy.hp);
+        const roundedMaxHp = Math.max(1, roundBattleValue(enemy.maxHp));
+        const hpPct = Math.max(0, Math.floor((roundedHp / roundedMaxHp) * 100));
         if (refs.fill) {
           refs.fill.style.width = `${hpPct}%`;
         }
         if (refs.hpLabel) {
-          refs.hpLabel.textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp} (${hpPct}%)`;
+          refs.hpLabel.textContent = `${roundedHp} / ${roundedMaxHp} (${hpPct}%)`;
         }
       }
 
@@ -11502,7 +11511,7 @@ function maybeAutoSave(reason = "auto") {
 
     function openEnemyModal(enemy) {
       document.getElementById("modal-name").textContent = enemy.name;
-      document.getElementById("modal-hp").textContent = `${Math.ceil(enemy.hp)} / ${enemy.maxHp}`;
+      document.getElementById("modal-hp").textContent = `${roundBattleValue(enemy.hp)} / ${Math.max(1, roundBattleValue(enemy.maxHp))}`;
       document.getElementById("modal-atk").textContent = Math.ceil(enemy.atk);
       document.getElementById("modal-def").textContent = Math.ceil(enemy.def);
       document.getElementById("modal-spd").textContent = enemy.spd.toFixed(1);
@@ -12191,7 +12200,7 @@ function maybeAutoSave(reason = "auto") {
         attacker.lifeSteal > 0 &&
         attacker.maxHp;
       if (canLifeSteal) {
-        const healAmount = Math.floor(final * (attacker.lifeSteal / 100));
+        const healAmount = roundBattleValue(final * (attacker.lifeSteal / 100));
         if (healAmount > 0) {
           applyHealing(attacker, healAmount);
         }
@@ -12201,10 +12210,10 @@ function maybeAutoSave(reason = "auto") {
 
     function applyHealing(target, amount) {
       if (!target || amount <= 0) return 0;
-      const maxHp = Math.max(0, Math.round(target.maxHp ?? 0));
+      const maxHp = Math.max(0, roundBattleValue(target.maxHp ?? 0));
       if (maxHp <= 0) return 0;
       const missing = Math.max(0, maxHp - target.hp);
-      const healed = Math.min(Math.max(0, Math.round(amount)), missing);
+      const healed = Math.min(Math.max(0, roundBattleValue(amount)), missing);
       if (healed <= 0) return 0;
       target.hp = Math.min(maxHp, target.hp + healed);
       if (target === player) {
