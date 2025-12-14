@@ -4175,6 +4175,15 @@
       { rank: 3, weight: 10 },
     ];
 
+    const TITLE_PRIMARY_PER_LEVEL_BY_RARITY = [
+      { amount: 1, interval: 3 },
+      { amount: 2, interval: 3 },
+      { amount: 1, interval: 1 },
+      { amount: 1, interval: 1 },
+    ];
+    const TITLE_PRIMARY_FIXED_BY_RARITY = [50, 100, 200, 200];
+    const TITLE_ATTACK_COUNT_BONUS_BY_RARITY = [1, 2, 3, 3];
+
     const EQUIPMENT_STAT_POOL = [
       { key: "str", label: "力", type: "primary", range: [1, 4] },
       { key: "int", label: "知識", type: "primary", range: [1, 4] },
@@ -4570,6 +4579,9 @@ function inferLegendaryKeyFromItem(item) {
       { key: "immortal", name: "不朽の", rank: 3, options: ["hp", "damageReduction", "block"] },
       { key: "twilight", name: "黄昏の", rank: 2, options: ["int", "magAtk"] },
       { key: "hunter", name: "狩人の", rank: 2, options: ["critRate", "speed"] },
+      { key: "growing", name: "成長する", rank: 1, options: ["physAtk", "speed"], primaryPerLevelStats: ["str"] },
+      { key: "unyielding", name: "不動の", rank: 2, options: ["hp", "damageReduction"], primaryFixedStats: ["vit"] },
+      { key: "relentless", name: "連舞の", rank: 3, options: ["speed", "critRate"], attackCountBonus: true },
     ];
 
     const EQUIPMENT_TITLE_SUFFIXES = [
@@ -4582,6 +4594,9 @@ function inferLegendaryKeyFromItem(item) {
       { key: "guardian", name: "の守護者", rank: 2, options: ["hp", "physDef", "magDef"] },
       { key: "storm", name: "の雷鳴", rank: 2, options: ["speed", "critRate"] },
       { key: "void", name: "の虚無", rank: 3, options: ["magAtk", "dotResist", "controlResist"] },
+      { key: "study", name: "の研磨", rank: 1, options: ["magAtk", "mp"], primaryPerLevelStats: ["int"] },
+      { key: "foundation", name: "の礎", rank: 2, options: ["rarity", "dropRate"], primaryFixedStats: ["luck"] },
+      { key: "chain", name: "の連環", rank: 3, options: ["critDamage", "speed"], attackCountBonus: true },
     ];
 
     const LEGENDARY_EQUIPMENT_LIBRARY = {
@@ -5006,6 +5021,31 @@ function inferLegendaryKeyFromItem(item) {
       return { str: 0, int: 0, vit: 0, agi: 0, luck: 0 };
     }
 
+    function createEmptyPrimaryFixedBonus(defaultValue = null) {
+      return { str: defaultValue, int: defaultValue, vit: defaultValue, agi: defaultValue, luck: defaultValue };
+    }
+
+    function createEmptyPrimaryPerLevelBonus() {
+      return { str: [], int: [], vit: [], agi: [], luck: [] };
+    }
+
+    function clonePrimaryPerLevelBonus(source = {}) {
+      const cloned = createEmptyPrimaryPerLevelBonus();
+      Object.entries(source || {}).forEach(([key, effects]) => {
+        if (!Array.isArray(effects)) return;
+        cloned[key] = effects.map((effect) => ({ ...effect }));
+      });
+      return cloned;
+    }
+
+    function clonePrimaryFixedBonus(source = {}) {
+      const cloned = createEmptyPrimaryFixedBonus();
+      Object.entries(cloned).forEach(([key]) => {
+        if (typeof source[key] === "number") cloned[key] = source[key];
+      });
+      return cloned;
+    }
+
     function ensureAcquiredOrder(item) {
       if (!item) return item;
       if (typeof item.acquiredOrder !== "number") {
@@ -5411,9 +5451,16 @@ function inferLegendaryKeyFromItem(item) {
     function generateTitleOptions(title, rarity) {
       const primaryBonus = createEmptyPrimaryBonus();
       const bonus = createEmptyBonus();
-      if (!title?.options?.length) return { entries: [], primaryBonus, bonus };
+      const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
+      const primaryFixed = createEmptyPrimaryFixedBonus();
+      let attackCountBonus = 0;
 
-      const entries = title.options
+      const rarityRank = Math.max(
+        0,
+        Math.min(TITLE_PRIMARY_PER_LEVEL_BY_RARITY.length - 1, rarity?.rank ?? 0)
+      );
+
+      const entries = (title?.options || [])
         .map((key) => {
           const def = EQUIPMENT_STAT_BY_KEY[key];
           if (!def) return null;
@@ -5423,7 +5470,28 @@ function inferLegendaryKeyFromItem(item) {
         })
         .filter(Boolean);
 
-      return { entries, primaryBonus, bonus };
+      if (title?.primaryPerLevelStats?.length) {
+        const effect = TITLE_PRIMARY_PER_LEVEL_BY_RARITY[rarityRank] || TITLE_PRIMARY_PER_LEVEL_BY_RARITY[0];
+        title.primaryPerLevelStats.forEach((statKey) => {
+          if (!primaryPerLevel[statKey]) primaryPerLevel[statKey] = [];
+          primaryPerLevel[statKey].push({ amount: effect.amount, interval: effect.interval });
+        });
+      }
+
+      if (title?.primaryFixedStats?.length) {
+        const fixedValue = TITLE_PRIMARY_FIXED_BY_RARITY[rarityRank] ?? 0;
+        title.primaryFixedStats.forEach((statKey) => {
+          const current = primaryFixed[statKey];
+          primaryFixed[statKey] = typeof current === "number" ? Math.max(current, fixedValue) : fixedValue;
+        });
+      }
+
+      if (title?.attackCountBonus) {
+        const extraAttacks = TITLE_ATTACK_COUNT_BONUS_BY_RARITY[rarityRank] ?? 0;
+        attackCountBonus += extraAttacks;
+      }
+
+      return { entries, primaryBonus, bonus, primaryPerLevel, primaryFixed, attackCountBonus };
     }
 
     function rollTitleRank(rarity, titleBonus) {
@@ -5444,7 +5512,14 @@ function inferLegendaryKeyFromItem(item) {
       const chance = Math.min(95, baseChance + bonus);
       const defaultResult = {
         title: null,
-        options: { entries: [], primaryBonus: createEmptyPrimaryBonus(), bonus: createEmptyBonus() },
+        options: {
+          entries: [],
+          primaryBonus: createEmptyPrimaryBonus(),
+          bonus: createEmptyBonus(),
+          primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
+          primaryFixed: createEmptyPrimaryFixedBonus(),
+          attackCountBonus: 0,
+        },
       };
       if (!pool?.length) return defaultResult;
       if (Math.random() * 100 >= chance) return defaultResult;
@@ -5461,6 +5536,33 @@ function inferLegendaryKeyFromItem(item) {
       const sign = entry.value >= 0 ? "+" : "";
       const unit = entry.unit || "";
       return `${entry.label} ${sign}${entry.value}${unit}`;
+    }
+
+    function formatAffixEffects(effects) {
+      if (!effects) return [];
+      const lines = [];
+      Object.entries(effects.primaryPerLevel || {}).forEach(([key, list]) => {
+        (list || []).forEach((effect) => {
+          if (!effect) return;
+          const label = EQUIPMENT_STAT_BY_KEY[key]?.label || key;
+          const perText =
+            effect.interval === 1
+              ? `Lv毎に+${effect.amount}`
+              : `${effect.interval}Lv毎に+${effect.amount}`;
+          const current = calcPrimaryPerLevelBonus({ [key]: [effect] }, player.level)?.[key] || 0;
+          const currentText = current ? ` (現在+${current})` : "";
+          lines.push(`${label}: ${perText}${currentText}`);
+        });
+      });
+      Object.entries(effects.primaryFixed || {}).forEach(([key, value]) => {
+        if (typeof value !== "number") return;
+        const label = EQUIPMENT_STAT_BY_KEY[key]?.label || key;
+        lines.push(`${label}: ${value}に固定`);
+      });
+      if (effects.attackCountBonus) {
+        lines.push(`通常攻撃回数+${effects.attackCountBonus}回`);
+      }
+      return lines;
     }
 
     function buildEquipmentName(slotKey, rarity, prefixTitle, suffixTitle, baseName) {
@@ -5653,12 +5755,18 @@ function inferLegendaryKeyFromItem(item) {
       entries: [],
       primaryBonus: createEmptyPrimaryBonus(),
       bonus: createEmptyBonus(),
+      primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
+      primaryFixed: createEmptyPrimaryFixedBonus(),
+      attackCountBonus: 0,
     };
   const suffixOptions =
     suffixRoll.options || {
       entries: [],
       primaryBonus: createEmptyPrimaryBonus(),
       bonus: createEmptyBonus(),
+      primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
+      primaryFixed: createEmptyPrimaryFixedBonus(),
+      attackCountBonus: 0,
     };
 
   const uniqueOption =
@@ -5666,12 +5774,38 @@ function inferLegendaryKeyFromItem(item) {
 
   const primaryBonus = createEmptyPrimaryBonus();
   const bonus = createEmptyBonus();
+  const primaryPerLevelBonus = createEmptyPrimaryPerLevelBonus();
+  const primaryFixedBonus = createEmptyPrimaryFixedBonus();
+  let attackCountBonus = 0;
 
   [...base.entries, ...random.entries, ...prefixOptions.entries, ...suffixOptions.entries].forEach(
     (entry) => {
       applyOptionToBonus(entry, entry.value, primaryBonus, bonus);
     }
   );
+
+  const mergeTitleEffects = (options) => {
+    if (!options) return;
+    Object.entries(options.primaryPerLevel || {}).forEach(([key, effects]) => {
+      if (!Array.isArray(effects)) return;
+      if (!primaryPerLevelBonus[key]) primaryPerLevelBonus[key] = [];
+      effects.forEach((effect) => {
+        if (!effect) return;
+        primaryPerLevelBonus[key].push({ ...effect });
+      });
+    });
+    Object.entries(options.primaryFixed || {}).forEach(([key, value]) => {
+      if (typeof value !== "number") return;
+      const current = primaryFixedBonus[key];
+      primaryFixedBonus[key] = typeof current === "number" ? Math.max(current, value) : value;
+    });
+    if (typeof options.attackCountBonus === "number") {
+      attackCountBonus += options.attackCountBonus;
+    }
+  };
+
+  mergeTitleEffects(prefixOptions);
+  mergeTitleEffects(suffixOptions);
 
   const name = buildEquipmentName(
     slot,
@@ -5686,34 +5820,49 @@ function inferLegendaryKeyFromItem(item) {
     Math.min(MAX_ENHANCE_LEVEL, Math.floor(enhanceLevel || 0))
   );
 
-  const prefixAffix = prefixTitle ? { ...prefixTitle, options: prefixOptions.entries } : null;
-  const suffixAffix = suffixTitle ? { ...suffixTitle, options: suffixOptions.entries } : null;
+  const buildAffix = (title, options) =>
+    title
+      ? {
+          ...title,
+          options: options.entries,
+          effects: {
+            primaryPerLevel: clonePrimaryPerLevelBonus(options.primaryPerLevel),
+            primaryFixed: clonePrimaryFixedBonus(options.primaryFixed),
+            attackCountBonus: options.attackCountBonus || 0,
+          },
+        }
+      : null;
 
-    const baseItem = ensureAcquiredOrder({
-      id: generateId("eq"),
-      type: "equipment",
-      slot,
-      name,
+  const prefixAffix = buildAffix(prefixTitle, prefixOptions);
+  const suffixAffix = buildAffix(suffixTitle, suffixOptions);
+
+  const baseItem = ensureAcquiredOrder({
+    id: generateId("eq"),
+    type: "equipment",
+    slot,
+    name,
     desc: isDungeonDrop ? "ダンジョンで拾った装備品" : "デバッグで生成した装備品",
     rarity: rarity.rank,
     enhanceLevel: clampedEnhanceLevel,
     enhanceBroken: false,
-      equipment: {
-        slot,
-        rarity: rarity.key,
-        rarityLabel: rarity.label,
-        color: rarity.color,
-        templateKey: template?.key || "",
-        legendaryKey:
-          rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
-        baseOptions: base.entries,
-        randomOptions: random.entries,
-        prefix: prefixAffix,
+    equipment: {
+      slot,
+      rarity: rarity.key,
+      rarityLabel: rarity.label,
+      color: rarity.color,
+      templateKey: template?.key || "",
+      legendaryKey: rarityKey === "legendary" ? template?.key || legendaryKey || "" : "",
+      baseOptions: base.entries,
+      randomOptions: random.entries,
+      prefix: prefixAffix,
       suffix: suffixAffix,
       uniqueOptions: uniqueOption?.option ? [uniqueOption.option] : [],
     },
     primaryBonus,
     bonus,
+    primaryPerLevelBonus,
+    primaryFixedBonus,
+    attackCountBonus,
   });
 
   return baseItem;
@@ -5735,12 +5884,29 @@ function inferLegendaryKeyFromItem(item) {
       normalizeEquipmentItem(item);
       const primary = createEmptyPrimaryBonus();
       const secondary = createEmptyBonus();
-      if (!item?.equipment) return { primary, secondary };
+      const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
+      const primaryFixed = createEmptyPrimaryFixedBonus();
+      let attackCountBonus = 0;
+      if (!item?.equipment)
+        return { primary, secondary, primaryPerLevel, primaryFixed, attackCountBonus };
 
-      if (item.primaryBonus || item.bonus) {
+      if (
+        item.primaryBonus ||
+        item.bonus ||
+        item.primaryPerLevelBonus ||
+        item.primaryFixedBonus ||
+        item.attackCountBonus
+      ) {
         Object.assign(primary, item.primaryBonus || {});
         Object.assign(secondary, item.bonus || {});
-        return applyEnhanceScaling(primary, secondary, item);
+        const scaled = applyEnhanceScaling(primary, secondary, item);
+        return {
+          primary: scaled.primary,
+          secondary: scaled.secondary,
+          primaryPerLevel: clonePrimaryPerLevelBonus(item.primaryPerLevelBonus || {}),
+          primaryFixed: clonePrimaryFixedBonus(item.primaryFixedBonus || {}),
+          attackCountBonus: item.attackCountBonus || 0,
+        };
       }
 
       const collect = (options) => {
@@ -5750,11 +5916,35 @@ function inferLegendaryKeyFromItem(item) {
         });
       };
 
+      const collectEffects = (affix) => {
+        const effects = affix?.effects;
+        if (!effects) return;
+        Object.entries(effects.primaryPerLevel || {}).forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          if (!primaryPerLevel[key]) primaryPerLevel[key] = [];
+          list.forEach((effect) => {
+            if (!effect) return;
+            primaryPerLevel[key].push({ ...effect });
+          });
+        });
+        Object.entries(effects.primaryFixed || {}).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          const current = primaryFixed[key];
+          primaryFixed[key] = typeof current === "number" ? Math.max(current, value) : value;
+        });
+        if (typeof effects.attackCountBonus === "number") {
+          attackCountBonus += effects.attackCountBonus;
+        }
+      };
+
       collect(item.equipment.baseOptions);
       collect(item.equipment.randomOptions);
       collect(item.equipment.prefix?.options);
       collect(item.equipment.suffix?.options);
-      return applyEnhanceScaling(primary, secondary, item);
+      collectEffects(item.equipment.prefix);
+      collectEffects(item.equipment.suffix);
+      const scaled = applyEnhanceScaling(primary, secondary, item);
+      return { primary: scaled.primary, secondary: scaled.secondary, primaryPerLevel, primaryFixed, attackCountBonus };
     }
 
     function diffEquipmentBonuses(newItem, equippedItem) {
@@ -7405,6 +7595,9 @@ function inferLegendaryKeyFromItem(item) {
     function collectEquipmentBonuses() {
       const secondary = createEmptyBonus();
       const primary = createEmptyPrimaryBonus();
+      const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
+      const primaryFixed = createEmptyPrimaryFixedBonus();
+      let attackCountBonus = 0;
       Object.values(player.equipment || {}).forEach((item) => {
         if (!item?.equipment) return;
         const bonuses = getEquipmentBonuses(item);
@@ -7416,8 +7609,39 @@ function inferLegendaryKeyFromItem(item) {
           if (typeof value !== "number") return;
           secondary[key] = (secondary[key] ?? 0) + value;
         });
+        Object.entries(bonuses.primaryPerLevel || {}).forEach(([key, effects]) => {
+          if (!Array.isArray(effects)) return;
+          if (!primaryPerLevel[key]) primaryPerLevel[key] = [];
+          effects.forEach((effect) => {
+            if (!effect) return;
+            primaryPerLevel[key].push({ ...effect });
+          });
+        });
+        Object.entries(bonuses.primaryFixed || {}).forEach(([key, value]) => {
+          if (typeof value !== "number") return;
+          const current = primaryFixed[key];
+          primaryFixed[key] = typeof current === "number" ? Math.max(current, value) : value;
+        });
+        if (typeof bonuses.attackCountBonus === "number") {
+          attackCountBonus += bonuses.attackCountBonus;
+        }
       });
-      return { primary, secondary };
+      return { primary, secondary, primaryPerLevel, primaryFixed, attackCountBonus };
+    }
+
+    function calcPrimaryPerLevelBonus(perLevelEffects, level) {
+      const bonus = createEmptyPrimaryBonus();
+      const effectiveLevel = Math.max(0, Math.floor(level || 0));
+      Object.entries(perLevelEffects || {}).forEach(([key, effects]) => {
+        if (!Array.isArray(effects)) return;
+        effects.forEach((effect) => {
+          if (!effect || typeof effect.amount !== "number") return;
+          const interval = Math.max(1, Math.floor(effect.interval || 1));
+          const stacks = Math.floor(effectiveLevel / interval);
+          bonus[key] = (bonus[key] ?? 0) + stacks * effect.amount;
+        });
+      });
+      return bonus;
     }
 
     function mergeBonuses(baseBonus, extraBonus) {
@@ -7703,9 +7927,31 @@ function inferLegendaryKeyFromItem(item) {
       const equipmentBonuses = collectEquipmentBonuses();
       player.equipmentBonus = equipmentBonuses.secondary;
       player.equipmentPrimaryBonus = equipmentBonuses.primary;
+      player.equipmentPrimaryPerLevel = equipmentBonuses.primaryPerLevel;
+      player.equipmentPrimaryFixed = equipmentBonuses.primaryFixed;
+      player.attackCountBonus = equipmentBonuses.attackCountBonus || 0;
+
+      const perLevelPrimaryBonus = calcPrimaryPerLevelBonus(
+        equipmentBonuses.primaryPerLevel,
+        player.level
+      );
+
       Object.keys(player.primary).forEach((key) => {
-        player.primary[key].bonus = equipmentBonuses.primary[key] ?? 0;
+        const baseValue = player.primary[key].base;
+        const additive = (equipmentBonuses.primary[key] ?? 0) + (perLevelPrimaryBonus[key] ?? 0);
+        const fixedValue =
+          typeof equipmentBonuses.primaryFixed?.[key] === "number"
+            ? equipmentBonuses.primaryFixed[key]
+            : null;
+        const total = fixedValue !== null ? fixedValue : baseValue + additive;
+        player.primary[key].bonus = total - baseValue;
       });
+      player.primaryPerLevelBonus = perLevelPrimaryBonus;
+      player.primaryFixedBonus = equipmentBonuses.primaryFixed;
+      player.attackCount = Math.max(1, Math.round(1 + player.attackCountBonus));
+      if (!game.awaitingInput) {
+        player.attacksRemaining = Math.max(0, Math.floor(player.attackCount));
+      }
       player.bonus = mergeBonuses(player.baseBonus, player.equipmentBonus);
       const derived = calcSecondaryStats();
       const prevMaxHp = player.maxHp || derived.maxHp.total;
@@ -9347,8 +9593,30 @@ function maybeAutoSave(reason = "auto") {
         };
 
       const appendAffix = (label, affix) => {
-        if (!affix?.options?.length) return;
-        appendList(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+        if (!affix) return;
+        const hasOptions = affix.options?.length;
+        const effects = formatAffixEffects(affix.effects);
+        if (!hasOptions && effects.length === 0) return;
+
+        const heading = document.createElement("div");
+        heading.className = "option-label";
+        heading.textContent = `${label} (★${affix.rank}) ${affix.name}`;
+        debugGearPreview.appendChild(heading);
+
+        if (hasOptions) {
+          affix.options.forEach((opt) => {
+            const row = document.createElement("div");
+            row.className = "option-value";
+            row.textContent = formatEquipmentValue(getEnhancedEntry(opt, item));
+            debugGearPreview.appendChild(row);
+          });
+        }
+        effects.forEach((text) => {
+          const row = document.createElement("div");
+          row.className = "option-value";
+          row.textContent = text;
+          debugGearPreview.appendChild(row);
+        });
       };
 
       if (item.equipment?.uniqueOptions?.length) {
@@ -9895,6 +10163,31 @@ function maybeAutoSave(reason = "auto") {
             });
           };
 
+          const appendAffix = (title, affix) => {
+            if (!affix) return;
+            const hasOptions = affix.options?.length;
+            const effects = formatAffixEffects(affix.effects);
+            if (!hasOptions && effects.length === 0) return;
+            const heading = document.createElement("div");
+            heading.className = "option-label";
+            heading.textContent = title;
+            optionList.appendChild(heading);
+            if (hasOptions) {
+              affix.options.forEach((opt) => {
+                const line = document.createElement("div");
+                line.className = "option-value";
+                line.textContent = formatEquipmentValue(getEnhancedEntry(opt, equipment));
+                optionList.appendChild(line);
+              });
+            }
+            effects.forEach((text) => {
+              const line = document.createElement("div");
+              line.className = "option-value";
+              line.textContent = text;
+              optionList.appendChild(line);
+            });
+          };
+
           if (equipment.equipment.uniqueOptions?.length) {
             const heading = document.createElement("div");
             heading.className = "option-label";
@@ -9910,12 +10203,8 @@ function maybeAutoSave(reason = "auto") {
 
           appendOptions("基礎", equipment.equipment.baseOptions);
           appendOptions("ランダム", equipment.equipment.randomOptions);
-          if (equipment.equipment.prefix?.options?.length) {
-            appendOptions(`前称号: ${equipment.equipment.prefix.name}`, equipment.equipment.prefix.options);
-          }
-          if (equipment.equipment.suffix?.options?.length) {
-            appendOptions(`後称号: ${equipment.equipment.suffix.name}`, equipment.equipment.suffix.options);
-          }
+          appendAffix(`前称号: ${equipment.equipment.prefix?.name || ""}`.trim(), equipment.equipment.prefix);
+          appendAffix(`後称号: ${equipment.equipment.suffix?.name || ""}`.trim(), equipment.equipment.suffix);
 
           if (optionList.childElementCount > 0) {
             body.appendChild(optionList);
@@ -12001,8 +12290,31 @@ function maybeAutoSave(reason = "auto") {
         };
 
         const appendAffix = (label, affix) => {
-          if (!affix?.options?.length) return;
-          appendOptions(`${label} (★${affix.rank}) ${affix.name}`, affix.options);
+          if (!affix) return;
+          const hasOptions = affix.options?.length;
+          const effects = formatAffixEffects(affix.effects);
+          if (!hasOptions && effects.length === 0) return;
+          const block = document.createElement("div");
+          block.className = "equipment-option-list";
+          const heading = document.createElement("div");
+          heading.className = "option-label";
+          heading.textContent = `${label} (★${affix.rank}) ${affix.name}`;
+          block.appendChild(heading);
+          if (hasOptions) {
+            affix.options.forEach((option) => {
+              const line = document.createElement("div");
+              line.className = "option-value";
+              line.textContent = formatEquipmentValue(getEnhancedEntry(option, item));
+              block.appendChild(line);
+            });
+          }
+          effects.forEach((text) => {
+            const line = document.createElement("div");
+            line.className = "option-value";
+            line.textContent = text;
+            block.appendChild(line);
+          });
+          inventoryItemDetail.appendChild(block);
         };
 
         if (item.equipment.uniqueOptions?.length) {
