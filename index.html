@@ -12200,9 +12200,13 @@ function maybeAutoSave(reason = "auto") {
         attacker.lifeSteal > 0 &&
         attacker.maxHp;
       if (canLifeSteal) {
-        const healAmount = roundBattleValue(final * (attacker.lifeSteal / 100));
+        const healAmount = Math.max(0, roundBattleValue(final * (attacker.lifeSteal / 100)));
         if (healAmount > 0) {
-          applyHealing(attacker, healAmount);
+          const healed = applyHealing(attacker, healAmount);
+          if (healed > 0) {
+            const logLevel = attacker === player ? "good" : "info";
+            log(`🩸 HP吸収で ${healed} 回復`, logLevel);
+          }
         }
       }
       return final;
