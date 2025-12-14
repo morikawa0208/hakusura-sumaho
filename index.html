@@ -302,6 +302,14 @@
         box-shadow: none;
       }
 
+      .drop-toast.simple .drop-toast-core {
+        gap: 8px;
+        padding: 10px 12px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: none;
+      }
+
       .drop-toast .drop-toast-core::before {
         content: "";
         position: absolute;
@@ -387,6 +395,11 @@
       .drop-toast.simple .drop-text {
         min-width: 0;
         max-width: 100%;
+      }
+
+      .drop-toast.simple .drop-text {
+        min-width: auto;
+        max-width: 320px;
       }
 
       .drop-toast .drop-pill {
