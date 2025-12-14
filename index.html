@@ -646,6 +646,7 @@
         width: 50%;
         border-radius: 999px;
         transition: width 0.28s ease;
+        z-index: 1;
       }
 
       .bar.flash {
@@ -661,10 +662,18 @@
         color: #f8fafc;
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         pointer-events: none;
+        z-index: 3;
       }
 
       .bar .hp {
         background: #ef4444;
+      }
+
+      .bar .barrier {
+        background: linear-gradient(120deg, rgba(96, 165, 250, 0.65), rgba(125, 211, 252, 0.45));
+        mix-blend-mode: screen;
+        opacity: 0.65;
+        z-index: 2;
       }
 
       .bar .mp {
@@ -2428,6 +2437,7 @@
         <div class="bars">
           <div class="bar">
             <span id="hp-bar" class="hp"></span>
+            <span id="hp-barrier" class="barrier"></span>
             <span id="hp-label" class="label"></span>
           </div>
           <div class="bar">
@@ -10780,20 +10790,14 @@
           player.resist.debuff = derived.debuffResist.total;
           player.lifeSteal = Math.max(0, derived.lifeSteal.total);
 
-          const prevBarrierMax = player.barrierMax ?? 0;
-          const newBarrierMax = Math.max(0, derived.barrier.total);
-          player.barrierMax = newBarrierMax;
+          player.barrierMax = Math.max(0, derived.barrier.total);
           if (
             player.barrierRemaining === undefined ||
             player.barrierRemaining === null
           ) {
-            player.barrierRemaining = newBarrierMax;
+            player.barrierRemaining = player.barrierMax;
           } else {
-            const capacityGain = Math.max(0, newBarrierMax - prevBarrierMax);
-            player.barrierRemaining = Math.min(
-              newBarrierMax,
-              player.barrierRemaining + capacityGain,
-            );
+            player.barrierRemaining = Math.max(0, player.barrierRemaining);
           }
 
           return derived;
@@ -11147,10 +11151,22 @@
           return enemy;
         }
 
+        function ensureBarrierBaseline(derived) {
+          const baseline = Math.max(
+            0,
+            roundBattleValue(derived?.barrier?.total ?? player.barrierMax ?? 0),
+          );
+          const current = Math.max(0, roundBattleValue(player.barrierRemaining ?? 0));
+          if (current < baseline) {
+            player.barrierRemaining = baseline;
+          }
+        }
+
         function spawnEnemies() {
           const boss = isBossFloor(game.floor);
           const count = boss ? 1 : 2 + Math.floor(Math.random() * 2);
           const derived = recalcDerivedStats();
+          ensureBarrierBaseline(derived);
           const expReward = calcExpRewardForEnemy({
             floor: game.floor,
             enemyCount: count,
@@ -11521,6 +11537,26 @@
           tickBuffs(entity);
         }
 
+        function updateHpBar(currentHp, maxHp, barrierAmount) {
+          const hpFill = document.getElementById("hp-bar");
+          const barrierFill = document.getElementById("hp-barrier");
+          const safeMax = Math.max(1, maxHp);
+          const hpPercent = Math.max(0, Math.min(100, (currentHp / safeMax) * 100));
+          if (hpFill) {
+            hpFill.style.width = `${hpPercent}%`;
+            hpFill.className = "hp";
+          }
+          if (barrierFill) {
+            const barrierPercent = Math.max(
+              0,
+              Math.min(100, (Math.max(0, barrierAmount) / safeMax) * 100),
+            );
+            barrierFill.style.width = `${barrierPercent}%`;
+            barrierFill.className = "barrier";
+            barrierFill.style.opacity = barrierAmount > 0 ? "0.65" : "0";
+          }
+        }
+
         function updateBars(id, current, max, cls) {
           const bar = document.getElementById(id);
           const percent = Math.max(0, Math.min(100, (current / max) * 100));
@@ -11615,12 +11651,16 @@
           updateStepButton();
           document.getElementById("floor-inline").textContent = game.floor;
           const displayHp = roundBattleValue(player.hp);
+          const displayBarrier = Math.max(
+            0,
+            roundBattleValue(player.barrierRemaining ?? 0),
+          );
           const displayMaxHp = Math.max(
             1,
             roundBattleValue(derived.maxHp.total),
           );
           document.getElementById("hp-label").textContent =
-            `HP ${displayHp} / ${displayMaxHp}`;
+            `HP ${displayHp} / ${displayMaxHp} + バリア ${displayBarrier}`;
           document.getElementById("mp-label").textContent =
             `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
           document.getElementById("exp-label").textContent =
@@ -11631,7 +11671,7 @@
             player.statPoints;
           document.getElementById("skill-points-skill").textContent =
             player.skillPoints;
-          updateBars("hp-bar", displayHp, displayMaxHp, "hp");
+          updateHpBar(displayHp, displayMaxHp, displayBarrier);
           updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
           updateBars("exp-bar", player.exp, player.expToLevel, "exp");
           const phone = document.querySelector(".phone");
@@ -16769,7 +16809,10 @@
             ? player.maxHp
             : Math.min(player.hp, player.maxHp);
           player.mp = player.maxMp;
-          player.barrierRemaining = player.barrierMax;
+          player.barrierRemaining = Math.max(
+            0,
+            Math.max(player.barrierRemaining ?? 0, player.barrierMax),
+          );
           player.attacksRemaining = player.attackCount;
           player.activeSkillSlots.forEach((slot) => {
             slot.cooldownRemaining = 0;
