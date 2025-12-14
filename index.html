@@ -4568,7 +4568,91 @@ function inferLegendaryKeyFromItem(item) {
 }
 
 
-    const EQUIPMENT_TITLE_PREFIXES = [
+    const TITLE_RANKS = [1, 2, 3];
+    const TITLE_PRIMARY_GROWTH_BLUEPRINTS = [
+      {
+        stat: "str",
+        prefixNames: ["鍛錬の", "豪腕の", "覇道の"],
+        suffixNames: ["の萌芽", "の剛勇", "の覇気"],
+        prefixOptions: ["physAtk", "hp", "critRate"],
+        suffixOptions: ["physAtk", "critDamage", "speed"],
+      },
+      {
+        stat: "int",
+        prefixNames: ["思索の", "叡智の", "星読の"],
+        suffixNames: ["の洞察", "の学究", "の慧眼"],
+        prefixOptions: ["magAtk", "mp", "cooldown"],
+        suffixOptions: ["magAtk", "magPen", "hp"],
+      },
+      {
+        stat: "vit",
+        prefixNames: ["堅守の", "厚皮の", "鉄壁の"],
+        suffixNames: ["の礎", "の盾持ち", "の城塞"],
+        prefixOptions: ["hp", "damageReduction", "block"],
+        suffixOptions: ["hp", "physDef", "magDef"],
+      },
+      {
+        stat: "agi",
+        prefixNames: ["軽業の", "迅捷の", "風走りの"],
+        suffixNames: ["の翼", "の韋駄天", "の旋舞"],
+        prefixOptions: ["speed", "evade", "critRate"],
+        suffixOptions: ["speed", "critRate", "physAtk"],
+      },
+      {
+        stat: "luck",
+        prefixNames: ["幸運の", "兆しの", "天運の"],
+        suffixNames: ["の導き", "の招福", "の宿星"],
+        prefixOptions: ["dropRate", "rarity", "titleChance"],
+        suffixOptions: ["goldChance", "namedRate", "titleChance"],
+      },
+    ];
+
+    const TITLE_PRIMARY_FIXED_BLUEPRINTS = [
+      {
+        stat: "str",
+        prefixNames: ["力の約定", "力の誓約", "力の権能"],
+        suffixNames: ["の礎石", "の堅守", "の覇道"],
+        prefixOptions: ["physAtk", "critRate", "hp"],
+        suffixOptions: ["physAtk", "critDamage", "speed"],
+      },
+      {
+        stat: "int",
+        prefixNames: ["叡智の約定", "叡智の誓約", "叡智の権能"],
+        suffixNames: ["の真理", "の学識", "の星詠"],
+        prefixOptions: ["magAtk", "mp", "cooldown"],
+        suffixOptions: ["magAtk", "magPen", "hp"],
+      },
+      {
+        stat: "vit",
+        prefixNames: ["守護の約定", "守護の誓約", "守護の権能"],
+        suffixNames: ["の盤石", "の重壁", "の巨砦"],
+        prefixOptions: ["hp", "damageReduction", "block"],
+        suffixOptions: ["hp", "physDef", "magDef"],
+      },
+      {
+        stat: "agi",
+        prefixNames: ["迅速の約定", "迅速の誓約", "迅速の権能"],
+        suffixNames: ["の疾駆", "の旋律", "の風華"],
+        prefixOptions: ["speed", "evade", "critRate"],
+        suffixOptions: ["speed", "critRate", "physAtk"],
+      },
+      {
+        stat: "luck",
+        prefixNames: ["幸運の約定", "幸運の誓約", "幸運の権能"],
+        suffixNames: ["の兆候", "の瑞光", "の星宿"],
+        prefixOptions: ["dropRate", "rarity", "titleChance"],
+        suffixOptions: ["goldChance", "namedRate", "titleChance"],
+      },
+    ];
+
+    const TITLE_ATTACK_COUNT_BLUEPRINT = {
+      prefixNames: ["迅刃の", "連撃の", "迅雷の"],
+      suffixNames: ["の一閃", "の斉射", "の剣舞"],
+      prefixOptions: ["speed", "critRate", "evade"],
+      suffixOptions: ["physAtk", "cooldown", "critDamage"],
+    };
+
+    const BASE_EQUIPMENT_TITLE_PREFIXES = [
       { key: "nimble", name: "軽やかな", rank: 1, options: ["agi"] },
       { key: "sharp", name: "鋭い", rank: 1, options: ["critRate"] },
       { key: "colossal", name: "巨大な", rank: 2, options: ["str", "vit"] },
@@ -4583,7 +4667,7 @@ function inferLegendaryKeyFromItem(item) {
       { key: "relentless", name: "連舞の", rank: 3, options: ["speed", "critRate"], attackCountBonus: true },
     ];
 
-    const EQUIPMENT_TITLE_SUFFIXES = [
+    const BASE_EQUIPMENT_TITLE_SUFFIXES = [
       { key: "apprentice", name: "の研鑽", rank: 1, options: ["hp"] },
       { key: "trailblazer", name: "の先駆者", rank: 1, options: ["speed"] },
       { key: "onslaught", name: "の猛攻", rank: 2, options: ["physAtk", "critDamage"] },
@@ -4596,6 +4680,78 @@ function inferLegendaryKeyFromItem(item) {
       { key: "study", name: "の研磨", rank: 1, options: ["magAtk", "mp"], primaryPerLevelStats: ["int"] },
       { key: "foundation", name: "の礎", rank: 2, options: ["rarity", "dropRate"], primaryFixedStats: ["luck"] },
       { key: "chain", name: "の連環", rank: 3, options: ["critDamage", "speed"], attackCountBonus: true },
+    ];
+
+    function pickTitleName(names, rank) {
+      if (!names?.length) return "";
+      const index = Math.min(Math.max(rank - 1, 0), names.length - 1);
+      return names[index];
+    }
+
+    function pickOptionsForRank(options, rank) {
+      const count = rank === 1 ? 0 : rank === 2 ? 1 : 2;
+      const unique = Array.from(new Set(options || []));
+      return unique.slice(0, count);
+    }
+
+    function buildPrimaryGrowthTitles(kind) {
+      return TITLE_PRIMARY_GROWTH_BLUEPRINTS.flatMap((blueprint) =>
+        TITLE_RANKS.map((rank) => ({
+          key: `growth-${blueprint.stat}-${kind}-r${rank}`,
+          name: pickTitleName(kind === "prefix" ? blueprint.prefixNames : blueprint.suffixNames, rank),
+          rank,
+          options: pickOptionsForRank(
+            kind === "prefix" ? blueprint.prefixOptions : blueprint.suffixOptions,
+            rank
+          ),
+          primaryPerLevelStats: [blueprint.stat],
+        }))
+      );
+    }
+
+    function buildPrimaryFixedTitles(kind) {
+      return TITLE_PRIMARY_FIXED_BLUEPRINTS.flatMap((blueprint) =>
+        TITLE_RANKS.map((rank) => ({
+          key: `fixed-${blueprint.stat}-${kind}-r${rank}`,
+          name: pickTitleName(kind === "prefix" ? blueprint.prefixNames : blueprint.suffixNames, rank),
+          rank,
+          options: pickOptionsForRank(
+            kind === "prefix" ? blueprint.prefixOptions : blueprint.suffixOptions,
+            rank
+          ),
+          primaryFixedStats: [blueprint.stat],
+        }))
+      );
+    }
+
+    function buildAttackCountTitles(kind) {
+      return TITLE_RANKS.map((rank) => ({
+        key: `attack-${kind}-r${rank}`,
+        name: pickTitleName(
+          kind === "prefix" ? TITLE_ATTACK_COUNT_BLUEPRINT.prefixNames : TITLE_ATTACK_COUNT_BLUEPRINT.suffixNames,
+          rank
+        ),
+        rank,
+        options: pickOptionsForRank(
+          kind === "prefix" ? TITLE_ATTACK_COUNT_BLUEPRINT.prefixOptions : TITLE_ATTACK_COUNT_BLUEPRINT.suffixOptions,
+          rank
+        ),
+        attackCountBonus: true,
+      }));
+    }
+
+    const EQUIPMENT_TITLE_PREFIXES = [
+      ...BASE_EQUIPMENT_TITLE_PREFIXES,
+      ...buildPrimaryGrowthTitles("prefix"),
+      ...buildPrimaryFixedTitles("prefix"),
+      ...buildAttackCountTitles("prefix"),
+    ];
+
+    const EQUIPMENT_TITLE_SUFFIXES = [
+      ...BASE_EQUIPMENT_TITLE_SUFFIXES,
+      ...buildPrimaryGrowthTitles("suffix"),
+      ...buildPrimaryFixedTitles("suffix"),
+      ...buildAttackCountTitles("suffix"),
     ];
 
     const LEGENDARY_EQUIPMENT_LIBRARY = {
