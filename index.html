@@ -3485,6 +3485,51 @@
       { rank: 3, weight: 15 },
     ];
 
+    const ARCHETYPE_STATUS_ON_HIT = {
+      venom: {
+        status: "poison",
+        minRank: 2,
+        baseChance: 30,
+        rankBonus: 10,
+        duration: 3,
+        label: "毒牙の猛毒",
+      },
+      plague: {
+        status: "curse",
+        minRank: 2,
+        baseChance: 24,
+        rankBonus: 9,
+        duration: 3,
+        potency: 0.12,
+        label: "瘴疫の呪詛",
+      },
+      pyre: {
+        status: "burn",
+        minRank: 2,
+        baseChance: 28,
+        rankBonus: 8,
+        duration: 2,
+        label: "焔輪の灼熱",
+      },
+      frost: {
+        status: "speedDown",
+        minRank: 2,
+        baseChance: 26,
+        rankBonus: 8,
+        duration: 2,
+        potency: 0.3,
+        label: "凍霜の冷気",
+      },
+      dread: {
+        status: "stun",
+        minRank: 3,
+        baseChance: 22,
+        rankBonus: 6,
+        duration: 1,
+        label: "戦慄の硬直",
+      },
+    };
+
     const ENEMY_VARIANTS = [
       {
         key: "brute",
@@ -7812,6 +7857,26 @@ function inferLegendaryKeyFromItem(item) {
       enemy.archetypeAbilities = applied;
       enemy.rarityBonus = (enemy.rarityBonus || 0) + rank * 3;
       enemy.dropChanceBonus = (enemy.dropChanceBonus || 0) + rank * 4;
+    }
+
+    function tryApplyArchetypeStatusOnHit(enemy, target) {
+      if (!enemy || !target || enemy.isBoss) return;
+      const config = ARCHETYPE_STATUS_ON_HIT[enemy.variant];
+      if (!config) return;
+      const rank = enemy.archetypeRank || 1;
+      if (rank < (config.minRank || 1)) return;
+      const chance = Math.min(100, config.baseChance + (config.rankBonus || 0) * Math.max(0, rank - config.minRank));
+      const duration = typeof config.duration === "function" ? config.duration(rank) : config.duration ?? 2;
+      const applied = applyStatus(target, config.status, {
+        duration,
+        chance,
+        potency: config.potency,
+      });
+      if (applied) {
+        const statusName = STATUS_DEFINITIONS[config.status]?.name || config.status;
+        const label = config.label || enemy.archetypeName || enemy.name || "攻撃";
+        log(`⚠️ ${enemy.name}の${label}で${statusName}を受けた！`, "warning");
+      }
     }
 
     function applyEnemyModifiers(enemy, modifiers = {}) {
@@ -12663,12 +12728,15 @@ function handlePlayerDefeat() {
           `${critText}☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetLabel}に ${dealt} ダメージ`,
           "enemy",
         );
-          if (target !== player && target.hp <= 0) {
-            log(`${target.name} は倒れた`, "good");
-            onEnemyDefeated(target, { cause: "混乱" });
-            checkVictory();
-            if (!game.enemies.some(e => e.hp > 0)) return false;
-          }
+        if (target.hp > 0) {
+          tryApplyArchetypeStatusOnHit(enemy, target);
+        }
+        if (target !== player && target.hp <= 0) {
+          log(`${target.name} は倒れた`, "good");
+          onEnemyDefeated(target, { cause: "混乱" });
+          checkVictory();
+          if (!game.enemies.some(e => e.hp > 0)) return false;
+        }
         if (player.hp <= 0) {
           handlePlayerDefeat();
           return true;
