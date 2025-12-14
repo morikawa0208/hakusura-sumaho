@@ -16393,13 +16393,20 @@
           }
           if (target === player) {
             flashBar("hp-bar");
+            const playerBar = document.getElementById("hp-bar")?.parentElement;
             if (final > 0) {
-              const playerBar =
-                document.getElementById("hp-bar")?.parentElement;
               showDamagePopup(playerBar, final, "player", { isCritical });
+            }
+            if (barrierAbsorbed > 0) {
+              showDamagePopup(playerBar, barrierAbsorbed, "player", {
+                isCritical,
+              });
             }
           } else {
             if (final > 0) triggerEnemyHit(target, final, { isCritical });
+            if (barrierAbsorbed > 0) {
+              triggerEnemyHit(target, barrierAbsorbed, { isCritical });
+            }
             updateEnemyCardHp(target);
           }
 
