@@ -11552,22 +11552,68 @@ function maybeAutoSave(reason = "auto") {
     function buildTitleCodexEntries(kindFilter = null) {
       const codex = ensureCodexState();
       const entries = [];
+      const rarityOrder = Object.values(EQUIPMENT_RARITIES || {}).sort(
+        (a, b) => (a.rank || 0) - (b.rank || 0)
+      );
+      const formatRarityScaling = (values, formatter) =>
+        rarityOrder
+          .map((rarity) => {
+            const index = Math.min(values.length - 1, rarity.rank || 0);
+            const value = values[index];
+            return `${rarity.label}: ${formatter(value)}`;
+          })
+          .join(" / ");
+
+      const describeTitleSpecialEffects = (title) => {
+        const effects = [];
+        if (title?.primaryPerLevelStats?.length) {
+          const statLabel = title.primaryPerLevelStats.map((stat) => formatStatLabel(stat)).join(" / ");
+          const scalingText = formatRarityScaling(
+            TITLE_PRIMARY_PER_LEVEL_BY_RARITY,
+            (effect) =>
+              effect
+                ? `${effect.interval === 1 ? "Lv毎" : `${effect.interval}Lv毎`}+${effect.amount}`
+                : "--"
+          );
+          effects.push(`一次成長: ${statLabel} (${scalingText})`);
+        }
+        if (title?.primaryFixedStats?.length) {
+          const statLabel = title.primaryFixedStats.map((stat) => formatStatLabel(stat)).join(" / ");
+          const scalingText = formatRarityScaling(
+            TITLE_PRIMARY_FIXED_BY_RARITY,
+            (value) => (value != null ? `${value}固定` : "--")
+          );
+          effects.push(`一次固定: ${statLabel} (${scalingText})`);
+        }
+        if (title?.attackCountBonus) {
+          const scalingText = formatRarityScaling(
+            TITLE_ATTACK_COUNT_BONUS_BY_RARITY,
+            (value) => (value != null ? `通常攻撃+${value}回` : "--")
+          );
+          effects.push(`連撃: ${scalingText}`);
+        }
+        return effects;
+      };
+
       const buildTitleEntry = (title, kind) => {
         if (kindFilter && kind !== kindFilter) return;
         const stats = (title.options || [])
           .map((opt) => formatStatLabel(opt))
           .join(" / ");
+        const specialEffects = describeTitleSpecialEffects(title);
+        const summaryParts = [stats, specialEffects[0]].filter(Boolean);
+        const detailEffects = [stats ? `通常: ${stats}` : null, ...specialEffects].filter(Boolean);
         const group = title.group || "normal";
         const rank = title.rank || 1;
         const kindLabel = kind === "prefix" ? "前" : "後";
         entries.push({
           key: `${kind}:${title.key}`,
           name: `${title.name} (${kindLabel})`,
-          summary: stats,
+          summary: summaryParts.join(" / "),
           detailRows: [
             { label: "位置", value: kindLabel },
             { label: "ランク", value: `★${rank}` },
-            { label: "効果", value: stats || "--" },
+            { label: "効果", value: detailEffects.join("\n") || "--" },
             { label: "区分", value: group === "legendary" ? "レジェンド用" : group === "potion" ? "ポーション用" : "通常" },
           ],
           discovered: !!codex.titles?.[`${kind}:${title.key}`],
