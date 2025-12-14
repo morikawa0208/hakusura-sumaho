@@ -4175,14 +4175,13 @@
       { rank: 3, weight: 10 },
     ];
 
-    const TITLE_PRIMARY_PER_LEVEL_BY_RARITY = [
+    const TITLE_PRIMARY_PER_LEVEL_BY_RANK = [
       { amount: 1, interval: 3 },
       { amount: 2, interval: 3 },
       { amount: 1, interval: 1 },
-      { amount: 1, interval: 1 },
     ];
-    const TITLE_PRIMARY_FIXED_BY_RARITY = [50, 100, 200, 200];
-    const TITLE_ATTACK_COUNT_BONUS_BY_RARITY = [1, 2, 3, 3];
+    const TITLE_PRIMARY_FIXED_BY_RANK = [50, 100, 200];
+    const TITLE_ATTACK_COUNT_BONUS_BY_RANK = [1, 2, 3];
 
     const EQUIPMENT_STAT_POOL = [
       { key: "str", label: "力", type: "primary", range: [1, 4] },
@@ -5455,9 +5454,9 @@ function inferLegendaryKeyFromItem(item) {
       const primaryFixed = createEmptyPrimaryFixedBonus();
       let attackCountBonus = 0;
 
-      const rarityRank = Math.max(
+      const titleRankIndex = Math.max(
         0,
-        Math.min(TITLE_PRIMARY_PER_LEVEL_BY_RARITY.length - 1, rarity?.rank ?? 0)
+        Math.min((title?.rank || 1) - 1, TITLE_PRIMARY_PER_LEVEL_BY_RANK.length - 1)
       );
 
       const entries = (title?.options || [])
@@ -5471,7 +5470,8 @@ function inferLegendaryKeyFromItem(item) {
         .filter(Boolean);
 
       if (title?.primaryPerLevelStats?.length) {
-        const effect = TITLE_PRIMARY_PER_LEVEL_BY_RARITY[rarityRank] || TITLE_PRIMARY_PER_LEVEL_BY_RARITY[0];
+        const effect =
+          TITLE_PRIMARY_PER_LEVEL_BY_RANK[titleRankIndex] || TITLE_PRIMARY_PER_LEVEL_BY_RANK[0];
         title.primaryPerLevelStats.forEach((statKey) => {
           if (!primaryPerLevel[statKey]) primaryPerLevel[statKey] = [];
           primaryPerLevel[statKey].push({ amount: effect.amount, interval: effect.interval });
@@ -5479,7 +5479,7 @@ function inferLegendaryKeyFromItem(item) {
       }
 
       if (title?.primaryFixedStats?.length) {
-        const fixedValue = TITLE_PRIMARY_FIXED_BY_RARITY[rarityRank] ?? 0;
+        const fixedValue = TITLE_PRIMARY_FIXED_BY_RANK[titleRankIndex] ?? 0;
         title.primaryFixedStats.forEach((statKey) => {
           const current = primaryFixed[statKey];
           primaryFixed[statKey] = typeof current === "number" ? Math.max(current, fixedValue) : fixedValue;
@@ -5487,7 +5487,7 @@ function inferLegendaryKeyFromItem(item) {
       }
 
       if (title?.attackCountBonus) {
-        const extraAttacks = TITLE_ATTACK_COUNT_BONUS_BY_RARITY[rarityRank] ?? 0;
+        const extraAttacks = TITLE_ATTACK_COUNT_BONUS_BY_RANK[titleRankIndex] ?? 0;
         attackCountBonus += extraAttacks;
       }
 
@@ -11552,15 +11552,11 @@ function maybeAutoSave(reason = "auto") {
     function buildTitleCodexEntries(kindFilter = null) {
       const codex = ensureCodexState();
       const entries = [];
-      const rarityOrder = Object.values(EQUIPMENT_RARITIES || {}).sort(
-        (a, b) => (a.rank || 0) - (b.rank || 0)
-      );
-      const formatRarityScaling = (values, formatter) =>
-        rarityOrder
-          .map((rarity) => {
-            const index = Math.min(values.length - 1, rarity.rank || 0);
-            const value = values[index];
-            return `${rarity.label}: ${formatter(value)}`;
+      const formatRankScaling = (values, formatter) =>
+        values
+          .map((value, index) => {
+            const rank = index + 1;
+            return `★${rank}: ${formatter(value)}`;
           })
           .join(" / ");
 
@@ -11568,8 +11564,8 @@ function maybeAutoSave(reason = "auto") {
         const effects = [];
         if (title?.primaryPerLevelStats?.length) {
           const statLabel = title.primaryPerLevelStats.map((stat) => formatStatLabel(stat)).join(" / ");
-          const scalingText = formatRarityScaling(
-            TITLE_PRIMARY_PER_LEVEL_BY_RARITY,
+          const scalingText = formatRankScaling(
+            TITLE_PRIMARY_PER_LEVEL_BY_RANK,
             (effect) =>
               effect
                 ? `${effect.interval === 1 ? "Lv毎" : `${effect.interval}Lv毎`}+${effect.amount}`
@@ -11579,15 +11575,15 @@ function maybeAutoSave(reason = "auto") {
         }
         if (title?.primaryFixedStats?.length) {
           const statLabel = title.primaryFixedStats.map((stat) => formatStatLabel(stat)).join(" / ");
-          const scalingText = formatRarityScaling(
-            TITLE_PRIMARY_FIXED_BY_RARITY,
+          const scalingText = formatRankScaling(
+            TITLE_PRIMARY_FIXED_BY_RANK,
             (value) => (value != null ? `${value}固定` : "--")
           );
           effects.push(`一次固定: ${statLabel} (${scalingText})`);
         }
         if (title?.attackCountBonus) {
-          const scalingText = formatRarityScaling(
-            TITLE_ATTACK_COUNT_BONUS_BY_RARITY,
+          const scalingText = formatRankScaling(
+            TITLE_ATTACK_COUNT_BONUS_BY_RANK,
             (value) => (value != null ? `通常攻撃+${value}回` : "--")
           );
           effects.push(`連撃: ${scalingText}`);
