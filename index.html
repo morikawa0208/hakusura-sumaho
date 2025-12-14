@@ -10083,6 +10083,26 @@
           }
         }
 
+        function fitDropItemName() {
+          if (!dropItemName) return;
+          dropItemName.style.fontSize = "";
+          const computed = window.getComputedStyle(dropItemName);
+          let size = Number.parseFloat(computed.fontSize) || 16;
+          const minSize = 12;
+          const maxTries = 8;
+          let tries = 0;
+
+          while (
+            dropItemName.scrollWidth > dropItemName.clientWidth &&
+            size > minSize &&
+            tries < maxTries
+          ) {
+            size -= 1;
+            dropItemName.style.fontSize = `${size}px`;
+            tries += 1;
+          }
+        }
+
         const getStatus = (entity, key) =>
           (entity.statuses || []).find((s) => s.key === key);
         const hasStatus = (entity, key) => Boolean(getStatus(entity, key));
