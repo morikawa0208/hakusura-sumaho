@@ -1395,6 +1395,33 @@
       color: #bbf7d0;
     }
 
+    .damage-popup.critical {
+      color: #fcd34d;
+      text-shadow: 0 2px 10px rgba(252, 211, 77, 0.65), 0 0 14px rgba(248, 250, 252, 0.35);
+      filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.45));
+      letter-spacing: 0.03em;
+      animation: damageFloat 0.9s ease forwards, critFlash 0.9s ease-out;
+    }
+
+    .damage-popup .crit-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      margin-right: 6px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, rgba(250, 204, 21, 0.9), rgba(251, 191, 36, 0.65));
+      color: #0b0e14;
+      font-size: 11px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(252, 211, 77, 0.6);
+    }
+
+    .damage-popup .crit-star {
+      font-size: 12px;
+      filter: drop-shadow(0 0 6px rgba(252, 211, 77, 0.8));
+    }
+
     .damage-popup.mp {
       color: #bfdbfe;
     }
@@ -1416,6 +1443,21 @@
       100% {
         opacity: 0;
         transform: translate(-50%, -16px) scale(1.04);
+      }
+    }
+
+    @keyframes critFlash {
+      0% {
+        transform: translate(-50%, 6px) scale(0.95);
+        filter: drop-shadow(0 0 0 rgba(252, 211, 77, 0));
+      }
+      20% {
+        transform: translate(-50%, 0) scale(1.08);
+        filter: drop-shadow(0 0 12px rgba(252, 211, 77, 0.75));
+      }
+      100% {
+        transform: translate(-50%, -16px) scale(1.04);
+        filter: drop-shadow(0 0 4px rgba(252, 211, 77, 0.2));
       }
     }
 
@@ -8238,19 +8280,22 @@ function inferLegendaryKeyFromItem(item) {
       bar.classList.add("flash");
     }
 
-    function showDamagePopup(container, amount, variant = "enemy") {
+    function showDamagePopup(container, amount, variant = "enemy", { isCritical = false } = {}) {
       if (!container || !amount) return;
       const popup = document.createElement("div");
-      popup.className = `damage-popup ${variant}`;
+      popup.className = `damage-popup ${variant}${isCritical ? " critical" : ""}`;
       const numeric = Math.abs(amount);
-      popup.textContent = amount >= 0 ? `-${numeric}` : `+${numeric}`;
+      const valueText = amount >= 0 ? `-${numeric}` : `+${numeric}`;
+      popup.innerHTML = isCritical
+        ? `<span class="crit-badge"><span class="crit-star">✦</span>CRIT</span>${valueText}`
+        : valueText;
       container.appendChild(popup);
       popup.addEventListener("animationend", () => popup.remove());
     }
 
     function showHealPopup(container, amount, variant = "heal") {
       if (!container || amount <= 0) return;
-      showDamagePopup(container, -Math.abs(amount), variant);
+      showDamagePopup(container, -Math.abs(amount), variant, { isCritical: false });
     }
 
     function consumeMp(cost) {
@@ -8265,7 +8310,7 @@ function inferLegendaryKeyFromItem(item) {
       return document.querySelector(`.enemy-card[data-enemy-id="${enemy?.id}"]`);
     }
 
-    function triggerEnemyHit(enemy, amount = 0) {
+    function triggerEnemyHit(enemy, amount = 0, { isCritical = false } = {}) {
       const card = findEnemyCard(enemy);
       if (!card) return;
       const bar = card.querySelector(".enemy-bar");
@@ -8274,7 +8319,7 @@ function inferLegendaryKeyFromItem(item) {
         void bar.offsetWidth;
         bar.classList.add("pulse");
       }
-      showDamagePopup(card, amount, "enemy");
+      showDamagePopup(card, amount, "enemy", { isCritical });
     }
 
     function updateEnemyCardHp(enemy) {
@@ -12118,6 +12163,20 @@ function maybeAutoSave(reason = "auto") {
       return Math.random() * 100 < hitChance;
     }
 
+    function rollCritical(attacker) {
+      const isPlayer = attacker === player;
+      const derived = isPlayer ? lastDerivedStats || recalcDerivedStats() : null;
+      const rate = isPlayer ? derived?.critRate.total ?? 0 : attacker?.critRate ?? 12;
+      const critChance = Math.max(0, Math.min(100, rate));
+      const isCritical = Math.random() * 100 < critChance;
+      const baseMultiplier = isPlayer ? 1.5 : 1.4;
+      const bonus = isPlayer
+        ? Math.max(0, Math.min(50, derived?.critDamage.total ?? 0))
+        : Math.max(0, Math.min(50, attacker?.critDamage ?? 0));
+      const multiplier = isCritical ? baseMultiplier + bonus / 100 : 1;
+      return { isCritical, multiplier };
+    }
+
     function calcDamage(attacker, defender, { type = "physical", includeKnowledgeForPlayer = false } = {}) {
       const variance = 0.85 + Math.random() * 0.3;
       const attackDebuff = type === "physical" ? getStatus(attacker, "physAttackDown") : getStatus(attacker, "magAttackDown");
@@ -12143,7 +12202,7 @@ function maybeAutoSave(reason = "auto") {
     function applyDamage(
       target,
       amount,
-      { type = "physical", source = "", isDot = false, attacker = null } = {}
+      { type = "physical", source = "", isDot = false, attacker = null, isCritical = false } = {}
     ) {
       let final = Math.max(0, Math.round(amount));
       const reduction = Math.max(0, Math.min(90, target.damageReduction || 0));
@@ -12178,10 +12237,10 @@ function maybeAutoSave(reason = "auto") {
         flashBar("hp-bar");
         if (final > 0) {
           const playerBar = document.getElementById("hp-bar")?.parentElement;
-          showDamagePopup(playerBar, final, "player");
+          showDamagePopup(playerBar, final, "player", { isCritical });
         }
       } else {
-        if (final > 0) triggerEnemyHit(target, final);
+        if (final > 0) triggerEnemyHit(target, final, { isCritical });
         updateEnemyCardHp(target);
       }
 
@@ -12325,10 +12384,19 @@ function maybeAutoSave(reason = "auto") {
           log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}は外れた…`, "warning");
           continue;
         }
-        const dmg = calcDamage(player, target, { includeKnowledgeForPlayer: true });
-        const dealt = applyDamage(target, dmg, { source: "player", attacker: player });
+        const { isCritical, multiplier } = rollCritical(player);
+        const dmg = Math.round(calcDamage(player, target, { includeKnowledgeForPlayer: true }) * multiplier);
+        const dealt = applyDamage(target, dmg, {
+          source: "player",
+          attacker: player,
+          isCritical,
+        });
         const targetName = target === player ? "自分" : target.name;
-        log(`⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`, target === player ? "warning" : "player");
+        const critLabel = isCritical ? "💥 クリティカル！ " : "";
+        log(
+          `${critLabel}⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`,
+          target === player ? "warning" : "player",
+        );
         if (target !== player && target.hp <= 0) {
           log(`${target.name} を倒した！`, "good");
           onEnemyDefeated(target, { cause: "撃破" });
@@ -12587,11 +12655,14 @@ function handlePlayerDefeat() {
           continue;
         }
         const dmg = calcDamage(enemy, target);
-        const isCrit = Math.random() < 0.12;
-        const finalDmg = isCrit ? Math.round(dmg * 1.4) : dmg;
-        const dealt = applyDamage(target, finalDmg, { source: enemy.name, attacker: enemy });
-        const critText = isCrit ? " (会心！)" : "";
-        log(`☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}${critText}！ ${targetLabel}に ${dealt} ダメージ`, "enemy");
+        const { isCritical, multiplier } = rollCritical(enemy);
+        const finalDmg = Math.round(dmg * multiplier);
+        const dealt = applyDamage(target, finalDmg, { source: enemy.name, attacker: enemy, isCritical });
+        const critText = isCritical ? "💥 クリティカル！ " : "";
+        log(
+          `${critText}☠️ ${enemy.name} の攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetLabel}に ${dealt} ダメージ`,
+          "enemy",
+        );
           if (target !== player && target.hp <= 0) {
             log(`${target.name} は倒れた`, "good");
             onEnemyDefeated(target, { cause: "混乱" });
