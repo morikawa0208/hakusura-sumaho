@@ -5340,13 +5340,13 @@
           { rank: 3, weight: 10 },
         ];
 
-        const TITLE_PRIMARY_PER_LEVEL_BY_RANK = [
+        const TITLE_PRIMARY_PER_LEVEL_EFFECTS = [
           { amount: 1, interval: 3 },
           { amount: 2, interval: 3 },
           { amount: 1, interval: 1 },
         ];
-        const TITLE_PRIMARY_FIXED_BY_RANK = [50, 100, 200];
-        const TITLE_ATTACK_COUNT_BONUS_BY_RANK = [1, 2, 3];
+        const TITLE_PRIMARY_FIXED_EFFECTS = [50, 100, 200];
+        const TITLE_ATTACK_COUNT_BONUS_EFFECTS = [1, 2, 3];
 
         const EQUIPMENT_STAT_POOL = [
           { key: "str", label: "力", type: "primary", range: [1, 4] },
@@ -5890,34 +5890,24 @@
           {
             stat: "str",
             prefixRanks: [
-              { rank: 1, name: "鍛錬の", options: [] },
-              { rank: 2, name: "豪腕の", options: ["physAtk"] },
               { rank: 3, name: "覇道の", options: ["hp", "critRate"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の萌芽", options: [] },
-              { rank: 2, name: "の剛勇", options: ["physAtk"] },
               { rank: 3, name: "の覇気", options: ["critDamage", "speed"] },
             ],
           },
           {
             stat: "int",
             prefixRanks: [
-              { rank: 1, name: "思索の", options: [] },
-              { rank: 2, name: "叡智の", options: ["magAtk"] },
               { rank: 3, name: "星読の", options: ["mp", "cooldown"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の洞察", options: [] },
-              { rank: 2, name: "の学識", options: ["magAtk"] },
               { rank: 3, name: "の慧眼", options: ["magPen", "hp"] },
             ],
           },
           {
             stat: "vit",
             prefixRanks: [
-              { rank: 1, name: "堅守の", options: [] },
-              { rank: 2, name: "厚皮の", options: ["hp"] },
               {
                 rank: 3,
                 name: "鉄壁の",
@@ -5925,34 +5915,24 @@
               },
             ],
             suffixRanks: [
-              { rank: 1, name: "の礎", options: [] },
-              { rank: 2, name: "の盾持ち", options: ["hp"] },
               { rank: 3, name: "の城塞", options: ["physDef", "magDef"] },
             ],
           },
           {
             stat: "agi",
             prefixRanks: [
-              { rank: 1, name: "軽業の", options: [] },
-              { rank: 2, name: "迅捷の", options: ["speed"] },
               { rank: 3, name: "風走りの", options: ["evade", "critRate"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の翼", options: [] },
-              { rank: 2, name: "の韋駄天", options: ["speed"] },
               { rank: 3, name: "の旋舞", options: ["critRate", "physAtk"] },
             ],
           },
           {
             stat: "luck",
             prefixRanks: [
-              { rank: 1, name: "幸運の", options: [] },
-              { rank: 2, name: "兆しの", options: ["dropRate"] },
               { rank: 3, name: "天運の", options: ["rarity", "titleChance"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の導き", options: [] },
-              { rank: 2, name: "の招福", options: ["goldChance"] },
               {
                 rank: 3,
                 name: "の宿星",
@@ -5966,34 +5946,24 @@
           {
             stat: "str",
             prefixRanks: [
-              { rank: 1, name: "力の約定", options: [] },
-              { rank: 2, name: "力の誓約", options: ["physAtk"] },
               { rank: 3, name: "力の権能", options: ["critRate", "hp"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の礎石", options: [] },
-              { rank: 2, name: "の堅守", options: ["physAtk"] },
               { rank: 3, name: "の覇道", options: ["critDamage", "speed"] },
             ],
           },
           {
             stat: "int",
             prefixRanks: [
-              { rank: 1, name: "叡智の約定", options: [] },
-              { rank: 2, name: "叡智の誓約", options: ["magAtk"] },
               { rank: 3, name: "叡智の権能", options: ["mp", "cooldown"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の真理", options: [] },
-              { rank: 2, name: "の学識", options: ["magAtk"] },
               { rank: 3, name: "の星詠", options: ["magPen", "hp"] },
             ],
           },
           {
             stat: "vit",
             prefixRanks: [
-              { rank: 1, name: "守護の約定", options: [] },
-              { rank: 2, name: "守護の誓約", options: ["hp"] },
               {
                 rank: 3,
                 name: "守護の権能",
@@ -6001,29 +5971,21 @@
               },
             ],
             suffixRanks: [
-              { rank: 1, name: "の盤石", options: [] },
-              { rank: 2, name: "の重壁", options: ["hp"] },
               { rank: 3, name: "の巨砦", options: ["physDef", "magDef"] },
             ],
           },
           {
             stat: "agi",
             prefixRanks: [
-              { rank: 1, name: "迅速の約定", options: [] },
-              { rank: 2, name: "迅速の誓約", options: ["speed"] },
               { rank: 3, name: "迅速の権能", options: ["evade", "critRate"] },
             ],
             suffixRanks: [
-              { rank: 1, name: "の疾駆", options: [] },
-              { rank: 2, name: "の旋律", options: ["speed"] },
               { rank: 3, name: "の風華", options: ["critRate", "physAtk"] },
             ],
           },
           {
             stat: "luck",
             prefixRanks: [
-              { rank: 1, name: "幸運の約定", options: [] },
-              { rank: 2, name: "幸運の誓約", options: ["dropRate"] },
               {
                 rank: 3,
                 name: "幸運の権能",
@@ -6031,8 +5993,6 @@
               },
             ],
             suffixRanks: [
-              { rank: 1, name: "の兆候", options: [] },
-              { rank: 2, name: "の瑞光", options: ["goldChance"] },
               {
                 rank: 3,
                 name: "の星宿",
@@ -6044,13 +6004,9 @@
 
         const TITLE_ATTACK_COUNT_BLUEPRINT = {
           prefixRanks: [
-            { rank: 1, name: "迅刃の", options: [] },
-            { rank: 2, name: "連撃の", options: ["speed"] },
             { rank: 3, name: "迅雷の", options: ["critRate", "evade"] },
           ],
           suffixRanks: [
-            { rank: 1, name: "の一閃", options: [] },
-            { rank: 2, name: "の斉射", options: ["physAtk"] },
             { rank: 3, name: "の剣舞", options: ["cooldown", "critDamage"] },
           ],
         };
@@ -6093,14 +6049,14 @@
           {
             key: "growing",
             name: "成長する",
-            rank: 1,
+            rank: 3,
             options: ["physAtk", "speed"],
             primaryPerLevelStats: ["str"],
           },
           {
             key: "unyielding",
             name: "不動の",
-            rank: 2,
+            rank: 3,
             options: ["hp", "damageReduction"],
             primaryFixedStats: ["vit"],
           },
@@ -6161,14 +6117,14 @@
           {
             key: "study",
             name: "の研磨",
-            rank: 1,
+            rank: 3,
             options: ["magAtk", "mp"],
             primaryPerLevelStats: ["int"],
           },
           {
             key: "foundation",
             name: "の礎",
-            rank: 2,
+            rank: 3,
             options: ["rarity", "dropRate"],
             primaryFixedStats: ["luck"],
           },
@@ -6929,6 +6885,11 @@
           return Math.floor(Math.random() * (max - min + 1)) + min;
         }
 
+        function pickRandom(list) {
+          if (!list?.length) return null;
+          return list[randomInt(0, list.length - 1)];
+        }
+
         function weightedRandom(options, fallback = null) {
           if (!options?.length) return fallback;
           const total = options.reduce(
@@ -7381,14 +7342,6 @@
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
 
-          const titleRankIndex = Math.max(
-            0,
-            Math.min(
-              (title?.rank || 1) - 1,
-              TITLE_PRIMARY_PER_LEVEL_BY_RANK.length - 1,
-            ),
-          );
-
           const entries = (title?.options || [])
             .map((key) => {
               const def = EQUIPMENT_STAT_BY_KEY[key];
@@ -7407,8 +7360,8 @@
 
           if (title?.primaryPerLevelStats?.length) {
             const effect =
-              TITLE_PRIMARY_PER_LEVEL_BY_RANK[titleRankIndex] ||
-              TITLE_PRIMARY_PER_LEVEL_BY_RANK[0];
+              pickRandom(TITLE_PRIMARY_PER_LEVEL_EFFECTS) ||
+              TITLE_PRIMARY_PER_LEVEL_EFFECTS[0];
             title.primaryPerLevelStats.forEach((statKey) => {
               if (!primaryPerLevel[statKey]) primaryPerLevel[statKey] = [];
               primaryPerLevel[statKey].push({
@@ -7419,7 +7372,9 @@
           }
 
           if (title?.primaryFixedStats?.length) {
-            const fixedValue = TITLE_PRIMARY_FIXED_BY_RANK[titleRankIndex] ?? 0;
+            const fixedValue =
+              pickRandom(TITLE_PRIMARY_FIXED_EFFECTS) ||
+              TITLE_PRIMARY_FIXED_EFFECTS[0];
             title.primaryFixedStats.forEach((statKey) => {
               const current = primaryFixed[statKey];
               primaryFixed[statKey] =
@@ -7431,7 +7386,7 @@
 
           if (title?.attackCountBonus) {
             const extraAttacks =
-              TITLE_ATTACK_COUNT_BONUS_BY_RANK[titleRankIndex] ?? 0;
+              pickRandom(TITLE_ATTACK_COUNT_BONUS_EFFECTS) || 0;
             attackCountBonus += extraAttacks;
           }
 
@@ -15097,12 +15052,10 @@
         function buildTitleCodexEntries(kindFilter = null) {
           const codex = ensureCodexState();
           const entries = [];
-          const formatRankScaling = (values, formatter) =>
+          const formatRandomScaling = (values, formatter) =>
             values
-              .map((value, index) => {
-                const rank = index + 1;
-                return `★${rank}: ${formatter(value)}`;
-              })
+              .map((value) => formatter(value))
+              .filter(Boolean)
               .join(" / ");
 
           const describeTitleSpecialEffects = (title) => {
@@ -15111,31 +15064,35 @@
               const statLabel = title.primaryPerLevelStats
                 .map((stat) => formatStatLabel(stat))
                 .join(" / ");
-              const scalingText = formatRankScaling(
-                TITLE_PRIMARY_PER_LEVEL_BY_RANK,
+              const scalingText = formatRandomScaling(
+                TITLE_PRIMARY_PER_LEVEL_EFFECTS,
                 (effect) =>
                   effect
-                    ? `${effect.interval === 1 ? "Lv毎" : `${effect.interval}Lv毎`}+${effect.amount}`
-                    : "--",
+                    ? `${
+                        effect.interval === 1
+                          ? "Lv毎"
+                          : `${effect.interval}Lv毎`
+                      }+${effect.amount}`
+                    : "",
               );
-              effects.push(`一次成長: ${statLabel} (${scalingText})`);
+              effects.push(`一次成長: ${statLabel} (ランダム: ${scalingText})`);
             }
             if (title?.primaryFixedStats?.length) {
               const statLabel = title.primaryFixedStats
                 .map((stat) => formatStatLabel(stat))
                 .join(" / ");
-              const scalingText = formatRankScaling(
-                TITLE_PRIMARY_FIXED_BY_RANK,
-                (value) => (value != null ? `${value}固定` : "--"),
+              const scalingText = formatRandomScaling(
+                TITLE_PRIMARY_FIXED_EFFECTS,
+                (value) => (value != null ? `${value}固定` : ""),
               );
-              effects.push(`一次固定: ${statLabel} (${scalingText})`);
+              effects.push(`一次固定: ${statLabel} (ランダム: ${scalingText})`);
             }
             if (title?.attackCountBonus) {
-              const scalingText = formatRankScaling(
-                TITLE_ATTACK_COUNT_BONUS_BY_RANK,
-                (value) => (value != null ? `通常攻撃+${value}回` : "--"),
+              const scalingText = formatRandomScaling(
+                TITLE_ATTACK_COUNT_BONUS_EFFECTS,
+                (value) => (value != null ? `通常攻撃+${value}回` : ""),
               );
-              effects.push(`連撃: ${scalingText}`);
+              effects.push(`連撃: ランダム (${scalingText})`);
             }
             return effects;
           };
