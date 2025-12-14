@@ -11659,8 +11659,10 @@
             1,
             roundBattleValue(derived.maxHp.total),
           );
+          const barrierText =
+            displayBarrier > 0 ? ` + バリア ${displayBarrier}` : "";
           document.getElementById("hp-label").textContent =
-            `HP ${displayHp} / ${displayMaxHp} + バリア ${displayBarrier}`;
+            `HP ${displayHp} / ${displayMaxHp}${barrierText}`;
           document.getElementById("mp-label").textContent =
             `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
           document.getElementById("exp-label").textContent =
