@@ -257,6 +257,16 @@
         --drop-highlight-rgb: 252, 211, 77;
       }
 
+      .drop-toast.simple {
+        --drop-primary: var(--panel);
+        --drop-secondary: var(--panel);
+        --drop-highlight: var(--text);
+        --drop-primary-rgb: 17, 24, 39;
+        --drop-secondary-rgb: 17, 24, 39;
+        --drop-highlight-rgb: 229, 231, 235;
+        min-width: auto;
+      }
+
       .drop-toast.show {
         animation: dropToastEntrance 2.6s ease-out forwards;
       }
@@ -281,6 +291,14 @@
           0 0 38px rgba(var(--drop-highlight-rgb), 0.35);
         overflow: hidden;
         isolation: isolate;
+      }
+
+      .drop-toast.simple .drop-toast-core {
+        gap: 8px;
+        padding: 10px 12px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: none;
       }
 
       .drop-toast .drop-toast-core::before {
@@ -312,6 +330,11 @@
         z-index: 1;
       }
 
+      .drop-toast.simple .drop-toast-core::before,
+      .drop-toast.simple .drop-toast-core::after {
+        display: none;
+      }
+
       .drop-toast .drop-toast-glow {
         position: absolute;
         inset: -10px;
@@ -337,6 +360,10 @@
         z-index: 0;
       }
 
+      .drop-toast.simple .drop-toast-glow {
+        display: none;
+      }
+
       .drop-toast .drop-toast-body {
         position: relative;
         display: grid;
@@ -351,6 +378,11 @@
         line-height: 1.25;
         min-width: 220px;
         max-width: 280px;
+      }
+
+      .drop-toast.simple .drop-text {
+        min-width: auto;
+        max-width: 320px;
       }
 
       .drop-toast .drop-pill {
@@ -373,6 +405,10 @@
           0 8px 24px rgba(0, 0, 0, 0.35),
           0 0 18px rgba(var(--drop-highlight-rgb), 0.55);
         border: 1px solid rgba(255, 255, 255, 0.4);
+      }
+
+      .drop-toast.simple .drop-pill {
+        display: none;
       }
 
       .drop-toast .drop-item-name {
@@ -403,6 +439,16 @@
         text-overflow: ellipsis;
       }
 
+      .drop-toast.simple .drop-item-name {
+        padding: 0;
+        background: none;
+        border: none;
+        box-shadow: none;
+        text-shadow: none;
+        color: var(--text);
+        font-weight: 700;
+      }
+
       .drop-toast .drop-sparkles {
         position: absolute;
         inset: -12px;
@@ -428,6 +474,10 @@
         z-index: 1;
       }
 
+      .drop-toast.simple .drop-sparkles {
+        display: none;
+      }
+
       .drop-toast .drop-ribbon {
         position: absolute;
         inset: -30%;
@@ -443,6 +493,10 @@
         transform: rotate(12deg);
         animation: dropToastRibbon 3s ease-in-out infinite;
         z-index: 0;
+      }
+
+      .drop-toast.simple .drop-ribbon {
+        display: none;
       }
 
       @keyframes dropToastEntrance {
@@ -10021,18 +10075,24 @@
 
         function triggerDropCelebration(item) {
           if (!dropCelebration || !dropItemName || !dropPill) return;
-          const rarity = item?.equipment?.rarity || item?.potion?.rarity;
-          if (!rarity || !["rare", "legendary"].includes(rarity)) return;
-
+          const rarity =
+            item?.equipment?.rarity || item?.potion?.rarity || "normal";
+          const isShowy = rarity === "rare" || rarity === "legendary";
           const label = rarity === "legendary" ? "LEGENDARY DROP" : "RARE DROP";
           const name = item?.name || item?.potion?.name || "???";
           dropPill.textContent = label;
+          dropPill.style.display = isShowy ? "" : "none";
           dropItemName.textContent = name;
           dropCelebration.setAttribute("aria-hidden", "false");
-          dropCelebration.classList.remove("show", "rare", "legendary");
+          dropCelebration.classList.remove(
+            "show",
+            "rare",
+            "legendary",
+            "simple",
+          );
           if (dropCelebrationTimer) clearTimeout(dropCelebrationTimer);
           void dropCelebration.offsetWidth;
-          dropCelebration.classList.add("show", rarity);
+          dropCelebration.classList.add("show", isShowy ? rarity : "simple");
           dropCelebrationTimer = setTimeout(() => {
             dropCelebration?.classList.remove("show");
             dropCelebration?.setAttribute("aria-hidden", "true");
