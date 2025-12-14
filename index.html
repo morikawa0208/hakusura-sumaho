@@ -220,6 +220,20 @@
         }
       }
 
+      .drop-toast-stack {
+        position: fixed;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        pointer-events: none;
+        z-index: 30;
+      }
+
       .drop-toast {
         --drop-primary: #fbbf24;
         --drop-secondary: #fef08a;
@@ -227,16 +241,16 @@
         --drop-primary-rgb: 251, 191, 36;
         --drop-secondary-rgb: 254, 240, 138;
         --drop-highlight-rgb: 252, 211, 77;
-        position: fixed;
-        top: 15px;
-        left: 50%;
-        transform: translate(-50%, -10px) scale(0.96);
+        position: relative;
+        transform: translateY(-10px) scale(0.96);
         display: grid;
         place-items: center;
+        justify-items: center;
         pointer-events: none;
-        z-index: 30;
         opacity: 0;
-        min-width: 320px;
+        width: max-content;
+        max-width: min(80vw, 560px);
+        min-width: clamp(220px, 30vw, 420px);
       }
 
       .drop-toast.rare {
@@ -255,6 +269,16 @@
         --drop-primary-rgb: 180, 83, 9;
         --drop-secondary-rgb: 249, 115, 22;
         --drop-highlight-rgb: 252, 211, 77;
+      }
+
+      .drop-toast.simple {
+        --drop-primary: var(--panel);
+        --drop-secondary: var(--panel);
+        --drop-highlight: var(--text);
+        --drop-primary-rgb: 17, 24, 39;
+        --drop-secondary-rgb: 17, 24, 39;
+        --drop-highlight-rgb: 229, 231, 235;
+        min-width: auto;
       }
 
       .drop-toast.show {
@@ -281,6 +305,16 @@
           0 0 38px rgba(var(--drop-highlight-rgb), 0.35);
         overflow: hidden;
         isolation: isolate;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .drop-toast.simple .drop-toast-core {
+        gap: 8px;
+        padding: 10px 12px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: none;
       }
 
       .drop-toast .drop-toast-core::before {
@@ -312,6 +346,11 @@
         z-index: 1;
       }
 
+      .drop-toast.simple .drop-toast-core::before,
+      .drop-toast.simple .drop-toast-core::after {
+        display: none;
+      }
+
       .drop-toast .drop-toast-glow {
         position: absolute;
         inset: -10px;
@@ -337,25 +376,40 @@
         z-index: 0;
       }
 
+      .drop-toast.simple .drop-toast-glow {
+        display: none;
+      }
+
       .drop-toast .drop-toast-body {
         position: relative;
         display: grid;
         grid-template-columns: auto 1fr;
         align-items: center;
+        justify-items: center;
         gap: 12px;
         z-index: 2;
+        width: 100%;
+        min-width: 0;
       }
       .drop-toast .drop-text {
         display: grid;
         gap: 6px;
         line-height: 1.25;
-        min-width: 220px;
-        max-width: 280px;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        text-align: center;
+      }
+
+      .drop-toast.simple .drop-text {
+        min-width: 0;
+        max-width: 100%;
       }
 
       .drop-toast .drop-pill {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         padding: 6px 12px;
         border-radius: 999px;
@@ -375,13 +429,18 @@
         border: 1px solid rgba(255, 255, 255, 0.4);
       }
 
+      .drop-toast.simple .drop-pill {
+        display: none;
+      }
+
       .drop-toast .drop-item-name {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         padding: 8px 12px;
         border-radius: 12px;
-        font-size: clamp(14px, 4vw, 16px);
+        font-size: clamp(13px, 3vw, 17px);
         font-weight: 800;
         letter-spacing: 0.03em;
         color: var(--drop-highlight);
@@ -399,8 +458,19 @@
           0 0 12px rgba(var(--drop-highlight-rgb), 0.7);
         white-space: nowrap;
         max-width: 100%;
+        width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+
+      .drop-toast.simple .drop-item-name {
+        padding: 0;
+        background: none;
+        border: none;
+        box-shadow: none;
+        text-shadow: none;
+        color: var(--text);
+        font-weight: 700;
       }
 
       .drop-toast .drop-sparkles {
@@ -428,6 +498,10 @@
         z-index: 1;
       }
 
+      .drop-toast.simple .drop-sparkles {
+        display: none;
+      }
+
       .drop-toast .drop-ribbon {
         position: absolute;
         inset: -30%;
@@ -445,22 +519,26 @@
         z-index: 0;
       }
 
+      .drop-toast.simple .drop-ribbon {
+        display: none;
+      }
+
       @keyframes dropToastEntrance {
         0% {
           opacity: 0;
-          transform: translate(-50%, -6px) scale(0.9);
+          transform: translateY(-6px) scale(0.9);
         }
         18% {
           opacity: 1;
-          transform: translate(-50%, -1px) scale(1.04);
+          transform: translateY(-1px) scale(1.04);
         }
         60% {
           opacity: 1;
-          transform: translate(-50%, -6px) scale(1);
+          transform: translateY(-6px) scale(1);
         }
         100% {
           opacity: 0;
-          transform: translate(-50%, -18px) scale(1);
+          transform: translateY(-18px) scale(1);
         }
       }
 
@@ -2481,19 +2559,22 @@
         <div class="toast-trail"></div>
       </div>
 
-      <div id="drop-celebration" class="drop-toast" aria-hidden="true">
-        <div class="drop-toast-core">
-          <div class="drop-toast-glow"></div>
-          <div class="drop-toast-body">
-            <div class="drop-text">
-              <div id="drop-pill" class="drop-pill">RARE DROP</div>
-              <div id="drop-item-name" class="drop-item-name"></div>
+      <div id="drop-toast-stack" class="drop-toast-stack" aria-live="polite"></div>
+      <template id="drop-toast-template">
+        <div class="drop-toast" aria-hidden="true">
+          <div class="drop-toast-core">
+            <div class="drop-toast-glow"></div>
+            <div class="drop-toast-body">
+              <div class="drop-text">
+                <div class="drop-pill">RARE DROP</div>
+                <div class="drop-item-name"></div>
+              </div>
             </div>
+            <div class="drop-sparkles"></div>
+            <div class="drop-ribbon"></div>
           </div>
-          <div class="drop-sparkles"></div>
-          <div class="drop-ribbon"></div>
         </div>
-      </div>
+      </template>
     </div>
 
     <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -9979,10 +10060,28 @@
         const levelUpValue = document.getElementById("level-up-value");
         let levelUpToastTimer = null;
 
-        const dropCelebration = document.getElementById("drop-celebration");
-        const dropItemName = document.getElementById("drop-item-name");
-        const dropPill = document.getElementById("drop-pill");
-        let dropCelebrationTimer = null;
+        const dropToastStack = document.getElementById("drop-toast-stack");
+        const dropToastTemplate = document.getElementById("drop-toast-template");
+
+        function fitDropItemName(target) {
+          if (!target) return;
+          target.style.fontSize = "";
+          const computed = window.getComputedStyle(target);
+          let size = Number.parseFloat(computed.fontSize) || 16;
+          const minSize = 12;
+          const maxTries = 8;
+          let tries = 0;
+
+          while (
+            target.scrollWidth > target.clientWidth &&
+            size > minSize &&
+            tries < maxTries
+          ) {
+            size -= 1;
+            target.style.fontSize = `${size}px`;
+            tries += 1;
+          }
+        }
 
         const getStatus = (entity, key) =>
           (entity.statuses || []).find((s) => s.key === key);
@@ -10020,22 +10119,33 @@
         }
 
         function triggerDropCelebration(item) {
-          if (!dropCelebration || !dropItemName || !dropPill) return;
-          const rarity = item?.equipment?.rarity || item?.potion?.rarity;
-          if (!rarity || !["rare", "legendary"].includes(rarity)) return;
-
+          if (!dropToastTemplate || !dropToastStack) return;
+          const rarity =
+            item?.equipment?.rarity || item?.potion?.rarity || "normal";
+          const isShowy = rarity === "rare" || rarity === "legendary";
           const label = rarity === "legendary" ? "LEGENDARY DROP" : "RARE DROP";
           const name = item?.name || item?.potion?.name || "???";
-          dropPill.textContent = label;
-          dropItemName.textContent = name;
-          dropCelebration.setAttribute("aria-hidden", "false");
-          dropCelebration.classList.remove("show", "rare", "legendary");
-          if (dropCelebrationTimer) clearTimeout(dropCelebrationTimer);
-          void dropCelebration.offsetWidth;
-          dropCelebration.classList.add("show", rarity);
-          dropCelebrationTimer = setTimeout(() => {
-            dropCelebration?.classList.remove("show");
-            dropCelebration?.setAttribute("aria-hidden", "true");
+
+          const toast = dropToastTemplate.content.firstElementChild.cloneNode(true);
+          const pill = toast.querySelector(".drop-pill");
+          const nameEl = toast.querySelector(".drop-item-name");
+          if (!pill || !nameEl) return;
+
+          pill.textContent = label;
+          pill.style.display = isShowy ? "" : "none";
+          nameEl.textContent = name;
+
+          toast.setAttribute("aria-hidden", "false");
+          toast.classList.remove("show", "rare", "legendary", "simple");
+          toast.classList.add("show", isShowy ? rarity : "simple");
+          dropToastStack.appendChild(toast);
+
+          requestAnimationFrame(() => fitDropItemName(nameEl));
+
+          setTimeout(() => {
+            toast?.classList.remove("show");
+            toast?.setAttribute("aria-hidden", "true");
+            setTimeout(() => toast?.remove(), 300);
           }, 2600);
         }
 
