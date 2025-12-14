@@ -220,6 +220,20 @@
         }
       }
 
+      .drop-toast-stack {
+        position: fixed;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        pointer-events: none;
+        z-index: 30;
+      }
+
       .drop-toast {
         --drop-primary: #fbbf24;
         --drop-secondary: #fef08a;
@@ -227,16 +241,16 @@
         --drop-primary-rgb: 251, 191, 36;
         --drop-secondary-rgb: 254, 240, 138;
         --drop-highlight-rgb: 252, 211, 77;
-        position: fixed;
-        top: 15px;
-        left: 50%;
-        transform: translate(-50%, -10px) scale(0.96);
+        position: relative;
+        transform: translateY(-10px) scale(0.96);
         display: grid;
         place-items: center;
+        justify-items: center;
         pointer-events: none;
-        z-index: 30;
         opacity: 0;
-        width: clamp(260px, 80%, 560px);
+        width: max-content;
+        max-width: min(80vw, 560px);
+        min-width: clamp(220px, 30vw, 420px);
       }
 
       .drop-toast.rare {
@@ -292,14 +306,7 @@
         overflow: hidden;
         isolation: isolate;
         width: 100%;
-      }
-
-      .drop-toast.simple .drop-toast-core {
-        gap: 8px;
-        padding: 10px 12px;
-        background: var(--panel);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: none;
+        justify-content: center;
       }
 
       .drop-toast.simple .drop-toast-core {
@@ -378,6 +385,7 @@
         display: grid;
         grid-template-columns: auto 1fr;
         align-items: center;
+        justify-items: center;
         gap: 12px;
         z-index: 2;
         width: 100%;
@@ -390,6 +398,7 @@
         min-width: 0;
         max-width: 100%;
         width: 100%;
+        text-align: center;
       }
 
       .drop-toast.simple .drop-text {
@@ -397,14 +406,10 @@
         max-width: 100%;
       }
 
-      .drop-toast.simple .drop-text {
-        min-width: auto;
-        max-width: 320px;
-      }
-
       .drop-toast .drop-pill {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         padding: 6px 12px;
         border-radius: 999px;
@@ -431,6 +436,7 @@
       .drop-toast .drop-item-name {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
         padding: 8px 12px;
         border-radius: 12px;
@@ -520,19 +526,19 @@
       @keyframes dropToastEntrance {
         0% {
           opacity: 0;
-          transform: translate(-50%, -6px) scale(0.9);
+          transform: translateY(-6px) scale(0.9);
         }
         18% {
           opacity: 1;
-          transform: translate(-50%, -1px) scale(1.04);
+          transform: translateY(-1px) scale(1.04);
         }
         60% {
           opacity: 1;
-          transform: translate(-50%, -6px) scale(1);
+          transform: translateY(-6px) scale(1);
         }
         100% {
           opacity: 0;
-          transform: translate(-50%, -18px) scale(1);
+          transform: translateY(-18px) scale(1);
         }
       }
 
@@ -2553,19 +2559,22 @@
         <div class="toast-trail"></div>
       </div>
 
-      <div id="drop-celebration" class="drop-toast" aria-hidden="true">
-        <div class="drop-toast-core">
-          <div class="drop-toast-glow"></div>
-          <div class="drop-toast-body">
-            <div class="drop-text">
-              <div id="drop-pill" class="drop-pill">RARE DROP</div>
-              <div id="drop-item-name" class="drop-item-name"></div>
+      <div id="drop-toast-stack" class="drop-toast-stack" aria-live="polite"></div>
+      <template id="drop-toast-template">
+        <div class="drop-toast" aria-hidden="true">
+          <div class="drop-toast-core">
+            <div class="drop-toast-glow"></div>
+            <div class="drop-toast-body">
+              <div class="drop-text">
+                <div class="drop-pill">RARE DROP</div>
+                <div class="drop-item-name"></div>
+              </div>
             </div>
+            <div class="drop-sparkles"></div>
+            <div class="drop-ribbon"></div>
           </div>
-          <div class="drop-sparkles"></div>
-          <div class="drop-ribbon"></div>
         </div>
-      </div>
+      </template>
     </div>
 
     <div id="enemy-modal" class="modal hidden" role="dialog" aria-modal="true">
@@ -10051,10 +10060,28 @@
         const levelUpValue = document.getElementById("level-up-value");
         let levelUpToastTimer = null;
 
-        const dropCelebration = document.getElementById("drop-celebration");
-        const dropItemName = document.getElementById("drop-item-name");
-        const dropPill = document.getElementById("drop-pill");
-        let dropCelebrationTimer = null;
+        const dropToastStack = document.getElementById("drop-toast-stack");
+        const dropToastTemplate = document.getElementById("drop-toast-template");
+
+        function fitDropItemName(target) {
+          if (!target) return;
+          target.style.fontSize = "";
+          const computed = window.getComputedStyle(target);
+          let size = Number.parseFloat(computed.fontSize) || 16;
+          const minSize = 12;
+          const maxTries = 8;
+          let tries = 0;
+
+          while (
+            target.scrollWidth > target.clientWidth &&
+            size > minSize &&
+            tries < maxTries
+          ) {
+            size -= 1;
+            target.style.fontSize = `${size}px`;
+            tries += 1;
+          }
+        }
 
         function fitDropItemName() {
           if (!dropItemName) return;
@@ -10112,29 +10139,33 @@
         }
 
         function triggerDropCelebration(item) {
-          if (!dropCelebration || !dropItemName || !dropPill) return;
+          if (!dropToastTemplate || !dropToastStack) return;
           const rarity =
             item?.equipment?.rarity || item?.potion?.rarity || "normal";
           const isShowy = rarity === "rare" || rarity === "legendary";
           const label = rarity === "legendary" ? "LEGENDARY DROP" : "RARE DROP";
           const name = item?.name || item?.potion?.name || "???";
-          dropPill.textContent = label;
-          dropPill.style.display = isShowy ? "" : "none";
-          dropItemName.textContent = name;
-          dropCelebration.setAttribute("aria-hidden", "false");
-          dropCelebration.classList.remove(
-            "show",
-            "rare",
-            "legendary",
-            "simple",
-          );
-          if (dropCelebrationTimer) clearTimeout(dropCelebrationTimer);
-          void dropCelebration.offsetWidth;
-          dropCelebration.classList.add("show", isShowy ? rarity : "simple");
-          requestAnimationFrame(fitDropItemName);
-          dropCelebrationTimer = setTimeout(() => {
-            dropCelebration?.classList.remove("show");
-            dropCelebration?.setAttribute("aria-hidden", "true");
+
+          const toast = dropToastTemplate.content.firstElementChild.cloneNode(true);
+          const pill = toast.querySelector(".drop-pill");
+          const nameEl = toast.querySelector(".drop-item-name");
+          if (!pill || !nameEl) return;
+
+          pill.textContent = label;
+          pill.style.display = isShowy ? "" : "none";
+          nameEl.textContent = name;
+
+          toast.setAttribute("aria-hidden", "false");
+          toast.classList.remove("show", "rare", "legendary", "simple");
+          toast.classList.add("show", isShowy ? rarity : "simple");
+          dropToastStack.appendChild(toast);
+
+          requestAnimationFrame(() => fitDropItemName(nameEl));
+
+          setTimeout(() => {
+            toast?.classList.remove("show");
+            toast?.setAttribute("aria-hidden", "true");
+            setTimeout(() => toast?.remove(), 300);
           }, 2600);
         }
 
