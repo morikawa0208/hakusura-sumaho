@@ -2009,6 +2009,11 @@
         z-index: 70;
       }
 
+      #codex-modal,
+      #codex-detail-modal {
+        z-index: 80;
+      }
+
       .hidden {
         display: none !important;
       }
@@ -2581,6 +2586,34 @@
         padding: 20px 10px;
         color: var(--muted);
       }
+
+      .warp-section {
+        margin-top: 10px;
+        display: grid;
+        gap: 6px;
+      }
+
+      .warp-boss-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .warp-boss-row {
+        display: grid;
+        grid-template-columns: 1fr 44px;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .warp-boss-row .info-btn {
+        padding: 6px;
+        font-weight: 800;
+      }
+
+      .warp-note {
+        color: var(--muted);
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -2641,6 +2674,7 @@
         <button id="btn-skill-tree">スキル</button>
         <button id="btn-inventory">アイテム</button>
         <button id="btn-codex">図鑑</button>
+        <button id="btn-warp">ワープ</button>
         <button id="btn-debug">デバッグ</button>
       </nav>
 
@@ -3280,6 +3314,36 @@
           </button>
         </div>
         <div id="codex-detail-body" class="codex-detail-body"></div>
+      </div>
+    </div>
+
+    <div id="warp-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <div class="section-title" style="margin: 0">ワープ</div>
+            <div style="font-weight: 700">到達済み階層へ移動</div>
+          </div>
+          <button id="warp-close" class="modal-close" aria-label="閉じる">
+            ×
+          </button>
+        </div>
+        <div class="help-panel">
+          <div class="option-label">現在地</div>
+          <div class="option-value">
+            <span id="warp-current-floor"></span>F / 最高
+            <span id="warp-max-label"></span>F
+          </div>
+          <div class="warp-note">戦闘開始前の階層に即座に移動します。</div>
+        </div>
+        <div class="warp-section">
+          <div class="option-label">ボス階</div>
+          <div id="warp-boss-list" class="warp-boss-list"></div>
+        </div>
+        <div class="warp-section">
+          <div class="option-label">その他</div>
+          <button id="warp-max-floor">最大到達階へ</button>
+        </div>
       </div>
     </div>
 
@@ -8810,6 +8874,8 @@
 
         const game = {
           floor: 1,
+          highestFloor: 1,
+          reachedBossFloors: {},
           enemies: [],
           turnQueue: [],
           awaitingInput: false,
@@ -11890,10 +11956,21 @@
           }
         }
 
+        function recordFloorProgress() {
+          if (!Number.isFinite(game.floor)) return;
+          const currentFloor = Math.max(1, Math.floor(game.floor));
+          game.highestFloor = Math.max(game.highestFloor || 1, currentFloor);
+          if (!game.reachedBossFloors) game.reachedBossFloors = {};
+          if (isBossFloor(currentFloor)) {
+            game.reachedBossFloors[currentFloor] = true;
+          }
+        }
+
         function spawnEnemies() {
           const boss = isBossFloor(game.floor);
           const count = boss ? 1 : 2 + Math.floor(Math.random() * 2);
           const derived = recalcDerivedStats();
+          recordFloorProgress();
           ensureBarrierBaseline(derived);
           const expReward = calcExpRewardForEnemy({
             floor: game.floor,
@@ -13153,6 +13230,14 @@
           if (!Number.isFinite(game.floor) || game.floor <= 0) {
             game.floor = 1;
           }
+
+          if (!Number.isFinite(game.highestFloor) || game.highestFloor < 1) {
+            game.highestFloor = game.floor;
+          } else {
+            game.highestFloor = Math.max(game.highestFloor, game.floor);
+          }
+          if (!game.reachedBossFloors) game.reachedBossFloors = {};
+          recordFloorProgress();
 
           if (!game.legendaryRecords) game.legendaryRecords = {};
           ensureCodexState();
@@ -15502,6 +15587,12 @@
         const codexCloseButton = document.getElementById("codex-close");
         const codexDetailCloseButton =
           document.getElementById("codex-detail-close");
+        const warpModal = document.getElementById("warp-modal");
+        const warpCloseButton = document.getElementById("warp-close");
+        const warpBossList = document.getElementById("warp-boss-list");
+        const warpMaxButton = document.getElementById("warp-max-floor");
+        const warpCurrentFloor = document.getElementById("warp-current-floor");
+        const warpMaxLabel = document.getElementById("warp-max-label");
         const skillInfoName = document.getElementById("skill-info-name");
         const skillInfoType = document.getElementById("skill-info-type");
         const skillInfoCooldown = document.getElementById(
@@ -15646,6 +15737,7 @@
         const inventoryOpenButton = document.getElementById("btn-inventory");
         const bulkSellExecuteButton = document.getElementById("bulk-sell-execute");
         const codexOpenButton = document.getElementById("btn-codex");
+        const warpOpenButton = document.getElementById("btn-warp");
         const archetypeModal = document.getElementById("archetype-modal");
         const archetypeModalName = document.getElementById(
           "archetype-modal-name",
@@ -16498,6 +16590,99 @@
         function closeCodexModal() {
           codexModal?.classList.add("hidden");
           closeCodexDetail();
+        }
+
+        function getReachedBossFloors() {
+          const reached = game.reachedBossFloors || {};
+          const maxFloor = Math.max(1, Math.floor(game.highestFloor || 1));
+          return BOSS_FLOORS.filter((floor) => reached[floor] && floor <= maxFloor);
+        }
+
+        function openBossInfoFromWarp(floor) {
+          const entry = buildBossCodexEntries().find((e) => e.floor === floor);
+          if (!entry) return;
+          currentCodexCategory = "boss";
+          renderCodexTabs();
+          renderCodexList();
+          openCodexDetail(entry);
+          codexModal?.classList.remove("hidden");
+        }
+
+        function renderWarpOptions() {
+          if (!warpBossList || !warpMaxButton || !warpCurrentFloor || !warpMaxLabel)
+            return;
+          recordFloorProgress();
+          const currentFloor = Math.max(1, Math.floor(game.floor || 1));
+          const maxFloor = Math.max(currentFloor, Math.floor(game.highestFloor || 1));
+          warpCurrentFloor.textContent = currentFloor;
+          warpMaxLabel.textContent = maxFloor;
+
+          const reachedBosses = getReachedBossFloors();
+          warpBossList.innerHTML = "";
+
+          if (!reachedBosses.length) {
+            const empty = document.createElement("div");
+            empty.className = "warp-note";
+            empty.textContent = "到達済みのボス階がありません";
+            warpBossList.appendChild(empty);
+          } else {
+            reachedBosses.forEach((floor) => {
+              const row = document.createElement("div");
+              row.className = "warp-boss-row";
+
+              const bossName = BOSS_DEFINITIONS[floor]?.name || "ボス";
+
+              const btn = document.createElement("button");
+              btn.textContent = `${floor}F ${bossName}へ`;
+              btn.onclick = () => warpToFloor(floor);
+              row.appendChild(btn);
+
+              const info = document.createElement("button");
+              info.className = "mini-btn info-btn";
+              info.textContent = "i";
+              info.title = "図鑑で確認";
+              info.onclick = (e) => {
+                e.stopPropagation();
+                openBossInfoFromWarp(floor);
+              };
+              row.appendChild(info);
+
+              warpBossList.appendChild(row);
+            });
+          }
+
+          warpMaxButton.textContent = `${maxFloor}F へワープ`;
+          warpMaxButton.disabled = false;
+          warpMaxButton.onclick = () => warpToFloor(maxFloor);
+        }
+
+        function warpToFloor(targetFloor) {
+          if (!Number.isFinite(targetFloor)) return;
+          const battleOngoing =
+            game.enemies.some((e) => e.hp > 0) && player.hp > 0;
+          if (battleOngoing) {
+            log("戦闘中はワープできません", "warning");
+            return;
+          }
+          const nextFloor = Math.max(1, Math.floor(targetFloor));
+          game.floor = nextFloor;
+          player.buffs.guard = 0;
+          clearTurnOrderPreview();
+          game.turnQueue = [];
+          spawnEnemies();
+          updateUI();
+          log(`🌀 ${nextFloor}F へワープ`, "info");
+          maybeAutoSave("ワープ");
+          closeWarpModal();
+        }
+
+        function openWarpModal() {
+          renderWarpOptions();
+          warpModal?.classList.remove("hidden");
+        }
+
+        function closeWarpModal() {
+          warpModal?.classList.add("hidden");
         }
 
         function openEnemyModal(enemy) {
@@ -18088,6 +18273,11 @@
         );
         inventoryOpenButton?.addEventListener("click", openInventoryModal);
         codexOpenButton?.addEventListener("click", openCodexModal);
+        warpOpenButton?.addEventListener("click", openWarpModal);
+        warpCloseButton?.addEventListener("click", closeWarpModal);
+        warpModal?.addEventListener("click", (e) => {
+          if (e.target === warpModal) closeWarpModal();
+        });
         debugOpenButton?.addEventListener("click", openDebugModal);
         debugCloseButton?.addEventListener("click", closeDebugModal);
         archetypeCloseButton?.addEventListener("click", closeArchetypeModal);
