@@ -11347,6 +11347,35 @@
           return points[points.length - 1].chance;
         }
 
+        function formatPercent(value, digits = 1) {
+          const factor = 10 ** digits;
+          const rounded = Math.round(Math.max(0, value) * factor) / factor;
+          return `${rounded}%`;
+        }
+
+        function computeBossLegendaryChance(floor) {
+          const baseChance = getBossLegendaryBaseChanceForFloor(floor);
+          const derived = recalcDerivedStats();
+          const rarityBonus = Math.max(0, derived?.rarity?.total ?? 0);
+          const rarityContribution = rarityBonus * 0.6;
+          const finalChance = Math.min(60, baseChance + rarityContribution);
+          return { baseChance, rarityBonus, rarityContribution, finalChance };
+        }
+
+        function formatBossLegendaryChanceDetail(floor) {
+          const { baseChance, rarityBonus, rarityContribution, finalChance } =
+            computeBossLegendaryChance(floor);
+          const bonusText =
+            rarityBonus > 0
+              ? ` + レアリティUP${formatPercent(rarityBonus)}→+${formatPercent(rarityContribution)}`
+              : "";
+          return `${formatPercent(finalChance)} (基礎${formatPercent(baseChance)}${bonusText})`;
+        }
+
+        function formatBossLegendaryChanceLabel(floor) {
+          return `${formatPercent(computeBossLegendaryChance(floor).finalChance)} / ロール`;
+        }
+
         function rollDropRarityForEnemy(enemy, rarityBonus, slot) {
           const legendaryCandidate = enemy.isBoss
             ? BOSS_LEGENDARY_DROPS[game.floor]
@@ -16020,6 +16049,9 @@
             const dropTemplate = dropInfo?.legendaryKey
               ? getLegendaryTemplateByKey(dropInfo.legendaryKey)
               : null;
+            const dropChanceText = dropInfo
+              ? formatBossLegendaryChanceDetail(floor)
+              : null;
             return {
               key: `boss:${floor}`,
               name: def?.name || `${floor}F ボス`,
@@ -16047,6 +16079,7 @@
                   dropTemplate,
                   dropSlot: dropInfo?.slot,
                 },
+                { label: "レジェンド率", value: dropChanceText || "--" },
               ],
               discovered,
               floor,
@@ -16658,9 +16691,10 @@
               row.className = "warp-boss-row";
 
               const bossName = BOSS_DEFINITIONS[floor]?.name || "ボス";
+              const legendaryLabel = formatBossLegendaryChanceLabel(floor);
 
               const btn = document.createElement("button");
-              btn.textContent = `${floor}F ${bossName}へ`;
+              btn.textContent = `${floor}F ${bossName}へ (伝説${legendaryLabel})`;
               btn.onclick = () => warpToFloor(floor);
               row.appendChild(btn);
 
