@@ -7596,6 +7596,25 @@
           return potion.effectText || potion.summary || "特殊効果";
         }
 
+        function calculatePotionConsumption(potion) {
+          if (!potion) return { useCost: 0, refund: 0 };
+
+          const baseCost = potion.useCost ?? 25;
+          let multiplier = 1;
+
+          if (potion.prefix?.key === "thrifty") multiplier *= 0.75;
+          if (potion.prefix?.key === "zeroTributePrefix") multiplier *= 0.3;
+          if (potion.suffix?.key === "zeroTributeSuffix") multiplier *= 0.35;
+          if (potion.suffix?.key === "efficiency") multiplier *= 0.9;
+
+          const adjusted = Math.max(1, Math.round(baseCost * multiplier));
+          const refund = potion.suffix?.key === "refill"
+            ? Math.round(adjusted * 0.2)
+            : 0;
+
+          return { useCost: adjusted, refund };
+        }
+
         function pickLegendaryPotion(preferredKey) {
           if (!LEGENDARY_POTIONS?.length) return null;
           if (preferredKey) {
@@ -7746,9 +7765,10 @@
         }
 
         function createPotionInventoryItem(potion, { description } = {}) {
+          const { useCost } = calculatePotionConsumption(potion);
           const desc =
             description ||
-            `${describePotionEffect(potion)} / 消費${potion.useCost}%`;
+            `${describePotionEffect(potion)} / 消費${useCost}%`;
           return ensureAcquiredOrder({
             id: `inv-${potion.id}`,
             name: potion.name,
@@ -8453,6 +8473,7 @@
           const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          const uniqueOptions = [];
           if (!item?.equipment)
             return {
               primary,
@@ -8460,6 +8481,7 @@
               primaryPerLevel,
               primaryFixed,
               attackCountBonus,
+              uniqueOptions,
             };
 
           if (
@@ -8482,6 +8504,7 @@
                 item.primaryFixedBonus || {},
               ),
               attackCountBonus: item.attackCountBonus || 0,
+              uniqueOptions: cloneState(item.equipment?.uniqueOptions || []),
             };
           }
 
@@ -8526,6 +8549,10 @@
           collect(item.equipment.suffix?.options);
           collectEffects(item.equipment.prefix);
           collectEffects(item.equipment.suffix);
+          (item.equipment.uniqueOptions || []).forEach((opt) => {
+            if (!opt || typeof opt.effect !== "string") return;
+            uniqueOptions.push(cloneState(opt));
+          });
           const scaled = applyEnhanceScaling(primary, secondary, item);
           return {
             primary: scaled.primary,
@@ -8533,6 +8560,7 @@
             primaryPerLevel,
             primaryFixed,
             attackCountBonus,
+            uniqueOptions,
           };
         }
 
@@ -8596,9 +8624,10 @@
         }
 
         function createPotionInventoryItem(potion, { description } = {}) {
+          const { useCost } = calculatePotionConsumption(potion);
           const desc =
             description ||
-            `${describePotionEffect(potion)} / 消費${potion.useCost ?? 25}%`;
+            `${describePotionEffect(potion)} / 消費${useCost}%`;
           return ensureAcquiredOrder({
             id: `inv-${potion.id}`,
             name: potion.name,
@@ -10986,6 +11015,7 @@
           const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          const uniqueOptions = [];
           Object.values(player.equipment || {}).forEach((item) => {
             if (!item?.equipment) return;
             const bonuses = getEquipmentBonuses(item);
@@ -11020,6 +11050,10 @@
             if (typeof bonuses.attackCountBonus === "number") {
               attackCountBonus += bonuses.attackCountBonus;
             }
+            (bonuses.uniqueOptions || []).forEach((opt) => {
+              if (!opt || typeof opt.effect !== "string") return;
+              uniqueOptions.push(opt);
+            });
           });
           return {
             primary,
@@ -11027,6 +11061,7 @@
             primaryPerLevel,
             primaryFixed,
             attackCountBonus,
+            uniqueOptions,
           };
         }
 
@@ -11219,6 +11254,7 @@
           const record = game.legendaryRecords[legendaryKey] || {
             drops: 0,
             baseRanges: {},
+            uniqueOptions: [],
           };
           record.drops += 1;
 
@@ -11233,6 +11269,13 @@
               max: Math.max(current.max, opt.value),
             };
           });
+
+          if (item.equipment.uniqueOptions?.length) {
+            record.uniqueOptions = item.equipment.uniqueOptions.map((opt) => ({
+              name: opt.name,
+              effect: opt.effect,
+            }));
+          }
 
           game.legendaryRecords[legendaryKey] = record;
           if (enemy?.isBoss) {
@@ -11366,6 +11409,7 @@
           player.equipmentPrimaryPerLevel = equipmentBonuses.primaryPerLevel;
           player.equipmentPrimaryFixed = equipmentBonuses.primaryFixed;
           player.attackCountBonus = equipmentBonuses.attackCountBonus || 0;
+          player.legendaryUniqueOptions = equipmentBonuses.uniqueOptions || [];
 
           const perLevelPrimaryBonus = calcPrimaryPerLevelBonus(
             equipmentBonuses.primaryPerLevel,
@@ -11481,6 +11525,15 @@
           player.equipment[slot] = item ?? null;
           const derived = recalcDerivedStats();
           updateUI(derived);
+          if (item?.equipment?.uniqueOptions?.length) {
+            const summary = item.equipment.uniqueOptions
+              .filter((opt) => opt?.name && opt?.effect)
+              .map((opt) => `${opt.name}: ${opt.effect}`)
+              .join(" / ");
+            if (summary) {
+              log(`✨ 固有オプション適用: ${summary}`, "info");
+            }
+          }
           maybeAutoSave("装備変更");
         }
 
@@ -12683,7 +12736,9 @@
 
           const cost = document.createElement("div");
           cost.className = "option-label";
-          cost.textContent = `消費: 1回 ${potion.useCost}% / 最大 ${potion.maxFullness}%`;
+          const { useCost, refund } = calculatePotionConsumption(potion);
+          const refundLabel = refund > 0 ? ` (還元${refund}%)` : "";
+          cost.textContent = `消費: 1回 ${useCost}%${refundLabel} / 最大 ${potion.maxFullness}%`;
           debugPotionPreview.appendChild(cost);
 
           const prefix = document.createElement("div");
@@ -13627,7 +13682,7 @@
             const potionBtn = document.createElement("button");
             potionBtn.className = "potion-button main-action action-card";
             potionBtn.onclick = () => usePotion(index);
-            const useCost = potion.useCost ?? 25;
+            const { useCost } = calculatePotionConsumption(potion);
             const maxFullness = potion.maxFullness ?? 100;
             potion.fullness = Math.max(
               0,
@@ -15581,6 +15636,20 @@
             return;
           }
 
+          if (record.uniqueOptions?.length) {
+            const uniqueHeading = document.createElement("div");
+            uniqueHeading.className = "option-label";
+            uniqueHeading.textContent = "固有オプション";
+            modalLegendaryStats.appendChild(uniqueHeading);
+
+            record.uniqueOptions.forEach((opt) => {
+              const row = document.createElement("div");
+              row.className = "option-value";
+              row.textContent = `${opt.name}: ${opt.effect}`;
+              modalLegendaryStats.appendChild(row);
+            });
+          }
+
           const ranges = record.baseRanges || {};
           const orderedKeys = (template?.base || []).map((entry) => entry.key);
           const extraKeys = Object.keys(ranges).filter(
@@ -16458,7 +16527,7 @@
 
         function openPotionModal(potion) {
           if (!potion) return;
-          const useCost = potion.useCost ?? 25;
+          const { useCost, refund } = calculatePotionConsumption(potion);
           const maxFullness = potion.maxFullness ?? 100;
           const currentFill = Math.max(
             0,
@@ -16477,7 +16546,10 @@
           potionModalEffect.textContent = describePotionEffect(potion);
           potionModalRarity.textContent = potion.rarityLabel || "";
           applyItemRarityColor(potionModalRarity, { potion });
-          potionModalCost.textContent = `1回 ${useCost}% 消費`;
+          const costText = refund > 0
+            ? `1回 ${useCost}% 消費（${refund}%還元）`
+            : `1回 ${useCost}% 消費`;
+          potionModalCost.textContent = costText;
           potionModalFill.textContent = `${Math.round(currentFill)}% / ${maxFullness}%`;
           potionModalPrefix.textContent = describePotionAffix(potion.prefix);
           potionModalSuffix.textContent = describePotionAffix(potion.suffix);
@@ -16707,7 +16779,7 @@
 
           inventoryItemDetail.innerHTML = "";
           if (item.type === "potion" && item.potion) {
-            const useCost = item.potion.useCost ?? 25;
+            const { useCost, refund } = calculatePotionConsumption(item.potion);
             const maxFullness = item.potion.maxFullness ?? 100;
             const currentFill = Math.max(
               0,
@@ -16738,7 +16810,13 @@
                 label: "後置詞",
                 value: describePotionAffix(item.potion.suffix),
               },
-              { label: "消費", value: `1回 ${useCost}% 消費` },
+              {
+                label: "消費",
+                value:
+                  refund > 0
+                    ? `1回 ${useCost}% 消費（${refund}%還元）`
+                    : `1回 ${useCost}% 消費`,
+              },
               {
                 label: "残量",
                 value: `${Math.round(currentFill)}% / ${maxFullness}%`,
@@ -17302,8 +17380,8 @@
             return;
           }
           const potion = player.potions[index];
-          const useCost = potion.useCost ?? 25;
           const maxFullness = potion.maxFullness ?? 100;
+          const { useCost, refund } = calculatePotionConsumption(potion);
           potion.fullness = Math.max(
             0,
             Math.min(maxFullness, potion.fullness ?? maxFullness),
@@ -17350,6 +17428,10 @@
           }
 
           potion.fullness = Math.max(0, potion.fullness - useCost);
+          if (refund > 0) {
+            potion.fullness = Math.min(maxFullness, potion.fullness + refund);
+            log(`💧 消費の${refund}%が還元された`, "info");
+          }
           updateUI();
         }
 
