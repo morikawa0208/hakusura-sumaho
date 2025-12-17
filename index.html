@@ -5624,15 +5624,15 @@
 
         const EQUIPMENT_TIER_BOUNDARIES = [
           { maxFloor: 99, key: "tier1", theme: "黎明の", scale: 1 },
-          { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 1.18 },
-          { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 1.35 },
-          { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 1.52 },
-          { maxFloor: 499, key: "tier5", theme: "白光の", scale: 1.69 },
-          { maxFloor: 599, key: "tier6", theme: "影霧の", scale: 1.86 },
-          { maxFloor: 699, key: "tier7", theme: "紅蓮の", scale: 2.03 },
-          { maxFloor: 799, key: "tier8", theme: "星紋の", scale: 2.2 },
-          { maxFloor: 899, key: "tier9", theme: "黎冥の", scale: 2.37 },
-          { maxFloor: 1000, key: "tier10", theme: "天啓の", scale: 2.54 },
+          { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 8 },
+          { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 35 },
+          { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 120 },
+          { maxFloor: 499, key: "tier5", theme: "白光の", scale: 420 },
+          { maxFloor: 599, key: "tier6", theme: "影霧の", scale: 1400 },
+          { maxFloor: 699, key: "tier7", theme: "紅蓮の", scale: 4200 },
+          { maxFloor: 799, key: "tier8", theme: "星紋の", scale: 12000 },
+          { maxFloor: 899, key: "tier9", theme: "黎冥の", scale: 32000 },
+          { maxFloor: 1000, key: "tier10", theme: "天啓の", scale: 80000 },
         ];
         const EQUIPMENT_TIER_KEYS = EQUIPMENT_TIER_BOUNDARIES.map(
           (entry) => entry.key,
@@ -11976,27 +11976,29 @@
             : null;
           const growth = (rate) => Math.pow(rate, floorLevel - 1);
           const earlyEase = Math.min(1, 0.55 + floorLevel * 0.12);
+          const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
           const statScale = (base, rate, bossMultiplier = 1) => {
             return (
               base *
               growth(rate) *
+              difficultyInflation *
               (isBoss ? bossMultiplier : 1) *
               earlyEase
             );
           };
-          const hpBase = 8;
-          const atkBase = 4.2;
-          const defBase = 1.9;
-          const spdBase = 3.6;
+          const hpBase = 12;
+          const atkBase = 7.5;
+          const defBase = 3.2;
+          const spdBase = 3.9;
           const enemy = {
             id: generateId("enemy"),
             name: baseName,
-            hp: Math.round(statScale(hpBase, 1.095, 1.7)),
-            maxHp: Math.round(statScale(hpBase, 1.095, 1.7)),
-            atk: keepDecimal(statScale(atkBase, 1.09, 1.5), 1),
-            def: keepDecimal(statScale(defBase, 1.065, 1.4), 2),
+            hp: Math.round(statScale(hpBase, 1.11, 1.75)),
+            maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
+            atk: keepDecimal(statScale(atkBase, 1.105, 1.55), 1),
+            def: keepDecimal(statScale(defBase, 1.08, 1.45), 2),
             spd:
-              keepDecimal(statScale(spdBase, 1.025, 1.15), 2) +
+              keepDecimal(statScale(spdBase, 1.03, 1.15), 2) +
               Math.random() * 1.5 +
               (isBoss ? 1.5 : 0),
             accuracy: Math.min(115, 80 + growth(1.012) * 6 + (isBoss ? 6 : 0)),
