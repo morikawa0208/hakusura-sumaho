@@ -11353,27 +11353,63 @@
           return `${rounded}%`;
         }
 
+        function getEquipmentDropShare(isBoss) {
+          const weights = isBoss
+            ? BOSS_DROP_ITEM_TYPE_WEIGHTS
+            : DROP_ITEM_TYPE_WEIGHTS;
+          const total = weights.reduce((sum, w) => sum + (w.weight || 0), 0);
+          const equip = weights.find((w) => w.key === "equipment")?.weight || 0;
+          return total > 0 ? equip / total : 0;
+        }
+
         function computeBossLegendaryChance(floor) {
           const baseChance = getBossLegendaryBaseChanceForFloor(floor);
           const derived = recalcDerivedStats();
           const rarityBonus = Math.max(0, derived?.rarity?.total ?? 0);
           const rarityContribution = rarityBonus * 0.6;
           const finalChance = Math.min(60, baseChance + rarityContribution);
-          return { baseChance, rarityBonus, rarityContribution, finalChance };
+
+          const baseDropChance = Math.min(95, BASE_DROP_CHANCE + BOSS_DROP_BONUS);
+          const equipmentShare = getEquipmentDropShare(true);
+          const effectivePerRoll = (baseDropChance * equipmentShare * finalChance) / 100;
+
+          return {
+            baseChance,
+            rarityBonus,
+            rarityContribution,
+            finalChance,
+            baseDropChance,
+            equipmentShare,
+            effectivePerRoll,
+          };
         }
 
         function formatBossLegendaryChanceDetail(floor) {
-          const { baseChance, rarityBonus, rarityContribution, finalChance } =
-            computeBossLegendaryChance(floor);
+          const {
+            baseChance,
+            rarityBonus,
+            rarityContribution,
+            finalChance,
+            baseDropChance,
+            equipmentShare,
+            effectivePerRoll,
+          } = computeBossLegendaryChance(floor);
           const bonusText =
             rarityBonus > 0
               ? ` + レアリティUP${formatPercent(rarityBonus)}→+${formatPercent(rarityContribution)}`
               : "";
-          return `${formatPercent(finalChance)} (基礎${formatPercent(baseChance)}${bonusText})`;
+          const breakdown =
+            `ドロップ成立${formatPercent(baseDropChance)} → 装備${formatPercent(
+              equipmentShare * 100,
+            )} → 伝説判定${formatPercent(finalChance)}`;
+          return `${formatPercent(
+            effectivePerRoll,
+          )} / ロール (基礎${formatPercent(baseChance)}${bonusText}; ${breakdown})`;
         }
 
         function formatBossLegendaryChanceLabel(floor) {
-          return `${formatPercent(computeBossLegendaryChance(floor).finalChance)} / ロール`;
+          const { effectivePerRoll, finalChance } = computeBossLegendaryChance(floor);
+          return `${formatPercent(effectivePerRoll)} / ロール (伝説判定${formatPercent(finalChance)})`;
         }
 
         function rollDropRarityForEnemy(enemy, rarityBonus, slot) {
