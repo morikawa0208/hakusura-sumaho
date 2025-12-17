@@ -3651,6 +3651,7 @@
           "legendary",
         ];
         let bulkSellSelectedRarities = new Set(["normal", "magic"]);
+        let dropToastNotificationEnabled = true;
         let inventorySortMode = "acquire";
         let inventoryAcquireSequence = 0;
         let weaponEnhanceTarget = null;
@@ -10232,6 +10233,7 @@
         }
 
         function triggerDropCelebration(item) {
+          if (!dropToastNotificationEnabled) return;
           if (!dropToastTemplate || !dropToastStack) return;
           const rarity =
             item?.equipment?.rarity || item?.potion?.rarity || "normal";
@@ -14264,73 +14266,99 @@
           });
         }
 
-        function updateBulkSellSummary() {
-          const summary = document.getElementById("bulk-sell-summary");
-          const executeBtn = document.getElementById("bulk-sell-execute");
-          if (!summary || !executeBtn) return;
-          const targets = getBulkSellTargets();
-          const total = targets.reduce(
-            (sum, entry) => sum + calculateItemSellValue(entry.item),
-            0,
-          );
-          summary.innerHTML = "";
-          const countSpan = document.createElement("span");
-          countSpan.textContent = `対象: ${targets.length}件`;
-          const totalSpan = document.createElement("span");
-          totalSpan.className = "amount";
-          totalSpan.innerHTML = `<span>合計</span><span>${formatGold(total)}G</span>`;
-          summary.appendChild(countSpan);
-          summary.appendChild(totalSpan);
-          executeBtn.disabled = targets.length === 0 || total <= 0;
-        }
+          function updateBulkSellSummary() {
+            const summary = document.getElementById("bulk-sell-summary");
+            const executeBtn = document.getElementById("bulk-sell-execute");
+            if (!summary || !executeBtn) return;
+            const targets = getBulkSellTargets();
+            const total = targets.reduce(
+              (sum, entry) => sum + calculateItemSellValue(entry.item),
+              0,
+            );
+            summary.innerHTML = "";
+            const countSpan = document.createElement("span");
+            countSpan.textContent = `対象: ${targets.length}件`;
+            const totalSpan = document.createElement("span");
+            totalSpan.className = "amount";
+            totalSpan.innerHTML = `<span>合計</span><span>${formatGold(total)}G</span>`;
+            summary.appendChild(countSpan);
+            summary.appendChild(totalSpan);
+            executeBtn.disabled = targets.length === 0 || total <= 0;
+          }
 
-        function renderBulkSellRarityList() {
-          const container = document.getElementById("bulk-sell-rarity-list");
-          const filterLabel = document.getElementById("bulk-sell-filter-label");
-          if (!container || !filterLabel) return;
-          container.innerHTML = "";
-          filterLabel.textContent = `表示: ${getInventoryFilterLabel(
-            inventoryFilter,
-          )}`;
+          function renderBulkSellRarityList() {
+            const container = document.getElementById("bulk-sell-rarity-list");
+            const filterLabel = document.getElementById("bulk-sell-filter-label");
+            if (!container || !filterLabel) return;
+            container.innerHTML = "";
+            filterLabel.textContent = `表示: ${getInventoryFilterLabel(
+              inventoryFilter,
+            )}`;
 
-          BULK_SELL_RARITY_ORDER.forEach((key) => {
-            const rarity =
-              EQUIPMENT_RARITIES[key] || POTION_RARITIES[key] || { label: key };
-            const row = document.createElement("label");
-            row.className = "bulk-sell-rarity-item";
+            BULK_SELL_RARITY_ORDER.forEach((key) => {
+              const rarity =
+                EQUIPMENT_RARITIES[key] || POTION_RARITIES[key] || { label: key };
+              const row = document.createElement("label");
+              row.className = "bulk-sell-rarity-item";
 
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = bulkSellSelectedRarities.has(key);
-            checkbox.onchange = () => {
-              if (checkbox.checked) {
-                bulkSellSelectedRarities.add(key);
-              } else {
-                bulkSellSelectedRarities.delete(key);
-              }
-              updateBulkSellSummary();
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = bulkSellSelectedRarities.has(key);
+              checkbox.onchange = () => {
+                if (checkbox.checked) {
+                  bulkSellSelectedRarities.add(key);
+                } else {
+                  bulkSellSelectedRarities.delete(key);
+                }
+                updateBulkSellSummary();
+              };
+
+              const texts = document.createElement("div");
+              texts.style.display = "flex";
+              texts.style.flexDirection = "column";
+              const label = document.createElement("span");
+              label.className = "label";
+              label.textContent = rarity.label || key;
+              applyItemRarityColor(label, { equipment: { rarity: key } });
+              const desc = document.createElement("span");
+              desc.className = "desc";
+              desc.textContent = `${SELL_VALUE_BY_RARITY[key] ?? 0}G / 基本価値`;
+              texts.appendChild(label);
+              texts.appendChild(desc);
+
+              row.appendChild(checkbox);
+              row.appendChild(texts);
+              container.appendChild(row);
+            });
+
+            const toastRow = document.createElement("label");
+            toastRow.className = "bulk-sell-rarity-item";
+
+            const toastCheckbox = document.createElement("input");
+            toastCheckbox.type = "checkbox";
+            toastCheckbox.checked = dropToastNotificationEnabled;
+            toastCheckbox.onchange = () => {
+              dropToastNotificationEnabled = toastCheckbox.checked;
             };
 
-            const texts = document.createElement("div");
-            texts.style.display = "flex";
-            texts.style.flexDirection = "column";
-            const label = document.createElement("span");
-            label.className = "label";
-            label.textContent = rarity.label || key;
-            applyItemRarityColor(label, { equipment: { rarity: key } });
-            const desc = document.createElement("span");
-            desc.className = "desc";
-            desc.textContent = `${SELL_VALUE_BY_RARITY[key] ?? 0}G / 基本価値`;
-            texts.appendChild(label);
-            texts.appendChild(desc);
+            const toastTexts = document.createElement("div");
+            toastTexts.style.display = "flex";
+            toastTexts.style.flexDirection = "column";
+            const toastLabel = document.createElement("span");
+            toastLabel.className = "label";
+            toastLabel.textContent = "通知表示";
+            const toastDesc = document.createElement("span");
+            toastDesc.className = "desc";
+            toastDesc.textContent = "ドロップ取得時のトーストを表示する";
+            toastTexts.appendChild(toastLabel);
+            toastTexts.appendChild(toastDesc);
 
-            row.appendChild(checkbox);
-            row.appendChild(texts);
-            container.appendChild(row);
-          });
+            toastRow.appendChild(toastCheckbox);
+            toastRow.appendChild(toastTexts);
+            container.appendChild(toastRow);
 
-          updateBulkSellSummary();
-        }
+            updateBulkSellSummary();
+          }
 
         function openBulkSellModal() {
           const modal = document.getElementById("bulk-sell-modal");
