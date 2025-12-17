@@ -2009,6 +2009,11 @@
         z-index: 70;
       }
 
+      #codex-modal,
+      #codex-detail-modal {
+        z-index: 80;
+      }
+
       .hidden {
         display: none !important;
       }
@@ -16625,8 +16630,10 @@
               const row = document.createElement("div");
               row.className = "warp-boss-row";
 
+              const bossName = BOSS_DEFINITIONS[floor]?.name || "ボス";
+
               const btn = document.createElement("button");
-              btn.textContent = `${floor}F ボスへ`;
+              btn.textContent = `${floor}F ${bossName}へ`;
               btn.onclick = () => warpToFloor(floor);
               row.appendChild(btn);
 
@@ -16645,7 +16652,7 @@
           }
 
           warpMaxButton.textContent = `${maxFloor}F へワープ`;
-          warpMaxButton.disabled = currentFloor === maxFloor;
+          warpMaxButton.disabled = false;
           warpMaxButton.onclick = () => warpToFloor(maxFloor);
         }
 
@@ -16658,10 +16665,6 @@
             return;
           }
           const nextFloor = Math.max(1, Math.floor(targetFloor));
-          if (nextFloor === game.floor) {
-            log("現在の階層です", "info");
-            return;
-          }
           game.floor = nextFloor;
           player.buffs.guard = 0;
           clearTurnOrderPreview();
