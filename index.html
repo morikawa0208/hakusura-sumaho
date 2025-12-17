@@ -4232,7 +4232,7 @@
           },
         ];
 
-        const BASE_DROP_CHANCE = 32;
+        const BASE_DROP_CHANCE = 40;
         const BOSS_DROP_BONUS = 18;
         const DROP_RARITY_WEIGHTS = [
           { key: "normal", weight: 55 },
@@ -10531,6 +10531,7 @@
           // （数字は「LUK100での目安」がだいたい以前のバランスに近くなるように調整）
 
           // ドロップ数寄り（LUK30から本格的に効き始めるイメージ）
+          const dropBaseline = 10; // 軽くベースを底上げして全体のドロップ体験を滑らかに
           const dropExtraSlope = 0.32;
           const dropThreshold = 30;
 
@@ -10548,6 +10549,7 @@
 
           // 実際の計算
           const dropRateBase =
+            dropBaseline +
             luck * baseSlope +
             Math.max(0, luck - dropThreshold) * dropExtraSlope;
 
