@@ -1820,6 +1820,35 @@
         text-align: left;
       }
 
+      .auto-skill-toggle {
+        background: linear-gradient(
+          135deg,
+          rgba(52, 211, 153, 0.16),
+          rgba(96, 165, 250, 0.12)
+        );
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        color: var(--text);
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .auto-skill-toggle.is-on {
+        box-shadow:
+          0 0 0 1px rgba(52, 211, 153, 0.4),
+          0 12px 30px rgba(52, 211, 153, 0.22);
+      }
+
+      .auto-skill-toggle .auto-skill-label {
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .auto-skill-toggle .auto-skill-state {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
       .action-top {
         width: 100%;
         display: flex;
@@ -8784,6 +8813,7 @@
           enemies: [],
           turnQueue: [],
           awaitingInput: false,
+          autoSkillEnabled: false,
           defeatedBosses: 0,
           legendaryRecords: {},
           codex: {
@@ -13115,6 +13145,9 @@
           const payload = cloneState(state);
           replaceObject(player, payload.player || {});
           replaceObject(game, payload.game || {});
+          if (typeof game.autoSkillEnabled !== "boolean") {
+            game.autoSkillEnabled = false;
+          }
 
           // ここから追記: 階層が変な値だった場合の保険
           if (!Number.isFinite(game.floor) || game.floor <= 0) {
@@ -13661,9 +13694,42 @@
             game.awaitingInput || enemiesAlive || game.turnQueue?.length > 0;
           const victoryAchieved = !enemiesAlive && !battleInProgress;
           const canAct = game.awaitingInput && enemiesAlive && player.hp > 0;
+          const skillSlots = player.activeSkillSlots || [];
 
           const row = document.createElement("div");
           row.className = "actions-row";
+
+          const createAutoSkillToggle = () => {
+            const toggleWrapper = document.createElement("div");
+            toggleWrapper.className = "action-button-wrapper";
+            const toggle = document.createElement("button");
+            toggle.className = "main-action action-card auto-skill-toggle";
+            const isOn = !!game.autoSkillEnabled;
+            toggle.classList.toggle("is-on", isOn);
+            toggle.setAttribute("aria-pressed", String(isOn));
+            toggle.title =
+              "こうげきボタンでスキル1から順番に自動使用します (使用不可時は通常攻撃)";
+            toggle.onclick = () => {
+              game.autoSkillEnabled = !game.autoSkillEnabled;
+              renderActions();
+              maybeAutoSave("自動スキル切替");
+            };
+
+            const label = document.createElement("div");
+            label.className = "auto-skill-label";
+            label.textContent = "自動スキル";
+
+            const state = document.createElement("div");
+            state.className = "auto-skill-state";
+            state.textContent = isOn
+              ? "ON: こうげきでスキルを順番に発動"
+              : "OFF: 手動のみ";
+
+            toggle.appendChild(label);
+            toggle.appendChild(state);
+            toggleWrapper.appendChild(toggle);
+            return toggleWrapper;
+          };
 
           const escapeWrapper = document.createElement("div");
           escapeWrapper.className = "action-button-wrapper";
@@ -13744,7 +13810,7 @@
             row.appendChild(wrapper);
           });
 
-          (player.activeSkillSlots || []).forEach((slot, index) => {
+          skillSlots.forEach((slot, index) => {
             const skill = slot.skillKey ? skills[slot.skillKey] : null;
             const wrapper = document.createElement("div");
             wrapper.className = "action-button-wrapper skill-row";
@@ -13833,7 +13899,15 @@
 
             wrapper.appendChild(skillBtn);
             row.appendChild(wrapper);
+
+            if (index === 1) {
+              row.appendChild(createAutoSkillToggle());
+            }
           });
+
+          if (skillSlots.length < 2) {
+            row.appendChild(createAutoSkillToggle());
+          }
 
           const wrapper = document.createElement("div");
           wrapper.className = "action-button-wrapper";
@@ -17458,6 +17532,20 @@
           return restored;
         }
 
+        function tryAutoSkillFromAttack() {
+          if (!game.autoSkillEnabled) return false;
+          const slots = player.activeSkillSlots || [];
+          for (let i = 0; i < slots.length; i += 1) {
+            const used = performActiveSkill(i, {
+              suppressWarnings: true,
+              endTurnOnSuccess: true,
+              saveReason: "自動スキル使用",
+            });
+            if (used) return true;
+          }
+          return false;
+        }
+
         function playerAttack() {
           if (!game.awaitingInput) return;
           const attacks = Math.max(
@@ -17468,6 +17556,7 @@
             log("攻撃回数が残っていない…", "warning");
             return;
           }
+          if (tryAutoSkillFromAttack()) return;
           player.attacksRemaining = attacks;
           let acted = false;
           for (let i = 0; i < attacks; i += 1) {
@@ -17512,38 +17601,45 @@
           endPlayerTurn();
         }
 
-        function useActiveSkill(slotIndex) {
-          if (!game.awaitingInput) return;
+        function performActiveSkill(
+          slotIndex,
+          { suppressWarnings = false, endTurnOnSuccess = false, saveReason = "" } = {},
+        ) {
+          if (!game.awaitingInput) return false;
           if (hasStatus(player, "silence")) {
-            log("沈黙中でスキルが使えない！", "warning");
-            return;
+            if (!suppressWarnings) log("沈黙中でスキルが使えない！", "warning");
+            return false;
           }
 
           const slot = player.activeSkillSlots?.[slotIndex];
           const skill = slot?.skillKey ? skills[slot.skillKey] : null;
           if (!skill || skill.type !== "active") {
-            log("この枠にはスキルがセットされていません", "warning");
-            return;
+            if (!suppressWarnings)
+              log("この枠にはスキルがセットされていません", "warning");
+            return false;
           }
           if (skill.level <= 0) {
-            log("スキルを習得してから使用してください", "warning");
-            return;
+            if (!suppressWarnings)
+              log("スキルを習得してから使用してください", "warning");
+            return false;
           }
           if (slot.cooldownRemaining > 0) {
-            log(
-              `${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`,
-              "warning",
-            );
-            return;
+            if (!suppressWarnings)
+              log(
+                `${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`,
+                "warning",
+              );
+            return false;
           }
 
           const target = chooseTargetForPlayer();
-          if (!target) return;
+          if (!target) return false;
 
           const mpCost = skill.activation?.mpCost ?? 0;
           if (player.mp < mpCost) {
-            log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
-            return;
+            if (!suppressWarnings)
+              log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
+            return false;
           }
           consumeMp(mpCost);
 
@@ -17556,7 +17652,11 @@
             slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
             renderActiveSkillLoadout();
             updateUI();
-            return;
+            if (endTurnOnSuccess) {
+              if (saveReason) maybeAutoSave(saveReason);
+              endPlayerTurn();
+            }
+            return true;
           }
 
           const baseDamage = calcDamage(player, target);
@@ -17580,6 +17680,15 @@
           slot.cooldownRemaining = getEffectiveSkillCooldown(skill);
           renderActiveSkillLoadout();
           updateUI();
+          if (endTurnOnSuccess) {
+            if (saveReason) maybeAutoSave(saveReason);
+            endPlayerTurn();
+          }
+          return true;
+        }
+
+        function useActiveSkill(slotIndex) {
+          performActiveSkill(slotIndex);
         }
 
         function powerStrike() {
