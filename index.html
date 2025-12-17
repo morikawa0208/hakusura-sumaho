@@ -13268,11 +13268,54 @@
           log(`🗑 ${getSaveSlotLabel(slotId)} を削除しました`, "info");
         }
 
+        function buildUiSaveState() {
+          const persistedRarities = Array.from(dropToastNotificationRarities).filter(
+            (key) => BULK_SELL_RARITY_ORDER.includes(key),
+          );
+
+          return {
+            inventorySortMode,
+            dropToastNotificationRarities: persistedRarities,
+          };
+        }
+
+        function restoreUiState(uiState = {}) {
+          const {
+            inventorySortMode: savedSortMode,
+            dropToastNotificationRarities,
+          } = uiState || {};
+
+          inventorySortMode =
+            savedSortMode === "rarity" || savedSortMode === "acquire"
+              ? savedSortMode
+              : "acquire";
+
+          if (Array.isArray(dropToastNotificationRarities)) {
+            const validRarities = dropToastNotificationRarities.filter((key) =>
+              BULK_SELL_RARITY_ORDER.includes(key),
+            );
+            dropToastNotificationRarities = new Set(validRarities);
+          } else {
+            dropToastNotificationRarities = new Set(BULK_SELL_RARITY_ORDER);
+          }
+        }
+
         function buildSaveState() {
+          const codexForSave =
+            debugCodexFullyUnlocked && debugCodexSnapshot
+              ? debugCodexSnapshot
+              : game.codex;
+
+          const gameForSave = {
+            ...game,
+            codex: codexForSave,
+          };
+
           return cloneState({
             player,
-            game,
+            game: gameForSave,
             skills,
+            ui: buildUiSaveState(),
           });
         }
 
@@ -13337,6 +13380,7 @@
           debugCodexFullyUnlocked = false;
           if (debugCodexUnlockCheckbox)
             debugCodexUnlockCheckbox.checked = false;
+          restoreUiState(payload.ui);
           mergeSkillsFromSave(payload.skills || {});
           normalizeOwnedEquipment();
           hydrateCodexFromOwned();
@@ -14857,6 +14901,7 @@
         function toggleInventorySortMode() {
           inventorySortMode =
             inventorySortMode === "acquire" ? "rarity" : "acquire";
+          maybeAutoSave("インベントリ並び替え切替");
         }
 
         function getInventoryFilterLabel(key) {
@@ -15068,6 +15113,7 @@
               } else {
                 dropToastNotificationRarities.delete(key);
               }
+              maybeAutoSave("ドロップ通知設定変更");
             };
 
             notifyLabel.appendChild(notifyText);
