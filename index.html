@@ -5624,15 +5624,15 @@
 
         const EQUIPMENT_TIER_BOUNDARIES = [
           { maxFloor: 99, key: "tier1", theme: "黎明の", scale: 1 },
-          { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 1.18 },
-          { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 1.35 },
-          { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 1.52 },
-          { maxFloor: 499, key: "tier5", theme: "白光の", scale: 1.69 },
-          { maxFloor: 599, key: "tier6", theme: "影霧の", scale: 1.86 },
-          { maxFloor: 699, key: "tier7", theme: "紅蓮の", scale: 2.03 },
-          { maxFloor: 799, key: "tier8", theme: "星紋の", scale: 2.2 },
-          { maxFloor: 899, key: "tier9", theme: "黎冥の", scale: 2.37 },
-          { maxFloor: 1000, key: "tier10", theme: "天啓の", scale: 2.54 },
+          { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 8 },
+          { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 35 },
+          { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 120 },
+          { maxFloor: 499, key: "tier5", theme: "白光の", scale: 420 },
+          { maxFloor: 599, key: "tier6", theme: "影霧の", scale: 1400 },
+          { maxFloor: 699, key: "tier7", theme: "紅蓮の", scale: 4200 },
+          { maxFloor: 799, key: "tier8", theme: "星紋の", scale: 12000 },
+          { maxFloor: 899, key: "tier9", theme: "黎冥の", scale: 32000 },
+          { maxFloor: 1000, key: "tier10", theme: "天啓の", scale: 80000 },
         ];
         const EQUIPMENT_TIER_KEYS = EQUIPMENT_TIER_BOUNDARIES.map(
           (entry) => entry.key,
@@ -8909,6 +8909,12 @@
         let lastActedEntry = null;
         let activeTurnActor = null;
 
+        // ===== Debug globals (TDZ対策：先に宣言しておく) =====
+        let debugForceBossLegendaryDrop = false;
+        let debugCodexSnapshot = null;
+        let debugCodexFullyUnlocked = false;
+        let debugCodexUnlockCheckbox = null;
+
         const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
         const SKILL_DEFINITIONS = [
@@ -11964,7 +11970,7 @@
 
         function createEnemy(isBoss = false, derivedStats = null) {
           const derived = derivedStats || recalcDerivedStats();
-          const base = game.floor * 5 + (isBoss ? 20 : 0);
+          const floorLevel = Math.max(1, game.floor);
           const baseName = isBoss
             ? `階層ボス ${game.floor}F`
             : pickEnemyBaseName(game.floor);
@@ -11974,22 +11980,41 @@
           const archetypeRoll = !isBoss
             ? rollArchetype(game.floor, derived)
             : null;
+          const growth = (rate) => Math.pow(rate, floorLevel - 1);
+          const earlyEase = Math.min(1, 0.55 + floorLevel * 0.12);
+          const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
+          const statScale = (base, rate, bossMultiplier = 1) => {
+            return (
+              base *
+              growth(rate) *
+              difficultyInflation *
+              (isBoss ? bossMultiplier : 1) *
+              earlyEase
+            );
+          };
+          const hpBase = 12;
+          const atkBase = 7.5;
+          const defBase = 3.2;
+          const spdBase = 3.9;
           const enemy = {
             id: generateId("enemy"),
             name: baseName,
-            hp: base + (isBoss ? 30 : 0),
-            maxHp: base + (isBoss ? 30 : 0),
-            atk: 4 + game.floor * 1.2 + (isBoss ? 3 : 0),
-            def: 2 + game.floor * 0.55 + (isBoss ? 2 : 0),
-            spd: 4 + Math.random() * 2 + (isBoss ? 1.5 : 0),
-            accuracy: 82 + game.floor * 0.6,
-            evade: Math.min(25, 8 + game.floor * 0.4 + (isBoss ? 5 : 0)),
+            hp: Math.round(statScale(hpBase, 1.11, 1.75)),
+            maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
+            atk: keepDecimal(statScale(atkBase, 1.105, 1.55), 1),
+            def: keepDecimal(statScale(defBase, 1.08, 1.45), 2),
+            spd:
+              keepDecimal(statScale(spdBase, 1.03, 1.15), 2) +
+              Math.random() * 1.5 +
+              (isBoss ? 1.5 : 0),
+            accuracy: Math.min(115, 80 + growth(1.012) * 6 + (isBoss ? 6 : 0)),
+            evade: Math.min(28, 6 + growth(1.02) * 2.2 + (isBoss ? 4 : 0)),
             attackCount: 1,
             attacksRemaining: 1,
             resist: {
-              control: Math.min(50, 10 + game.floor * 0.8 + (isBoss ? 8 : 0)),
-              dot: Math.min(50, 8 + game.floor * 0.7 + (isBoss ? 6 : 0)),
-              debuff: Math.min(50, 8 + game.floor * 0.6 + (isBoss ? 6 : 0)),
+              control: Math.min(55, 10 + growth(1.018) * 0.9 + (isBoss ? 8 : 0)),
+              dot: Math.min(52, 8 + growth(1.016) * 0.8 + (isBoss ? 6 : 0)),
+              debuff: Math.min(52, 8 + growth(1.014) * 0.7 + (isBoss ? 6 : 0)),
             },
             isBoss,
             dropChanceBonus: 0,
@@ -13641,9 +13666,6 @@
 
         let lastGeneratedEquipment = null;
         let lastGeneratedPotion = null;
-        let debugForceBossLegendaryDrop = false;
-        let debugCodexSnapshot = null;
-        let debugCodexFullyUnlocked = false;
 
         function renderDebugGearPreview(item) {
           if (!debugGearPreview) return;
@@ -15859,8 +15881,7 @@
         const debugForceLegendaryCheckbox = document.getElementById(
           "debug-force-legendary",
         );
-        const debugCodexUnlockCheckbox =
-          document.getElementById("debug-codex-unlock");
+        debugCodexUnlockCheckbox = document.getElementById("debug-codex-unlock");
         const debugApplyLevelButton =
           document.getElementById("debug-apply-level");
         const debugApplyHpButton = document.getElementById("debug-apply-hp");
