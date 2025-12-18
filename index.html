@@ -8909,6 +8909,12 @@
         let lastActedEntry = null;
         let activeTurnActor = null;
 
+        // ===== Debug globals (TDZ対策：先に宣言しておく) =====
+        let debugForceBossLegendaryDrop = false;
+        let debugCodexSnapshot = null;
+        let debugCodexFullyUnlocked = false;
+        let debugCodexUnlockCheckbox = null;
+
         const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
         const SKILL_DEFINITIONS = [
@@ -13660,9 +13666,6 @@
 
         let lastGeneratedEquipment = null;
         let lastGeneratedPotion = null;
-        let debugForceBossLegendaryDrop = false;
-        let debugCodexSnapshot = null;
-        let debugCodexFullyUnlocked = false;
 
         function renderDebugGearPreview(item) {
           if (!debugGearPreview) return;
@@ -15878,8 +15881,7 @@
         const debugForceLegendaryCheckbox = document.getElementById(
           "debug-force-legendary",
         );
-        const debugCodexUnlockCheckbox =
-          document.getElementById("debug-codex-unlock");
+        debugCodexUnlockCheckbox = document.getElementById("debug-codex-unlock");
         const debugApplyLevelButton =
           document.getElementById("debug-apply-level");
         const debugApplyHpButton = document.getElementById("debug-apply-hp");
