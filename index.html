@@ -13389,7 +13389,25 @@
         ) {
           if (!state) return false;
           const payload = cloneState(state);
-          replaceObject(player, payload.player || {});
+          // ★ロード時：セーブに無いキーはデフォルトで補完してから適用する
+          function deepMerge(target, source) {
+            if (!source || typeof source !== "object") return target;
+            Object.entries(source).forEach(([k, v]) => {
+              if (v && typeof v === "object" && !Array.isArray(v)) {
+                const base = target[k];
+                if (!base || typeof base !== "object" || Array.isArray(base)) target[k] = {};
+                deepMerge(target[k], v);
+              } else {
+                target[k] = cloneState(v);
+              }
+            });
+            return target;
+          }
+          
+          const mergedPlayer = cloneState(INITIAL_SAVE_STATE.player);
+          deepMerge(mergedPlayer, payload.player || {});
+          replaceObject(player, mergedPlayer);
+
           replaceObject(game, payload.game || {});
           if (typeof game.autoSkillEnabled !== "boolean") {
             game.autoSkillEnabled = false;
