@@ -11991,14 +11991,21 @@
             : null;
           const growth = (rate) => Math.pow(rate, floorLevel - 1);
           const earlyEase = Math.min(1, 0.55 + floorLevel * 0.12);
+          const earlyOffenseEase = Math.min(1, 0.5 + floorLevel * 0.1);
+          const earlyDefenseEase = Math.min(1, 0.52 + floorLevel * 0.095);
           const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
-          const statScale = (base, rate, bossMultiplier = 1) => {
+          const statScale = (
+            base,
+            rate,
+            bossMultiplier = 1,
+            easeFactor = earlyEase,
+          ) => {
             return (
               base *
               growth(rate) *
               difficultyInflation *
               (isBoss ? bossMultiplier : 1) *
-              earlyEase
+              easeFactor
             );
           };
           const hpBase = 12;
@@ -12010,8 +12017,14 @@
             name: baseName,
             hp: Math.round(statScale(hpBase, 1.11, 1.75)),
             maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
-            atk: keepDecimal(statScale(atkBase, 1.105, 1.55), 1),
-            def: keepDecimal(statScale(defBase, 1.08, 1.45), 2),
+            atk: keepDecimal(
+              statScale(atkBase, 1.105, 1.55, earlyOffenseEase),
+              1,
+            ),
+            def: keepDecimal(
+              statScale(defBase, 1.08, 1.45, earlyDefenseEase),
+              2,
+            ),
             spd:
               keepDecimal(statScale(spdBase, 1.03, 1.15), 2) +
               Math.random() * 1.5 +
