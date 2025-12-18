@@ -13388,7 +13388,21 @@
           deepMerge(mergedPlayer, payload.player || {});
           replaceObject(player, mergedPlayer);
 
-          replaceObject(game, payload.game || {});
+         // --- game を安全に復元（欠けてるキーは初期値で補完） ---
+const mergedGame = cloneState(INITIAL_SAVE_STATE.game);
+deepMerge(mergedGame, payload.game || {});
+
+// ついでに必須キーの保険（壊れたセーブでも落ちない）
+if (!Array.isArray(mergedGame.enemies)) mergedGame.enemies = [];
+if (!Array.isArray(mergedGame.turnQueue)) mergedGame.turnQueue = [];
+if (!mergedGame.reachedBossFloors || typeof mergedGame.reachedBossFloors !== "object") mergedGame.reachedBossFloors = {};
+if (!mergedGame.legendaryRecords || typeof mergedGame.legendaryRecords !== "object") mergedGame.legendaryRecords = {};
+if (!mergedGame.codex || typeof mergedGame.codex !== "object") mergedGame.codex = cloneState(INITIAL_SAVE_STATE.game.codex);
+
+replaceObject(game, mergedGame);
+ 
+
+          
           if (typeof game.autoSkillEnabled !== "boolean") {
             game.autoSkillEnabled = false;
           }
@@ -13816,6 +13830,10 @@
           const wrapper = document.getElementById("enemies");
           if (!wrapper) return;
 
+          // ★安全化：enemies が消えていても落ちない & ついでに復元
+          if (!Array.isArray(game.enemies)) game.enemies = [];
+          const enemies = game.enemies;
+                  
           // ★ いま画面上にある .enemy-card を全部拾っておく
           const existing = new Map(
             Array.from(wrapper.querySelectorAll(".enemy-card")).map((card) => [
@@ -13919,7 +13937,7 @@
 
           // ★ ここが重要：wrapper.innerHTML = "" で全消ししない！
           // 既存カードを再利用しつつ、足りない分だけ新規作成
-          game.enemies.forEach((enemy, index) => {
+           enemies.forEach((enemy, index) => {
             const id = String(enemy.id);
             let card = existing.get(id);
             if (!card) {
