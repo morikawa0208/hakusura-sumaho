@@ -13973,9 +13973,20 @@
 
             const state = document.createElement("div");
             state.className = "auto-skill-state";
-            state.textContent = isOn
-              ? "ON: こうげきでスキルを順番に発動"
-              : "OFF: 手動のみ";
+            const autoSkillStateText = (() => {
+              if (!isOn) return "OFF: 手動のみ";
+              const slots = player.activeSkillSlots || [];
+              for (let i = 0; i < slots.length; i += 1) {
+                const availability = canUseActiveSkill(i, {
+                  suppressWarnings: true,
+                });
+                if (availability.canUse) {
+                  return `ON: 次スキル${i + 1}`;
+                }
+              }
+              return "ON: こうげき";
+            })();
+            state.textContent = autoSkillStateText;
 
             toggle.appendChild(label);
             toggle.appendChild(state);
@@ -17959,14 +17970,14 @@
           endPlayerTurn();
         }
 
-        function performActiveSkill(
+        function canUseActiveSkill(
           slotIndex,
-          { suppressWarnings = false, endTurnOnSuccess = false, saveReason = "" } = {},
+          { suppressWarnings = false } = {},
         ) {
-          if (!game.awaitingInput) return false;
+          if (!game.awaitingInput) return { canUse: false, reason: "not-turn" };
           if (hasStatus(player, "silence")) {
             if (!suppressWarnings) log("沈黙中でスキルが使えない！", "warning");
-            return false;
+            return { canUse: false, reason: "silence" };
           }
 
           const slot = player.activeSkillSlots?.[slotIndex];
@@ -17974,12 +17985,12 @@
           if (!skill || skill.type !== "active") {
             if (!suppressWarnings)
               log("この枠にはスキルがセットされていません", "warning");
-            return false;
+            return { canUse: false, reason: "unset" };
           }
           if (skill.level <= 0) {
             if (!suppressWarnings)
               log("スキルを習得してから使用してください", "warning");
-            return false;
+            return { canUse: false, reason: "unlearned" };
           }
           if (slot.cooldownRemaining > 0) {
             if (!suppressWarnings)
@@ -17987,18 +17998,29 @@
                 `${skill.name}はクールタイム中 (${slot.cooldownRemaining}T)`,
                 "warning",
               );
-            return false;
+            return { canUse: false, reason: "cooldown" };
           }
 
           const target = chooseTargetForPlayer();
-          if (!target) return false;
+          if (!target) return { canUse: false, reason: "no-target" };
 
           const mpCost = skill.activation?.mpCost ?? 0;
           if (player.mp < mpCost) {
             if (!suppressWarnings)
               log(`MPが足りない！ (必要MP: ${mpCost})`, "warning");
-            return false;
+            return { canUse: false, reason: "mp" };
           }
+
+          return { canUse: true, slot, skill, target, mpCost };
+        }
+
+        function performActiveSkill(
+          slotIndex,
+          { suppressWarnings = false, endTurnOnSuccess = false, saveReason = "" } = {},
+        ) {
+          const availability = canUseActiveSkill(slotIndex, { suppressWarnings });
+          if (!availability.canUse) return false;
+          const { slot, skill, target, mpCost } = availability;
           consumeMp(mpCost);
 
           const hit = attemptHit(player, target);
