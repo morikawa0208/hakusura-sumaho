@@ -13233,13 +13233,21 @@
           return `hakusura-save-${slotId}-${type}`;
         }
 
+        function normalizeSavePayload(data) {
+          if (!data || typeof data !== "object") return null;
+          const state = data.state && typeof data.state === "object"
+            ? data.state
+            : data;
+          return { ...data, state };
+        }
+
         function readSave(slotId, type = "primary") {
           try {
             const raw = localStorage.getItem(saveStorageKey(slotId, type));
             if (!raw) return null;
             const data = JSON.parse(raw);
             if (data?.version !== SAVE_VERSION) return null;
-            return data;
+            return normalizeSavePayload(data);
           } catch (err) {
             console.warn("save read failed", err);
             return null;
@@ -13365,11 +13373,12 @@
         }
 
         function applyLoadedState(
-          state,
+          savePayload,
           { usedBackup = false, slotId, suppressLog = false } = {},
         ) {
-          if (!state) return false;
-          const payload = cloneState(state);
+          const normalized = normalizeSavePayload(savePayload);
+          if (!normalized?.state) return false;
+          const payload = cloneState(normalized.state);
           // ★ロード時：セーブに無いキーはデフォルトで補完してから適用する
           function deepMerge(target, source) {
             if (!source || typeof source !== "object") return target;
@@ -13535,10 +13544,12 @@ replaceObject(game, mergedGame);
 
         function formatSaveMeta(state) {
           if (!state) return "未保存";
-          const date = state.savedAt ? new Date(state.savedAt) : null;
+          const payload = normalizeSavePayload(state);
+          if (!payload?.state) return "未保存";
+          const date = payload.savedAt ? new Date(payload.savedAt) : null;
           const ts = date ? date.toLocaleString() : "不明な日時";
-          const level = state.player?.level ?? "?";
-          const floor = state.game?.floor ?? "?";
+          const level = payload.state.player?.level ?? "?";
+          const floor = payload.state.game?.floor ?? "?";
           return `Lv${level} / ${floor}F @ ${ts}`;
         }
 
