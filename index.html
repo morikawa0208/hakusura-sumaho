@@ -2605,6 +2605,11 @@
         background: rgba(59, 130, 246, 0.12);
       }
 
+      .status-pill.buff {
+        border-color: rgba(52, 211, 153, 0.35);
+        background: rgba(52, 211, 153, 0.12);
+      }
+
       .status-popover {
         position: fixed;
         inset: auto 12px 20px 12px;
@@ -2635,6 +2640,51 @@
         font-size: 12px;
         color: var(--muted);
         line-height: 1.5;
+      }
+
+      .status-popover .effect-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .status-popover .effect-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .status-popover .effect-row.highlight {
+        border-color: rgba(96, 165, 250, 0.35);
+        background: rgba(59, 130, 246, 0.14);
+      }
+
+      .status-popover .effect-meta {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .status-popover .effect-name {
+        font-weight: 800;
+        font-size: 13px;
+      }
+
+      .status-popover .effect-desc {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .status-popover .effect-turns {
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
       }
 
       .debug-selects {
@@ -3837,6 +3887,7 @@
         ></span>
       </div>
       <div id="status-popover-desc" class="body"></div>
+      <div id="status-popover-list" class="effect-list"></div>
     </div>
 
     <script>
@@ -3953,6 +4004,24 @@
             category: "debuff",
             description: "行動順が遅くなる／行動頻度減少",
             potency: 0.25,
+          },
+        };
+
+        const BUFF_DEFINITIONS = {
+          guard: {
+            name: "防御",
+            short: "DEF↑",
+            description: "被ダメージを軽減する防御態勢",
+          },
+          haste: {
+            name: "加速",
+            short: "HST",
+            description: "行動速度が上昇し、行動順が早まる",
+          },
+          focus: {
+            name: "集中",
+            short: "FOC",
+            description: "会心率と一部効果量が上昇する集中状態",
           },
         };
 
@@ -10972,6 +11041,9 @@
         const statusPopoverDesc = document.getElementById(
           "status-popover-desc",
         );
+        const statusPopoverList = document.getElementById(
+          "status-popover-list",
+        );
         let statusPopoverTimer = null;
 
         const levelUpToast = document.getElementById("level-up-toast");
@@ -11020,6 +11092,12 @@
           const def = STATUS_DEFINITIONS[status.key];
           if (!def) return "";
           return `${def.description} / 残り${status.remaining}T`;
+        }
+
+        function describeBuff(key, remaining) {
+          const def = BUFF_DEFINITIONS[key];
+          if (!def) return "";
+          return `${def.description} / 残り${remaining}T`;
         }
 
         function triggerLevelUpEffect(level) {
@@ -11074,16 +11152,94 @@
           }, 2600);
         }
 
-        function showStatusPopover(def, status) {
-          if (!def || !status) return;
-          statusPopoverName.textContent = `${def.name} (${def.short})`;
-          statusPopoverTurns.textContent = `残り ${status.remaining}T`;
-          statusPopoverDesc.textContent = def.description;
+        function collectActiveEffects(entity) {
+          const effects = [];
+          (entity.statuses || []).forEach((status) => {
+            const def = STATUS_DEFINITIONS[status.key];
+            if (!def) return;
+            effects.push({
+              key: status.key,
+              type: "status",
+              def,
+              remaining: status.remaining,
+              description: def.description,
+              category: def.category,
+              status,
+            });
+          });
+          Object.entries(entity.buffs || {}).forEach(([key, remaining]) => {
+            if (remaining <= 0) return;
+            const def = BUFF_DEFINITIONS[key];
+            if (!def) return;
+            effects.push({
+              key,
+              type: "buff",
+              def,
+              remaining,
+              description: def.description,
+              category: "buff",
+            });
+          });
+          return effects;
+        }
+
+        function showStatusPopover(entity, focusKey = null) {
+          if (
+            !statusPopover ||
+            !statusPopoverName ||
+            !statusPopoverList ||
+            !entity
+          )
+            return;
+          const effects = collectActiveEffects(entity);
+          statusPopoverName.textContent = effects.length
+            ? "付与中の効果"
+            : "効果なし";
+          if (effects.length) {
+            statusPopoverTurns.style.display = "";
+            statusPopoverTurns.textContent = `${effects.length} 件`;
+            statusPopoverDesc.textContent = "バフ・デバフと残りターン";
+          } else {
+            statusPopoverTurns.style.display = "none";
+            statusPopoverDesc.textContent = "現在、付与中の効果はありません。";
+          }
+          statusPopoverList.innerHTML = "";
+          effects.forEach((effect) => {
+            const row = document.createElement("div");
+            row.className = "effect-row";
+            if (focusKey && effect.key === focusKey) {
+              row.classList.add("highlight");
+            }
+            const pill = document.createElement("div");
+            pill.className = `status-pill ${effect.category}`;
+            pill.textContent = effect.def.short;
+
+            const meta = document.createElement("div");
+            meta.className = "effect-meta";
+            const name = document.createElement("div");
+            name.className = "effect-name";
+            name.textContent = effect.def.name;
+            const desc = document.createElement("div");
+            desc.className = "effect-desc";
+            desc.textContent = effect.description;
+            meta.appendChild(name);
+            meta.appendChild(desc);
+
+            const turns = document.createElement("div");
+            turns.className = "effect-turns";
+            turns.textContent = `残り ${effect.remaining}T`;
+
+            row.appendChild(pill);
+            row.appendChild(meta);
+            row.appendChild(turns);
+            statusPopoverList.appendChild(row);
+          });
+
           statusPopover.classList.remove("hidden");
           if (statusPopoverTimer) clearTimeout(statusPopoverTimer);
           statusPopoverTimer = setTimeout(
             () => statusPopover.classList.add("hidden"),
-            2300,
+            3200,
           );
         }
 
@@ -12961,16 +13117,18 @@
         function renderStatusList(container, entity) {
           if (!container) return;
           container.innerHTML = "";
-          (entity.statuses || []).forEach((status) => {
-            const def = STATUS_DEFINITIONS[status.key];
-            if (!def) return;
+          const effects = collectActiveEffects(entity);
+          effects.forEach((effect) => {
             const pill = document.createElement("div");
-            pill.className = `status-pill ${def.category}`;
-            pill.textContent = def.short;
-            pill.title = describeStatus(status);
+            pill.className = `status-pill ${effect.category}`;
+            pill.textContent = effect.def.short;
+            pill.title =
+              effect.type === "buff"
+                ? describeBuff(effect.key, effect.remaining)
+                : describeStatus(effect.status);
             pill.onclick = (e) => {
               e.stopPropagation();
-              showStatusPopover(def, status);
+              showStatusPopover(entity, effect.key);
             };
             container.appendChild(pill);
           });
