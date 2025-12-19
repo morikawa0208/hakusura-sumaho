@@ -635,36 +635,65 @@
         }
       }
 
-      .phone.player-down::after {
-        content: "戦闘不能";
-        top: 15px;
-        position: fixed;
+      .player-down-overlay {
+        position: absolute;
         inset: 0;
         display: grid;
         place-items: center;
+        gap: 10px;
         font-weight: 900;
         font-size: 32px;
-        color: rgba(248, 113, 113, 0.8);
+        color: rgba(248, 113, 113, 0.9);
         background: radial-gradient(
           circle,
           rgba(15, 23, 42, 0.55),
           rgba(15, 23, 42, 0.92)
         );
         text-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+        opacity: 0;
+        visibility: hidden;
         pointer-events: none;
-
-        /* ★ここだけ変更：短めのフェードイン */
-        animation: playerDownOverlay 1.5s ease-out forwards;
+        transform: scale(1.02);
+        transition:
+          opacity 0.3s ease,
+          transform 0.3s ease,
+          visibility 0.3s ease;
+        z-index: 12;
+        padding: 12px;
+        text-align: center;
+        user-select: none;
       }
-      @keyframes playerDownOverlay {
-        0% {
-          opacity: 0;
-          transform: scale(1.04);
-        }
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
+
+      .player-down-overlay.show {
+        opacity: 1;
+        visibility: visible;
+        transform: scale(1);
+      }
+
+      .player-down-overlay.interactive {
+        pointer-events: auto;
+        cursor: pointer;
+      }
+
+      .player-down-overlay .player-down-hint {
+        font-size: 14px;
+        color: #f8fafc;
+        background: rgba(248, 113, 113, 0.12);
+        border: 1px solid rgba(248, 113, 113, 0.26);
+        padding: 6px 10px;
+        border-radius: 999px;
+        letter-spacing: 0.04em;
+        text-shadow: none;
+        opacity: 0;
+        transform: translateY(4px);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .player-down-overlay.interactive .player-down-hint {
+        opacity: 0.9;
+        transform: translateY(0);
       }
 
       .card {
@@ -2773,6 +2802,11 @@
   </head>
   <body>
     <div class="phone">
+      <div id="player-down-overlay" class="player-down-overlay" aria-live="polite">
+        <div>戦闘不能</div>
+        <div class="player-down-hint">タップ / クリックで復帰</div>
+      </div>
+
       <section class="card log-card">
         <div id="log"></div>
       </section>
@@ -9079,6 +9113,7 @@
           turnQueue: [],
           awaitingInput: false,
           autoSkillEnabled: false,
+          playerDefeatInProgress: false,
           defeatedBosses: 0,
           legendaryRecords: {},
           codex: {
@@ -9097,6 +9132,8 @@
         let currentActorEntry = null;
         let lastActedEntry = null;
         let activeTurnActor = null;
+        let playerDownOverlayReadyTimer = null;
+        let playerDefeatResolveTimer = null;
 
         const SKILL_CATEGORIES = ["剣士", "魔法", "聖職", "吸血"];
 
@@ -12762,6 +12799,33 @@
             label.textContent = `${roundedHp} / ${roundedMaxHp} (${hpPct}%)`;
         }
 
+        function showPlayerDownOverlay() {
+          if (!playerDownOverlay) return;
+          const alreadyVisible =
+            playerDownOverlay.classList.contains("show");
+          if (alreadyVisible) return;
+          playerDownOverlay.classList.add("show");
+          playerDownOverlay.classList.remove("interactive");
+          clearTimeout(playerDownOverlayReadyTimer);
+          playerDownOverlayReadyTimer = window.setTimeout(() => {
+            playerDownOverlay?.classList.add("interactive");
+          }, 900);
+        }
+
+        function hidePlayerDownOverlay() {
+          if (!playerDownOverlay) return;
+          clearTimeout(playerDownOverlayReadyTimer);
+          playerDownOverlay.classList.remove("show", "interactive");
+        }
+
+        function syncPlayerDownOverlay() {
+          if (player.hp <= 0) {
+            showPlayerDownOverlay();
+          } else {
+            hidePlayerDownOverlay();
+          }
+        }
+
         function updateUI(derivedStats = null) {
           const derived = derivedStats || recalcDerivedStats();
           lastDerivedStats = derived;
@@ -12793,8 +12857,7 @@
           updateHpBar(displayHp, displayMaxHp, displayBarrier);
           updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
           updateBars("exp-bar", player.exp, player.expToLevel, "exp");
-          const phone = document.querySelector(".phone");
-          phone?.classList.toggle("player-down", player.hp <= 0);
+          syncPlayerDownOverlay();
 
           renderEnemies();
           renderActions();
@@ -15957,6 +16020,7 @@ replaceObject(game, mergedGame);
           updateUI();
         }
 
+        const playerDownOverlay = document.getElementById("player-down-overlay");
         const enemyModal = document.getElementById("enemy-modal");
         const modalFeature = document.getElementById("modal-feature");
         const modalLegendarySection = document.getElementById(
@@ -18553,24 +18617,31 @@ replaceObject(game, mergedGame);
           maybeAutoSave(`戦闘終了: ${reason}`);
         }
 
+        function resolvePlayerDefeatSequence() {
+          if (!game.playerDefeatInProgress) return;
+          clearTimeout(playerDefeatResolveTimer);
+          playerDefeatResolveTimer = null;
+          try {
+            retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
+          } finally {
+            hidePlayerDownOverlay();
+            game.playerDefeatInProgress = false;
+          }
+        }
+
         function handlePlayerDefeat() {
-          // 連続で呼ばれないようにガードを入れておく
           if (game.playerDefeatInProgress) return;
           game.playerDefeatInProgress = true;
 
-          // もう入力は受け付けない
           game.awaitingInput = false;
-
-          // ★ この時点では HP は 0 のままなので、
-          // updateUI を呼ぶと .player-down クラスが付き、
-          // 「戦闘不能」オーバーレイが表示される
           updateUI();
+          showPlayerDownOverlay();
 
-          // 少し待ってから階層ペナルティ＆HP全回復＆再開
-          setTimeout(() => {
-            retreatLowerFloors(20, { reason: "戦闘不能", tone: "danger" });
-            game.playerDefeatInProgress = false;
-          }, 600); // 演出時間に合わせて調整（0.4〜0.6秒くらいお好みで）
+          clearTimeout(playerDefeatResolveTimer);
+          playerDefeatResolveTimer = window.setTimeout(
+            resolvePlayerDefeatSequence,
+            1100,
+          );
         }
 
         function attemptEscape() {
@@ -18776,6 +18847,11 @@ replaceObject(game, mergedGame);
           updateUI();
           maybeAutoSave("次の階へ進行");
         }
+
+        playerDownOverlay?.addEventListener("click", () => {
+          if (!playerDownOverlay.classList.contains("interactive")) return;
+          resolvePlayerDefeatSequence();
+        });
 
         document
           .getElementById("btn-skill-tree")
