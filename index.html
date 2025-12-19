@@ -1911,6 +1911,61 @@
         text-shadow: 0 1px 6px rgba(45, 212, 191, 0.5);
       }
 
+      .skill-popup {
+        position: absolute;
+        left: 50%;
+        top: -8px;
+        transform: translate(-50%, -8px);
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        font-size: 12px;
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(96, 165, 250, 0.2));
+        color: #e0f2fe;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow:
+          0 8px 22px rgba(0, 0, 0, 0.35),
+          0 0 0 1px rgba(52, 211, 153, 0.12);
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        pointer-events: none;
+        opacity: 0;
+        animation: skillPopupFloat 1.1s ease forwards;
+        z-index: 6;
+        white-space: nowrap;
+      }
+
+      .skill-popup.enemy {
+        background: linear-gradient(135deg, rgba(250, 204, 21, 0.28), rgba(248, 113, 113, 0.25));
+        color: #fff7ed;
+        border-color: rgba(250, 204, 21, 0.3);
+        box-shadow:
+          0 10px 26px rgba(0, 0, 0, 0.35),
+          0 0 0 1px rgba(248, 113, 113, 0.18);
+      }
+
+      @keyframes skillPopupFloat {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -2px) scale(0.95);
+          filter: drop-shadow(0 0 0 rgba(96, 165, 250, 0));
+        }
+        20% {
+          opacity: 1;
+          transform: translate(-50%, -10px) scale(1.04);
+          filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.6));
+        }
+        70% {
+          opacity: 1;
+          transform: translate(-50%, -14px) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -18px) scale(1.02);
+          filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.25));
+        }
+      }
+
       @keyframes damageFloat {
         0% {
           opacity: 0;
@@ -12353,6 +12408,8 @@
             `💢 ${enemy.name} は「${skill.name}」を発動！${effectText}`,
             "enemy",
           );
+          const enemyCard = getEnemyCardContainer(enemy);
+          showSkillPopup(enemyCard, skill.name, "enemy");
           if (result.extraAttacks && result.extraAttacks > 0) {
             const baseAttacks = Math.max(
               0,
@@ -12751,6 +12808,29 @@
           showDamagePopup(container, -Math.abs(amount), variant, {
             isCritical: false,
           });
+        }
+
+        function showSkillPopup(container, label, variant = "player") {
+          if (!container || !label) return;
+          const popup = document.createElement("div");
+          const classes = ["skill-popup"];
+          if (variant) classes.push(variant);
+          popup.className = classes.join(" ");
+          popup.textContent = label;
+          container.appendChild(popup);
+          popup.addEventListener("animationend", () => popup.remove());
+        }
+
+        function getPlayerHpBarContainer() {
+          return document.getElementById("hp-bar")?.parentElement;
+        }
+
+        function getEnemyCardContainer(enemy) {
+          return (
+            findEnemyCard(enemy) ||
+            document.querySelector(".enemy-panel") ||
+            null
+          );
         }
 
         function consumeMp(cost) {
@@ -18409,6 +18489,7 @@ replaceObject(game, mergedGame);
           if (!availability.canUse) return false;
           const { slot, skill, target, mpCost } = availability;
           consumeMp(mpCost);
+          showSkillPopup(getPlayerHpBarContainer(), skill.name, "player");
 
           const hit = attemptHit(player, target);
           const effectLabel = skill.activation?.effect
@@ -18471,6 +18552,7 @@ replaceObject(game, mergedGame);
           consumeMp(5);
           const target = chooseTargetForPlayer();
           if (!target) return;
+          showSkillPopup(getPlayerHpBarContainer(), "パワーストライク", "player");
           const hit = attemptHit(player, target);
           if (!hit) {
             log("🌌 パワーストライクは空振り！", "warning");
@@ -18515,6 +18597,7 @@ replaceObject(game, mergedGame);
             return;
           }
           consumeMp(4);
+          showSkillPopup(getPlayerHpBarContainer(), "ヒール", "player");
           const healAmount = Math.max(
             6,
             Math.round(player.maxHp * 0.12 + (player.buffs.focus ? 5 : 0)),
@@ -18536,6 +18619,7 @@ replaceObject(game, mergedGame);
             return;
           }
           consumeMp(2);
+          showSkillPopup(getPlayerHpBarContainer(), "ガード", "player");
           player.buffs.guard = 2;
           log("🛡️ 守りを固めた！ 次の2ターン被ダメ軽減", "good");
           updateUI();
@@ -18553,6 +18637,7 @@ replaceObject(game, mergedGame);
             return;
           }
           consumeMp(2);
+          showSkillPopup(getPlayerHpBarContainer(), "ブースト", "player");
           player.buffs.haste = 2;
           log("💨 ブースト！ 次の2ターン行動速度アップ", "good");
           updateUI();
@@ -18570,6 +18655,7 @@ replaceObject(game, mergedGame);
             return;
           }
           consumeMp(3);
+          showSkillPopup(getPlayerHpBarContainer(), "フォーカス", "player");
           player.buffs.focus = 2;
           log("🎯 フォーカス！ クリティカル率アップ", "good");
           updateUI();
