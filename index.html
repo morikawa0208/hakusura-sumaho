@@ -8259,18 +8259,10 @@
           baseName,
         ) {
           const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
-          const prefixPool = {
-            normal: ["粗削りな", "見慣れた", "手軽な"],
-            magic: ["魔気を帯びた", "研ぎ澄まされた", "快活な"],
-            rare: ["祝福された", "精緻な", "英雄の"],
-            legendary: ["伝説の", "神話の", "唯一無二の"],
-          };
-          const list = prefixPool[rarity.key] || ["謎めいた"];
-          const rarityPrefix = list[randomInt(0, list.length - 1)];
-          const prefix = prefixTitle?.name || rarityPrefix;
+          const prefix = prefixTitle?.name ? `${prefixTitle.name} ` : "";
           const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
           const base = baseName || slotLabel;
-          return `${prefix} ${base}${suffix}`;
+          return `${prefix}${base}${suffix}`;
         }
 
         function normalizeEquipmentItem(item) {
