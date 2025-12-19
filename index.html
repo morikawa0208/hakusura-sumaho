@@ -6579,6 +6579,13 @@
             options: ["speed", "critRate"],
             attackCountBonus: true,
           },
+          {
+            key: "r3Cleaving",
+            name: "掃討の",
+            rank: 3,
+            options: ["speed", "critRate"],
+            attackTargetsBonus: 1,
+          },
         ];
 
         const BASE_EQUIPMENT_TITLE_SUFFIXES = [
@@ -6736,6 +6743,13 @@
             rank: 3,
             options: ["critDamage", "speed"],
             attackCountBonus: true,
+          },
+          {
+            key: "r3Cascade",
+            name: "の連鎖",
+            rank: 3,
+            options: ["cooldown", "magAtk"],
+            attackTargetsBonus: 1,
           },
           {
             key: "r3Fervor",
@@ -8083,6 +8097,7 @@
           const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          let attackTargetsBonus = 0;
 
           const entries = (title?.options || [])
             .map((key) => {
@@ -8132,6 +8147,10 @@
             attackCountBonus += extraAttacks;
           }
 
+          if (typeof title?.attackTargetsBonus === "number") {
+            attackTargetsBonus += title.attackTargetsBonus;
+          }
+
           return {
             entries,
             primaryBonus,
@@ -8139,6 +8158,7 @@
             primaryPerLevel,
             primaryFixed,
             attackCountBonus,
+            attackTargetsBonus,
           };
         }
 
@@ -8168,6 +8188,7 @@
               primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
               primaryFixed: createEmptyPrimaryFixedBonus(),
               attackCountBonus: 0,
+              attackTargetsBonus: 0,
             },
           };
           if (!pool?.length) return defaultResult;
@@ -8223,6 +8244,9 @@
           });
           if (effects.attackCountBonus) {
             lines.push(`通常攻撃回数+${effects.attackCountBonus}回`);
+          }
+          if (effects.attackTargetsBonus) {
+            lines.push(`攻撃対象+${effects.attackTargetsBonus}体`);
           }
           return lines;
         }
@@ -8449,6 +8473,7 @@
             primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
             primaryFixed: createEmptyPrimaryFixedBonus(),
             attackCountBonus: 0,
+            attackTargetsBonus: 0,
           };
           const suffixOptions = suffixRoll.options || {
             entries: [],
@@ -8457,6 +8482,7 @@
             primaryPerLevel: createEmptyPrimaryPerLevelBonus(),
             primaryFixed: createEmptyPrimaryFixedBonus(),
             attackCountBonus: 0,
+            attackTargetsBonus: 0,
           };
 
           const uniqueOption =
@@ -8469,6 +8495,7 @@
           const primaryPerLevelBonus = createEmptyPrimaryPerLevelBonus();
           const primaryFixedBonus = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          let attackTargetsBonus = 0;
 
           [
             ...base.entries,
@@ -8504,6 +8531,9 @@
             if (typeof options.attackCountBonus === "number") {
               attackCountBonus += options.attackCountBonus;
             }
+            if (typeof options.attackTargetsBonus === "number") {
+              attackTargetsBonus += options.attackTargetsBonus;
+            }
           };
 
           mergeTitleEffects(prefixOptions);
@@ -8529,13 +8559,14 @@
                   options: options.entries,
                   effects: {
                     primaryPerLevel: clonePrimaryPerLevelBonus(
-                      options.primaryPerLevel,
-                    ),
-                    primaryFixed: clonePrimaryFixedBonus(options.primaryFixed),
-                    attackCountBonus: options.attackCountBonus || 0,
-                  },
-                }
-              : null;
+                    options.primaryPerLevel,
+                  ),
+                  primaryFixed: clonePrimaryFixedBonus(options.primaryFixed),
+                  attackCountBonus: options.attackCountBonus || 0,
+                  attackTargetsBonus: options.attackTargetsBonus || 0,
+                },
+              }
+            : null;
 
           const prefixAffix = buildAffix(prefixTitle, prefixOptions);
           const suffixAffix = buildAffix(suffixTitle, suffixOptions);
@@ -8572,6 +8603,7 @@
             primaryPerLevelBonus,
             primaryFixedBonus,
             attackCountBonus,
+            attackTargetsBonus,
           });
 
           return baseItem;
@@ -8603,6 +8635,7 @@
           const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          let attackTargetsBonus = 0;
           const uniqueOptions = [];
           if (!item?.equipment)
             return {
@@ -8611,6 +8644,7 @@
               primaryPerLevel,
               primaryFixed,
               attackCountBonus,
+              attackTargetsBonus,
               uniqueOptions,
             };
 
@@ -8619,7 +8653,8 @@
             item.bonus ||
             item.primaryPerLevelBonus ||
             item.primaryFixedBonus ||
-            item.attackCountBonus
+            item.attackCountBonus ||
+            item.attackTargetsBonus
           ) {
             Object.assign(primary, item.primaryBonus || {});
             Object.assign(secondary, item.bonus || {});
@@ -8634,6 +8669,7 @@
                 item.primaryFixedBonus || {},
               ),
               attackCountBonus: item.attackCountBonus || 0,
+              attackTargetsBonus: item.attackTargetsBonus || 0,
               uniqueOptions: cloneState(item.equipment?.uniqueOptions || []),
             };
           }
@@ -8671,6 +8707,9 @@
             if (typeof effects.attackCountBonus === "number") {
               attackCountBonus += effects.attackCountBonus;
             }
+            if (typeof effects.attackTargetsBonus === "number") {
+              attackTargetsBonus += effects.attackTargetsBonus;
+            }
           };
 
           collect(item.equipment.baseOptions);
@@ -8690,6 +8729,7 @@
             primaryPerLevel,
             primaryFixed,
             attackCountBonus,
+            attackTargetsBonus,
             uniqueOptions,
           };
         }
@@ -8842,6 +8882,8 @@
           barrierMax: 0,
           barrierRemaining: 0,
           attackCount: 1,
+          attackTargets: 1,
+          attackTargetsBonus: 0,
           attacksRemaining: 1,
           base: {
             hp: 80,
@@ -11128,6 +11170,7 @@
           const primaryPerLevel = createEmptyPrimaryPerLevelBonus();
           const primaryFixed = createEmptyPrimaryFixedBonus();
           let attackCountBonus = 0;
+          let attackTargetsBonus = 0;
           const uniqueOptions = [];
           Object.values(player.equipment || {}).forEach((item) => {
             if (!item?.equipment) return;
@@ -11163,6 +11206,9 @@
             if (typeof bonuses.attackCountBonus === "number") {
               attackCountBonus += bonuses.attackCountBonus;
             }
+            if (typeof bonuses.attackTargetsBonus === "number") {
+              attackTargetsBonus += bonuses.attackTargetsBonus;
+            }
             (bonuses.uniqueOptions || []).forEach((opt) => {
               if (!opt || typeof opt.effect !== "string") return;
               uniqueOptions.push(opt);
@@ -11174,6 +11220,7 @@
             primaryPerLevel,
             primaryFixed,
             attackCountBonus,
+            attackTargetsBonus,
             uniqueOptions,
           };
         }
@@ -11604,6 +11651,8 @@
           player.equipmentPrimaryPerLevel = equipmentBonuses.primaryPerLevel;
           player.equipmentPrimaryFixed = equipmentBonuses.primaryFixed;
           player.attackCountBonus = equipmentBonuses.attackCountBonus || 0;
+          player.attackTargetsBonus =
+            equipmentBonuses.attackTargetsBonus || 0;
           player.legendaryUniqueOptions = equipmentBonuses.uniqueOptions || [];
 
           const perLevelPrimaryBonus = calcPrimaryPerLevelBonus(
@@ -11629,6 +11678,10 @@
           player.attackCount = Math.max(
             1,
             Math.round(1 + player.attackCountBonus),
+          );
+          player.attackTargets = Math.max(
+            1,
+            Math.round(1 + player.attackTargetsBonus),
           );
           if (!game.awaitingInput) {
             player.attacksRemaining = Math.max(
@@ -14294,7 +14347,11 @@ replaceObject(game, mergedGame);
             const attackBadge = document.createElement("div");
             attackBadge.className = "attack-badge";
             attackBadge.textContent = `x${playerAttacks}`;
-            attackBadge.title = "1ターンあたりの攻撃回数";
+            const targetsPerAttack = Math.max(
+              1,
+              Math.floor(player.attackTargets ?? 1),
+            );
+            attackBadge.title = `1ターンあたりの攻撃回数 / 同時攻撃対象: ${targetsPerAttack}体`;
             wrapper.appendChild(attackBadge);
           }
           row.appendChild(wrapper);
@@ -16459,6 +16516,9 @@ replaceObject(game, mergedGame);
               );
               effects.push(`連撃: ランダム (${scalingText})`);
             }
+            if (title?.attackTargetsBonus) {
+              effects.push(`多重攻撃: 攻撃対象+${title.attackTargetsBonus}`);
+            }
             return effects;
           };
 
@@ -17646,14 +17706,35 @@ replaceObject(game, mergedGame);
           setTimeout(() => nextTurn(), 350);
         }
 
-        function chooseTargetForPlayer() {
+        function choosePlayerAttackTargets(maxTargets = 1) {
           const aliveEnemies = game.enemies.filter((e) => e.hp > 0);
-          if (aliveEnemies.length === 0) return null;
-          if (hasStatus(player, "confusion")) {
-            const pool = [...aliveEnemies, player];
-            return pool[Math.floor(Math.random() * pool.length)];
+          if (aliveEnemies.length === 0) return [];
+          const confused = hasStatus(player, "confusion");
+          const pool = confused ? [...aliveEnemies, player] : aliveEnemies;
+          if (!pool.length) return [];
+          const count = Math.min(
+            Math.max(1, Math.floor(maxTargets || 1)),
+            pool.length,
+          );
+          if (!confused) {
+            return pool.slice(0, count);
           }
-          return aliveEnemies[0];
+          const available = [...pool];
+          const targets = [];
+          for (let i = 0; i < count; i += 1) {
+            const pickIndex =
+              available.length === 1
+                ? 0
+                : Math.floor(Math.random() * available.length);
+            const chosen = available.splice(pickIndex, 1)[0];
+            if (chosen) targets.push(chosen);
+          }
+          return targets;
+        }
+
+        function chooseTargetForPlayer() {
+          const targets = choosePlayerAttackTargets(1);
+          return targets[0] || null;
         }
 
         function chooseTargetForEnemy(enemy) {
@@ -18018,6 +18099,10 @@ replaceObject(game, mergedGame);
             0,
             Math.floor(player.attacksRemaining ?? player.attackCount ?? 0),
           );
+          const targetsPerAttack = Math.max(
+            1,
+            Math.floor(player.attackTargets ?? 1),
+          );
           if (attacks <= 0) {
             log("攻撃回数が残っていない…", "warning");
             return;
@@ -18026,38 +18111,45 @@ replaceObject(game, mergedGame);
           player.attacksRemaining = attacks;
           let acted = false;
           for (let i = 0; i < attacks; i += 1) {
-            const target = chooseTargetForPlayer();
-            if (!target) break;
+            const targets = choosePlayerAttackTargets(targetsPerAttack);
+            if (!targets.length) break;
             acted = true;
-            const hit = attemptHit(player, target);
-            if (!hit) {
-              log(
-                `⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}は外れた…`,
-                "warning",
+            const attackLabel =
+              attacks > 1 ? `(${i + 1}/${attacks})` : "";
+            for (let j = 0; j < targets.length; j += 1) {
+              const target = targets[j];
+              const targetLabel =
+                targets.length > 1 ? ` [${j + 1}/${targets.length}]` : "";
+              const hit = attemptHit(player, target);
+              if (!hit) {
+                log(
+                  `⚔️ あなたの攻撃${attackLabel}${targetLabel}は外れた…`,
+                  "warning",
+                );
+                continue;
+              }
+              const { isCritical, multiplier } = rollCritical(player);
+              const dmg = Math.round(
+                calcDamage(player, target, { includeKnowledgeForPlayer: true }) *
+                  multiplier,
               );
-              continue;
-            }
-            const { isCritical, multiplier } = rollCritical(player);
-            const dmg = Math.round(
-              calcDamage(player, target, { includeKnowledgeForPlayer: true }) *
-                multiplier,
-            );
-            const dealt = applyDamage(target, dmg, {
-              source: "player",
-              attacker: player,
-              isCritical,
-            });
-            const targetName = target === player ? "自分" : target.name;
-            const critLabel = isCritical ? "💥 クリティカル！ " : "";
-            log(
-              `${critLabel}⚔️ あなたの攻撃${attacks > 1 ? `(${i + 1}/${attacks})` : ""}！ ${targetName} に ${dealt} ダメージ`,
-              target === player ? "warning" : "player",
-            );
-            if (target !== player && target.hp <= 0) {
-              log(`${target.name} を倒した！`, "good");
-              onEnemyDefeated(target, { cause: "撃破" });
-              checkVictory();
-              if (!game.enemies.some((e) => e.hp > 0)) break;
+              const dealt = applyDamage(target, dmg, {
+                source: "player",
+                attacker: player,
+                isCritical,
+              });
+              const targetName = target === player ? "自分" : target.name;
+              const critLabel = isCritical ? "💥 クリティカル！ " : "";
+              log(
+                `${critLabel}⚔️ あなたの攻撃${attackLabel}${targetLabel}！ ${targetName} に ${dealt} ダメージ`,
+                target === player ? "warning" : "player",
+              );
+              if (target !== player && target.hp <= 0) {
+                log(`${target.name} を倒した！`, "good");
+                onEnemyDefeated(target, { cause: "撃破" });
+                checkVictory();
+                if (!game.enemies.some((e) => e.hp > 0)) break;
+              }
             }
             player.attacksRemaining = Math.max(0, attacks - i - 1);
           }
