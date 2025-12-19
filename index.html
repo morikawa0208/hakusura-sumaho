@@ -15165,7 +15165,7 @@ replaceObject(game, mergedGame);
             }
             const orderA = getAcquiredOrder(a.item, a.index);
             const orderB = getAcquiredOrder(b.item, b.index);
-            return orderA - orderB;
+            return orderB - orderA;
           });
 
           if (sorted.length === 0) {
