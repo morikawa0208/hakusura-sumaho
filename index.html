@@ -1617,7 +1617,7 @@
           box-shadow 0.12s ease;
         min-width: 0;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
         height: 100%;
       }
 
@@ -12408,7 +12408,7 @@
             `💢 ${enemy.name} は「${skill.name}」を発動！${effectText}`,
             "enemy",
           );
-          const enemyCard = findEnemyCard(enemy) || getPlayerHpBarContainer();
+          const enemyCard = getEnemyCardContainer(enemy);
           showSkillPopup(enemyCard, skill.name, "enemy");
           if (result.extraAttacks && result.extraAttacks > 0) {
             const baseAttacks = Math.max(
@@ -12823,6 +12823,14 @@
 
         function getPlayerHpBarContainer() {
           return document.getElementById("hp-bar")?.parentElement;
+        }
+
+        function getEnemyCardContainer(enemy) {
+          return (
+            findEnemyCard(enemy) ||
+            document.querySelector(".enemy-panel") ||
+            null
+          );
         }
 
         function consumeMp(cost) {
@@ -18481,9 +18489,7 @@ replaceObject(game, mergedGame);
           if (!availability.canUse) return false;
           const { slot, skill, target, mpCost } = availability;
           consumeMp(mpCost);
-          const skillPopupContainer =
-            findEnemyCard(target) || getPlayerHpBarContainer();
-          showSkillPopup(skillPopupContainer, skill.name, "player");
+          showSkillPopup(getPlayerHpBarContainer(), skill.name, "player");
 
           const hit = attemptHit(player, target);
           const effectLabel = skill.activation?.effect
@@ -18546,9 +18552,7 @@ replaceObject(game, mergedGame);
           consumeMp(5);
           const target = chooseTargetForPlayer();
           if (!target) return;
-          const targetContainer =
-            findEnemyCard(target) || getPlayerHpBarContainer();
-          showSkillPopup(targetContainer, "パワーストライク", "player");
+          showSkillPopup(getPlayerHpBarContainer(), "パワーストライク", "player");
           const hit = attemptHit(player, target);
           if (!hit) {
             log("🌌 パワーストライクは空振り！", "warning");
