@@ -1593,7 +1593,112 @@
       }
 
       .enemy-card.boss-card {
-        padding-bottom: 34px;
+        padding-bottom: 42px;
+        border: 1px solid rgba(255, 235, 173, 0.5);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.04),
+          0 10px 26px rgba(0, 0, 0, 0.45),
+          0 0 18px rgba(255, 214, 102, 0.28);
+        background:
+          radial-gradient(
+            circle at 20% 20%,
+            rgba(255, 201, 102, 0.16),
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 80% 15%,
+            rgba(96, 165, 250, 0.12),
+            transparent 40%
+          ),
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.06),
+            rgba(255, 255, 255, 0.02)
+          );
+      }
+
+      .enemy-card.boss-card::before,
+      .enemy-card.boss-card::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border-radius: 10px;
+        pointer-events: none;
+      }
+
+      .enemy-card.boss-card::before {
+        border: 1px solid rgba(255, 214, 102, 0.5);
+        box-shadow: 0 0 24px rgba(255, 214, 102, 0.2);
+        opacity: 0.9;
+      }
+
+      .enemy-card.boss-card::after {
+        border: 1px solid rgba(96, 165, 250, 0.2);
+        mix-blend-mode: screen;
+        animation: bossGlow 1.8s ease-in-out infinite;
+      }
+
+      @keyframes bossGlow {
+        0%,
+        100% {
+          opacity: 0.35;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: scale(1.01);
+        }
+      }
+
+      .boss-ornament {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 8px;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .boss-crest {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #0b0e14;
+        background: linear-gradient(
+          135deg,
+          #ffe082,
+          #f59e0b 50%,
+          #a5b4fc 100%
+        );
+        box-shadow:
+          0 10px 24px rgba(0, 0, 0, 0.35),
+          0 0 16px rgba(255, 214, 102, 0.45);
+      }
+
+      .boss-crest .icon {
+        font-size: 13px;
+        filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+      }
+
+      .boss-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 214, 102, 0.6),
+          transparent
+        );
+        filter: drop-shadow(0 0 10px rgba(255, 214, 102, 0.45));
       }
 
       .enemy-card:active {
@@ -1626,6 +1731,29 @@
       .boss-retry-button:disabled {
         opacity: 0.55;
         cursor: not-allowed;
+      }
+
+      .enemy-card.boss-card .boss-retry-button {
+        background: linear-gradient(
+          120deg,
+          rgba(255, 214, 102, 0.32),
+          rgba(96, 165, 250, 0.22)
+        );
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #0b0e14;
+        font-weight: 700;
+      }
+
+      .enemy-card.boss-card .enemy-name {
+        color: #ffe082;
+        text-shadow:
+          0 1px 4px rgba(0, 0, 0, 0.4),
+          0 0 8px rgba(255, 214, 102, 0.45);
+      }
+
+      .enemy-card.boss-card .enemy-bar .fill {
+        background: linear-gradient(90deg, #fbbf24, #f97316, #3b82f6);
+        box-shadow: 0 0 8px rgba(255, 214, 102, 0.45);
       }
 
       .attack-badge {
@@ -13980,6 +14108,15 @@ replaceObject(game, mergedGame);
             card.appendChild(header);
             card.appendChild(bar);
 
+            const bossOrnament = document.createElement("div");
+            bossOrnament.className = "boss-ornament";
+            bossOrnament.innerHTML = `
+              <span class="boss-line"></span>
+              <span class="boss-crest"><span class="icon">👑</span>BOSS</span>
+              <span class="boss-line"></span>
+            `;
+            card.appendChild(bossOrnament);
+
             const retryButton = document.createElement("button");
             retryButton.className = "boss-retry-button";
             retryButton.textContent = "再挑戦";
@@ -13997,6 +14134,7 @@ replaceObject(game, mergedGame);
               fill,
               hpLabel,
               retryButton,
+              bossOrnament,
             };
             return card;
           }
@@ -14008,6 +14146,10 @@ replaceObject(game, mergedGame);
             card.classList.toggle("defeated", enemy.hp <= 0);
 
             card.classList.toggle("boss-card", enemy.isBoss);
+
+            if (refs.bossOrnament) {
+              refs.bossOrnament.style.display = enemy.isBoss ? "flex" : "none";
+            }
 
             if (refs.titleLabel) {
               refs.titleLabel.textContent = `${enemy.isBoss ? "👑" : "👾"} ${enemy.name}`;
