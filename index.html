@@ -1918,6 +1918,14 @@
       z-index: 9999;
     }
 
+      /* 画面最前面のポップアップレイヤー（transformの影響を受けない） */
+#popup-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
       
       .damage-popup.mp {
         color: #bfdbfe;
@@ -13270,28 +13278,54 @@
           bar.classList.add("flash");
         }
 
-        function showDamagePopup(
-          container,
-          amount,
-          variant = "enemy",
-          { isCritical = false, target = "enemy" } = {},
-        ) {
-          if (!container || !amount) return;
+function ensurePopupLayer() {
+  let layer = document.getElementById("popup-layer");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "popup-layer";
+    document.body.appendChild(layer);
+  }
+  return layer;
+}
+
         
-          const popup = document.createElement("div");
-          popup.className =
-            `damage-popup ${variant} ${target}${isCritical ? " critical" : ""}`;
-        
-          const numeric = Math.abs(amount);
-          const valueText = amount >= 0 ? `-${numeric}` : `+${numeric}`;
-        
-          popup.innerHTML = isCritical
-            ? `<span class="crit-badge"><span class="crit-star">✦</span>CRIT</span>${valueText}`
-            : valueText;
-        
-          container.appendChild(popup);
-          popup.addEventListener("animationend", () => popup.remove());
-        }
+function showDamagePopup(
+  container,
+  amount,
+  variant = "enemy",
+  { isCritical = false, target = "enemy" } = {},
+) {
+  if (!container || !amount) return;
+
+  const popup = document.createElement("div");
+  popup.className = `damage-popup ${variant}${isCritical ? " critical" : ""}`;
+
+  const numeric = Math.abs(amount);
+  const valueText = amount >= 0 ? `-${numeric}` : `+${numeric}`;
+
+  popup.innerHTML = isCritical
+    ? `<span class="crit-badge"><span class="crit-star">✦</span>CRIT</span>${valueText}`
+    : valueText;
+
+  // ★プレイヤー側だけ：containerのtransform/overflowの影響を回避して画面固定で出す
+  if (target === "player") {
+    const layer = ensurePopupLayer();
+    layer.appendChild(popup);
+
+    const rect = container.getBoundingClientRect();
+    popup.style.position = "fixed";
+    popup.style.left = `${rect.left + rect.width / 2}px`;
+    popup.style.top = `${rect.top + 6}px`;
+
+    // 既存の .damage-popup が transform: translate(-50%, 0) を持ってるので
+    // fixed配置でもそのまま同じ見た目になります（ここは追加で触らない）
+  } else {
+    // ★敵側は従来通り container に absolute で出す
+    container.appendChild(popup);
+  }
+
+  popup.addEventListener("animationend", () => popup.remove());
+}
 
 
         function showHealPopup(container, amount, variant = "heal") {
