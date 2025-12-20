@@ -1848,9 +1848,17 @@
         left: 50%;
         top: 6px;
         transform: translate(-50%, 0);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-width: max-content;
         font-weight: 800;
         font-size: 14px;
         letter-spacing: 0.01em;
+        white-space: nowrap;
+        padding: 4px 10px;
+        border-radius: 12px;
         pointer-events: none;
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
         opacity: 0;
@@ -1883,13 +1891,8 @@
         align-items: center;
         gap: 4px;
         padding: 2px 8px;
-        margin-right: 6px;
         border-radius: 999px;
-        background: linear-gradient(
-          120deg,
-          rgba(250, 204, 21, 0.9),
-          rgba(251, 191, 36, 0.65)
-        );
+        background: linear-gradient(120deg, rgba(250, 204, 21, 0.9), rgba(251, 191, 36, 0.65));
         color: #0b0e14;
         font-size: 11px;
         text-transform: uppercase;
@@ -1905,6 +1908,12 @@
 
       .damage-popup.mp {
         color: #bfdbfe;
+        background: none;
+        box-shadow: none;
+        filter: none;
+        text-shadow: none;
+        padding: 0;
+        gap: 0;
       }
 
       .damage-popup.heal {
