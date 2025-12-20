@@ -241,17 +241,16 @@
         --drop-primary-rgb: 251, 191, 36;
         --drop-secondary-rgb: 254, 240, 138;
         --drop-highlight-rgb: 252, 211, 77;
-        position: relative;
-        transform: translateY(-10px) scale(0.96);
-        display: grid;
-        place-items: center;
-        justify-items: center;
-        pointer-events: none;
+      
         opacity: 0;
-        width: max-content;
-        max-width: min(80vw, 560px);
-        min-width: clamp(220px, 30vw, 420px);
+        transform: translateY(-10px) scale(0.98);
+        transition: opacity 0.2s ease;
+      
+        /* ★ここが重要：幅を「中身基準」にする */
+        width: fit-content;
+        max-width: min(92vw, 560px);
       }
+
 
       .drop-toast.rare {
         --drop-primary: #f59e0b;
@@ -287,7 +286,7 @@
 
       .drop-toast .drop-toast-core {
         position: relative;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 12px;
         padding: 12px 16px 12px 14px;
@@ -305,8 +304,10 @@
           0 0 38px rgba(var(--drop-highlight-rgb), 0.35);
         overflow: hidden;
         isolation: isolate;
-        width: 100%;
-        justify-content: center;
+        /* ★ここが重要：100%で伸ばさない */
+        width: fit-content;
+        max-width: 100%;
+        justify-content: flex-start;   /* center → flex-start */
       }
 
       .drop-toast.simple .drop-toast-core {
@@ -457,10 +458,11 @@
           0 3px 12px rgba(0, 0, 0, 0.4),
           0 0 12px rgba(var(--drop-highlight-rgb), 0.7);
         white-space: nowrap;
-        max-width: 100%;
-        width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
+        /* ★ここが重要：100%で伸ばさない */
+        width: auto;
+        max-width: min(78vw, 480px); /* 長い名前は省略 */
       }
 
       .drop-toast.simple .drop-item-name {
