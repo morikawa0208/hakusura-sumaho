@@ -1906,6 +1906,19 @@
         filter: drop-shadow(0 0 6px rgba(252, 211, 77, 0.8));
       }
 
+    /* プレイヤーHPバー周辺（popupの親）を、敵カードと同じ条件にする */
+    .popup-anchor {
+      position: relative;   /* absoluteの基準を安定させる */
+      overflow: visible;    /* これが最重要：見切れて縮んで見えるのを防ぐ */
+      min-width: 1px;       /* 念のため */
+    }
+    
+    /* 万が一、他の要素に負けて背面に回る場合の保険 */
+    .popup-anchor .damage-popup {
+      z-index: 9999;
+    }
+
+      
       .damage-popup.mp {
         color: #bfdbfe;
         background: none;
@@ -13261,26 +13274,38 @@
           container,
           amount,
           variant = "enemy",
-          { isCritical = false } = {},
+          { isCritical = false, target = "enemy" } = {},
         ) {
           if (!container || !amount) return;
+        
           const popup = document.createElement("div");
-          popup.className = `damage-popup ${variant}${isCritical ? " critical" : ""}`;
+          popup.className =
+            `damage-popup ${variant} ${target}${isCritical ? " critical" : ""}`;
+        
           const numeric = Math.abs(amount);
           const valueText = amount >= 0 ? `-${numeric}` : `+${numeric}`;
+        
           popup.innerHTML = isCritical
             ? `<span class="crit-badge"><span class="crit-star">✦</span>CRIT</span>${valueText}`
             : valueText;
+        
           container.appendChild(popup);
           popup.addEventListener("animationend", () => popup.remove());
         }
 
+
         function showHealPopup(container, amount, variant = "heal") {
           if (!container || amount <= 0) return;
-          showDamagePopup(container, -Math.abs(amount), variant, {
+        
+          const rounded = Math.round(amount);
+        
+          if (rounded <= 0) return;
+        
+          showDamagePopup(container, -rounded, variant, {
             isCritical: false,
           });
         }
+
 
         function showSkillPopup(container, label, variant = "player") {
           if (!container || !label) return;
@@ -18622,112 +18647,119 @@ replaceObject(game, mergedGame);
         }
 
         function applyDamage(
-          target,
-          amount,
-          {
-            type = "physical",
-            source = "",
-            isDot = false,
-            attacker = null,
-            isCritical = false,
-          } = {},
-        ) {
-          let final = Math.max(0, Math.round(amount));
-          const reduction = Math.max(
-            0,
-            Math.min(90, target.damageReduction || 0),
-          );
-          if (reduction > 0) {
-            final = Math.round(final * (1 - reduction / 100));
-          }
+  target,
+  amount,
+  {
+    type = "physical",
+    source = "",
+    isDot = false,
+    attacker = null,
+    isCritical = false,
+  } = {},
+) {
+  let final = Math.max(0, Math.round(amount));
+  const reduction = Math.max(0, Math.min(90, target.damageReduction || 0));
+  if (reduction > 0) {
+    final = Math.round(final * (1 - reduction / 100));
+  }
 
-          const blockChance = !isDot
-            ? Math.max(0, Math.min(100, target.block || 0))
-            : 0;
-          const blocked = blockChance > 0 && Math.random() * 100 < blockChance;
-          if (blocked) {
-            final = Math.round(final * 0.5);
-          }
+  const blockChance = !isDot ? Math.max(0, Math.min(100, target.block || 0)) : 0;
+  const blocked = blockChance > 0 && Math.random() * 100 < blockChance;
+  if (blocked) {
+    final = Math.round(final * 0.5);
+  }
 
-          if (
-            target === player &&
-            player.buffs.guard > 0 &&
-            !hasStatus(player, "seal")
-          ) {
-            final = Math.round(final * 0.7);
-          }
+  if (
+    target === player &&
+    player.buffs.guard > 0 &&
+    !hasStatus(player, "seal")
+  ) {
+    final = Math.round(final * 0.7);
+  }
 
-          let barrierAbsorbed = 0;
-          if (
-            final > 0 &&
-            typeof target.barrierRemaining === "number" &&
-            target.barrierRemaining > 0
-          ) {
-            barrierAbsorbed = Math.min(target.barrierRemaining, final);
-            target.barrierRemaining -= barrierAbsorbed;
-            final -= barrierAbsorbed;
-          }
+  let barrierAbsorbed = 0;
+  if (
+    final > 0 &&
+    typeof target.barrierRemaining === "number" &&
+    target.barrierRemaining > 0
+  ) {
+    barrierAbsorbed = Math.min(target.barrierRemaining, final);
+    target.barrierRemaining -= barrierAbsorbed;
+    final -= barrierAbsorbed;
+  }
 
-          final = Math.max(0, Math.round(final));
-          target.hp = Math.max(0, target.hp - final);
-          if (!isDot && final > 0 && hasStatus(target, "sleep")) {
-            removeStatus(target, "sleep");
-            log(`${target.name} は攻撃を受けて目を覚ました`, "info");
-          }
-          if (target === player) {
-            flashBar("hp-bar");
-            const playerBar = document.getElementById("hp-bar")?.parentElement;
-            if (final > 0) {
-              showDamagePopup(playerBar, final, "player", { isCritical });
-            }
-            if (barrierAbsorbed > 0) {
-              showDamagePopup(playerBar, barrierAbsorbed, "player", {
-                isCritical,
-              });
-            }
-          } else {
-            if (final > 0) triggerEnemyHit(target, final, { isCritical });
-            if (barrierAbsorbed > 0) {
-              triggerEnemyHit(target, barrierAbsorbed, { isCritical });
-            }
-            updateEnemyCardHp(target);
-          }
+  final = Math.max(0, Math.round(final));
+  target.hp = Math.max(0, target.hp - final);
 
-          if (blocked && final >= 0) {
-            log(
-              `${target.name} はブロックして被ダメージを軽減`,
-              target === player ? "good" : "info",
-            );
-          }
-          if (barrierAbsorbed > 0) {
-            log(
-              `${target.name} のバリアが ${barrierAbsorbed} ダメージを吸収`,
-              target === player ? "good" : "info",
-            );
-          }
+  if (!isDot && final > 0 && hasStatus(target, "sleep")) {
+    removeStatus(target, "sleep");
+    log(`${target.name} は攻撃を受けて目を覚ました`, "info");
+  }
 
-          const canLifeSteal =
-            !isDot &&
-            attacker &&
-            attacker !== target &&
-            typeof attacker.lifeSteal === "number" &&
-            attacker.lifeSteal > 0 &&
-            attacker.maxHp;
-          if (canLifeSteal) {
-            const healAmount = Math.max(
-              0,
-              roundBattleValue(final * (attacker.lifeSteal / 100)),
-            );
-            if (healAmount > 0) {
-              const healed = applyHealing(attacker, healAmount);
-              if (healed > 0) {
-                const logLevel = attacker === player ? "good" : "info";
-                log(`🩸 HP吸収で ${healed} 回復`, logLevel);
-              }
-            }
-          }
-          return final;
-        }
+  if (target === player) {
+    flashBar("hp-bar");
+    const playerBar = document.getElementById("hp-bar")?.parentElement;
+    playerBar?.classList.add("popup-anchor");
+
+    if (final > 0) {
+      showDamagePopup(playerBar, final, "player", {
+        isCritical,
+        target: "player",
+      });
+    }
+
+    if (barrierAbsorbed > 0) {
+      showDamagePopup(playerBar, barrierAbsorbed, "player", {
+        isCritical,
+        target: "player",
+      });
+    }
+  } else {
+    if (final > 0) triggerEnemyHit(target, final, { isCritical });
+    if (barrierAbsorbed > 0) {
+      triggerEnemyHit(target, barrierAbsorbed, { isCritical });
+    }
+    updateEnemyCardHp(target);
+  }
+
+  if (blocked && final >= 0) {
+    log(
+      `${target.name} はブロックして被ダメージを軽減`,
+      target === player ? "good" : "info",
+    );
+  }
+  if (barrierAbsorbed > 0) {
+    log(
+      `${target.name} のバリアが ${barrierAbsorbed} ダメージを吸収`,
+      target === player ? "good" : "info",
+    );
+  }
+
+  const canLifeSteal =
+    !isDot &&
+    attacker &&
+    attacker !== target &&
+    typeof attacker.lifeSteal === "number" &&
+    attacker.lifeSteal > 0 &&
+    attacker.maxHp;
+
+  if (canLifeSteal) {
+    const healAmount = Math.max(
+      0,
+      roundBattleValue(final * (attacker.lifeSteal / 100)),
+    );
+    if (healAmount > 0) {
+      const healed = applyHealing(attacker, healAmount);
+      if (healed > 0) {
+        const logLevel = attacker === player ? "good" : "info";
+        log(`🩸 HP吸収で ${healed} 回復`, logLevel);
+      }
+    }
+  }
+
+  return final;
+}
+
 
         function applyHealing(target, amount) {
           if (!target || amount <= 0) return 0;
