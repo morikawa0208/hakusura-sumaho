@@ -12757,6 +12757,8 @@
             floorLevel <= 12 ? 1 - (12 - floorLevel) * 0.02 : 1;
           const accuracyRelief =
             floorLevel <= 10 ? 1 - (10 - floorLevel) * 0.018 : 1;
+          const lowFloorAttackScale =
+            !isBoss && floorLevel <= 100 ? 0.7 : 1;
           const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
           const statScale = (
             base,
@@ -12783,7 +12785,8 @@
             maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
             atk: keepDecimal(
               statScale(atkBase, 1.105, 1.55, earlyOffenseEase) *
-                earlyAttackRelief,
+                earlyAttackRelief *
+                lowFloorAttackScale,
               1,
             ),
             def: keepDecimal(
