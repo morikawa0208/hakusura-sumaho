@@ -1622,7 +1622,8 @@
       }
 
       .enemy-card.boss-card {
-        padding-bottom: 42px;
+        padding-top: 20px;
+        padding-bottom: 20px;
         border: 1px solid rgba(255, 235, 173, 0.5);
         box-shadow:
           0 0 0 1px rgba(255, 255, 255, 0.04),
@@ -4938,8 +4939,16 @@
             minFloor: 1,
             baseModifiers: { atk: 1.1, hp: 1.05, def: 0.98 },
             abilities: [
-              { label: "粉砕打ち", modifiers: { atk: 1.08, accuracy: 1.05 } },
-              { label: "激昂", modifiers: { attackCountBonus: 1, hp: 1.05 } },
+              {
+                label: "粉砕打ち", 
+                modifiers: { atk: 1.08, accuracy: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 4 },
+              },
+              { 
+                label: "激昂",
+                modifiers: { attackCountBonus: 1, hp: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 4 },
+              },
               {
                 label: "強奪",
                 modifiers: { atk: 1.05, hp: 1.04 },
@@ -4957,10 +4966,15 @@
             minFloor: 5,
             baseModifiers: { def: 1.4, hp: 1.18, spd: 0.9 },
             abilities: [
-              { label: "鉄壁", modifiers: { def: 1.15, hp: 1.08 } },
+              {
+                label: "鉄壁",
+                modifiers: { def: 1.15, hp: 1.08 } ,
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 5 },
+              },
               {
                 label: "頑健",
                 modifiers: { resist: { debuff: 1.12, dot: 1.12 }, def: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 5 },
               },
               {
                 label: "宝殻",
@@ -4979,8 +4993,16 @@
             minFloor: 15,
             baseModifiers: { spd: 1.32, evade: 1.14, def: 0.92, atk: 1.08 },
             abilities: [
-              { label: "踏み込み", modifiers: { accuracy: 1.08, atk: 1.08 } },
-              { label: "二連斬", modifiers: { attackCountBonus: 1 } },
+              {
+                label: "踏み込み",
+                modifiers: { accuracy: 1.08, atk: 1.08 } ,
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 6 },
+              },
+              {
+                label: "二連斬",
+                modifiers: { attackCountBonus: 1 } ,
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 6 },
+              },
               {
                 label: "奇襲者",
                 modifiers: { spd: 1.05, evade: 1.04 },
@@ -5002,10 +5024,15 @@
               resist: { control: 1.12, dot: 1.12, debuff: 1.12 },
             },
             abilities: [
-              { label: "穢れの紋", modifiers: { hp: 1.06, atk: 1.08 } },
+              {
+                label: "穢れの紋",
+                modifiers: { hp: 1.06, atk: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 6 },
+              },
               {
                 label: "呪文連鎖",
                 modifiers: { attackCountBonus: 1, spd: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 6 },
               },
               {
                 label: "魔染の贈り物",
@@ -5029,10 +5056,15 @@
               attackCountBonus: 1,
             },
             abilities: [
-              { label: "血煙", modifiers: { atk: 1.08, spd: 1.08 } },
+              {
+                label: "血煙",
+                modifiers: { atk: 1.08, spd: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
+              },
               {
                 label: "乱撃",
                 modifiers: { attackCountBonus: 1, accuracy: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
               },
               {
                 label: "血染めの戦利品",
@@ -5054,10 +5086,12 @@
               {
                 label: "冷気の膜",
                 modifiers: { def: 1.08, debuffResist: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 4 },
               },
               {
                 label: "凍てつく吐息",
                 modifiers: { resist: { control: 1.12, dot: 1.08 }, atk: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 4 },
               },
               {
                 label: "霜宝",
@@ -5076,10 +5110,15 @@
             minFloor: 18,
             baseModifiers: { spd: 1.22, evade: 1.18, atk: 1.04, def: 0.94 },
             abilities: [
-              { label: "疾風脚", modifiers: { spd: 1.08, accuracy: 1.05 } },
+              {
+                label: "疾風脚",
+                modifiers: { spd: 1.08, accuracy: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 4, rarityBonus: 6 },
+              },
               {
                 label: "舞い散る刃",
                 modifiers: { attackCountBonus: 1, critRate: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 4, rarityBonus: 6 },
               },
               {
                 label: "風鳴りの残滓",
@@ -5103,10 +5142,15 @@
               def: 0.95,
             },
             abilities: [
-              { label: "魔符", modifiers: { magPen: 1.08, accuracy: 1.06 } },
+              {
+                label: "魔符",
+                modifiers: { magPen: 1.08, accuracy: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
+              },
               {
                 label: "秘奥連携",
                 modifiers: { attackCountBonus: 1, spd: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
               },
               {
                 label: "禁呪の供物",
@@ -5129,10 +5173,15 @@
               def: 0.96,
             },
             abilities: [
-              { label: "瘴気", modifiers: { hp: 1.06, atk: 1.06 } },
+              {
+                label: "瘴気",
+                modifiers: { hp: 1.06, atk: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
+              },
               {
                 label: "疫の波",
                 modifiers: { attackCountBonus: 1, resist: { dot: 1.12 } },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
               },
               {
                 label: "瘴財",
@@ -5154,10 +5203,12 @@
               {
                 label: "堅瞳",
                 modifiers: { accuracy: 1.05, debuffResist: 1.1 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "守備陣形",
                 modifiers: { def: 1.12, damageReduction: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "警邏の徴",
@@ -5181,10 +5232,15 @@
               def: 0.94,
             },
             abilities: [
-              { label: "闇歩き", modifiers: { spd: 1.06, evade: 1.08 } },
+              {
+                label: "闇歩き",
+                modifiers: { spd: 1.06, evade: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 4 },
+              },
               {
                 label: "暗殺刃",
                 modifiers: { critRate: 1.06, attackCountBonus: 1 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 4 },
               },
               {
                 label: "影の略奪",
@@ -5206,8 +5262,13 @@
               {
                 label: "体当たり",
                 modifiers: { atk: 1.06, damageReduction: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 4, rarityBonus: 5 },
               },
-              { label: "猛進", modifiers: { attackCountBonus: 1, spd: 1.04 } },
+              {
+                label: "猛進",
+                modifiers: { attackCountBonus: 1, spd: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 4, rarityBonus: 5 },
+              },
               {
                 label: "略奪",
                 modifiers: { atk: 1.05, accuracy: 1.05 },
@@ -5225,8 +5286,16 @@
             minFloor: 35,
             baseModifiers: { atk: 1.16, spd: 1.14, accuracy: 1.05, def: 0.93 },
             abilities: [
-              { label: "電撃", modifiers: { atk: 1.08, magAtk: 1.05 } },
-              { label: "雷迅", modifiers: { attackCountBonus: 1, spd: 1.06 } },
+              {
+                label: "電撃",
+                modifiers: { atk: 1.08, magAtk: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
+              },
+              {
+                label: "雷迅",
+                modifiers: { attackCountBonus: 1, spd: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
+              },
               {
                 label: "雷冠",
                 modifiers: { spd: 1.05, accuracy: 1.05 },
@@ -5249,10 +5318,15 @@
               spd: 0.92,
             },
             abilities: [
-              { label: "岩甲", modifiers: { def: 1.1, damageReduction: 1.05 } },
+              {
+                label: "岩甲",
+                modifiers: { def: 1.1, damageReduction: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
+              },
               {
                 label: "震脚",
                 modifiers: { attackCountBonus: 1, accuracy: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "地脈の宝",
@@ -5276,8 +5350,16 @@
               magPen: 1.06,
             },
             abilities: [
-              { label: "城砕き", modifiers: { atk: 1.1, physPen: 1.08 } },
-              { label: "強行軍", modifiers: { attackCountBonus: 1, hp: 1.05 } },
+              {
+                label: "城砕き",
+                modifiers: { atk: 1.1, physPen: 1.08 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 5 },
+              },
+              {
+                label: "強行軍",
+                modifiers: { attackCountBonus: 1, hp: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 5 },
+              },
               {
                 label: "略奪の旗",
                 modifiers: { atk: 1.07, accuracy: 1.05 },
@@ -5299,7 +5381,11 @@
                 label: "蜃気楼",
                 modifiers: { evade: 1.08, debuffResist: 1.06 },
               },
-              { label: "幻撃", modifiers: { attackCountBonus: 1, atk: 1.04 } },
+              {
+                label: "幻撃",
+                modifiers: { attackCountBonus: 1, atk: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
+              },
               {
                 label: "幻宝",
                 modifiers: { evade: 1.07, accuracy: 1.04 },
@@ -5322,10 +5408,15 @@
               def: 0.95,
             },
             abilities: [
-              { label: "猛毒", modifiers: { atk: 1.06, magAtk: 1.04 } },
+              {
+                label: "猛毒",
+                modifiers: { atk: 1.06, magAtk: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
+              },
               {
                 label: "毒の連牙",
                 modifiers: { attackCountBonus: 1, critRate: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "蛇毒の遺物",
@@ -5351,8 +5442,13 @@
               {
                 label: "輝盾",
                 modifiers: { def: 1.08, damageReduction: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
               },
-              { label: "光翼", modifiers: { spd: 1.06, evade: 1.05 } },
+              {
+                label: "光翼",
+                modifiers: { spd: 1.06, evade: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
+              },
               {
                 label: "光宝",
                 modifiers: { accuracy: 1.07, resist: { debuff: 1.08 } },
@@ -5377,8 +5473,13 @@
               {
                 label: "闇纏い",
                 modifiers: { evade: 1.06, debuffResist: 1.1 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
               },
-              { label: "奈落の眼", modifiers: { accuracy: 1.06, atk: 1.05 } },
+              {
+                label: "奈落の眼",
+                modifiers: { accuracy: 1.06, atk: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
+              },
               {
                 label: "深淵の遺物",
                 modifiers: { atk: 1.05, resist: { control: 1.08 } },
@@ -5401,10 +5502,15 @@
               spd: 0.9,
             },
             abilities: [
-              { label: "永劫の肉体", modifiers: { hp: 1.08, hpRegen: 1.06 } },
+              {
+                label: "永劫の肉体",
+                modifiers: { hp: 1.08, hpRegen: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 7 },
+              },
               {
                 label: "不死性",
                 modifiers: { resist: { control: 1.08 }, damageReduction: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 7 },
               },
               {
                 label: "不滅の財",
@@ -5423,10 +5529,15 @@
             minFloor: 14,
             baseModifiers: { atk: 1.12, magAtk: 1.1, def: 0.96, spd: 1.02 },
             abilities: [
-              { label: "灼熱", modifiers: { atk: 1.06, magAtk: 1.06 } },
+              {
+                label: "灼熱",
+                modifiers: { atk: 1.06, magAtk: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 6 },
+              },
               {
                 label: "燃え盛る連鎖",
                 modifiers: { attackCountBonus: 1, critRate: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 6 },
               },
               {
                 label: "紅蓮の遺宝",
@@ -5453,10 +5564,12 @@
               {
                 label: "怯ませ",
                 modifiers: { accuracy: 1.06, debuffResist: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
               },
               {
                 label: "恐刃連撃",
                 modifiers: { attackCountBonus: 1, atk: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
               },
               {
                 label: "恐怖の戦利",
@@ -5478,10 +5591,12 @@
               {
                 label: "石皮",
                 modifiers: { def: 1.08, damageReduction: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "凝視",
                 modifiers: { resist: { control: 1.08 }, accuracy: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "石像の財",
@@ -5500,10 +5615,15 @@
             minFloor: 26,
             baseModifiers: { atk: 1.14, critRate: 1.12, def: 0.94, spd: 1.02 },
             abilities: [
-              { label: "刈り払い", modifiers: { atk: 1.08, accuracy: 1.04 } },
+              {
+                label: "刈り払い",
+                modifiers: { atk: 1.08, accuracy: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
+              },
               {
                 label: "血の刈取り",
                 modifiers: { attackCountBonus: 1, lifeSteal: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
               },
               {
                 label: "刈り取った戦利",
@@ -5530,10 +5650,12 @@
               {
                 label: "光幕",
                 modifiers: { evade: 1.08, damageReduction: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 7 },
               },
               {
                 label: "光刃",
                 modifiers: { attackCountBonus: 1, accuracy: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 7 },
               },
               {
                 label: "極光の遺宝",
@@ -5560,10 +5682,12 @@
               {
                 label: "陰の障壁",
                 modifiers: { debuffResist: 1.1, def: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
               },
               {
                 label: "蝕刃",
                 modifiers: { attackCountBonus: 1, critRate: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
               },
               {
                 label: "蝕影の財",
@@ -5582,10 +5706,15 @@
             minFloor: 34,
             baseModifiers: { hp: 1.16, hpRegen: 1.08, def: 1.06, spd: 0.96 },
             abilities: [
-              { label: "潮衣", modifiers: { hp: 1.08, debuffResist: 1.06 } },
+              {
+                label: "潮衣",
+                modifiers: { hp: 1.08, debuffResist: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
+              },
               {
                 label: "波の連撃",
                 modifiers: { attackCountBonus: 1, spd: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 5, rarityBonus: 5 },
               },
               {
                 label: "潮の遺物",
@@ -5604,10 +5733,15 @@
             minFloor: 46,
             baseModifiers: { accuracy: 1.12, atk: 1.12, spd: 1.04, def: 0.96 },
             abilities: [
-              { label: "風雷", modifiers: { atk: 1.08, magAtk: 1.05 } },
+              {
+                label: "風雷",
+                modifiers: { atk: 1.08, magAtk: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
+              },
               {
                 label: "稲妻連鎖",
                 modifiers: { attackCountBonus: 1, accuracy: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
               },
               {
                 label: "嵐の宝",
@@ -5631,10 +5765,15 @@
               def: 0.96,
             },
             abilities: [
-              { label: "悪戯", modifiers: { spd: 1.06, debuffResist: 1.06 } },
+              {
+                label: "悪戯",
+                modifiers: { spd: 1.06, debuffResist: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 4 },
+              },
               {
                 label: "奇術",
                 modifiers: { attackCountBonus: 1, accuracy: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 8, rarityBonus: 4 },
               },
               {
                 label: "盗賊の儲け",
@@ -5658,10 +5797,15 @@
               def: 1.02,
             },
             abilities: [
-              { label: "腐蝕", modifiers: { atk: 1.06, magAtk: 1.04 } },
+              {
+                label: "腐蝕",
+                modifiers: { atk: 1.06, magAtk: 1.04 } ,
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
+              },
               {
                 label: "胞子拡散",
                 modifiers: { attackCountBonus: 1, resist: { debuff: 1.08 } },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 6 },
               },
               {
                 label: "腐華の遺宝",
@@ -5685,10 +5829,15 @@
               physPen: 1.06,
             },
             abilities: [
-              { label: "裂爪", modifiers: { atk: 1.08, critRate: 1.04 } },
+              {
+                label: "裂爪",
+                modifiers: { atk: 1.08, critRate: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
+              },
               {
                 label: "鋼の連爪",
                 modifiers: { attackCountBonus: 1, accuracy: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 5 },
               },
               {
                 label: "鋼爪の戦利",
@@ -5711,10 +5860,15 @@
               def: 1.02,
             },
             abilities: [
-              { label: "符護", modifiers: { debuffResist: 1.08, def: 1.04 } },
+              {
+                label: "符護",
+                modifiers: { debuffResist: 1.08, def: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
+              },
               {
                 label: "符束",
                 modifiers: { attackCountBonus: 1, accuracy: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
               },
               {
                 label: "符刻の遺物",
@@ -5733,10 +5887,15 @@
             minFloor: 50,
             baseModifiers: { atk: 1.16, lifeSteal: 1.08, def: 0.96, hp: 1.04 },
             abilities: [
-              { label: "血宴", modifiers: { atk: 1.08, hp: 1.05 } },
+              {
+                label: "血宴",
+                modifiers: { atk: 1.08, hp: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
+              },
               {
                 label: "朱の連牙",
                 modifiers: { attackCountBonus: 1, lifeSteal: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 6 },
               },
               {
                 label: "血月の宝",
@@ -5763,10 +5922,12 @@
               {
                 label: "虚の殻",
                 modifiers: { damageReduction: 1.06, def: 1.04 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
               },
               {
                 label: "虚空連撃",
                 modifiers: { attackCountBonus: 1, magAtk: 1.05 },
+                hiddenModifiers: { dropChanceBonus: 6, rarityBonus: 7 },
               },
               {
                 label: "虚無の遺物",
@@ -5785,10 +5946,15 @@
             minFloor: 62,
             baseModifiers: { atk: 1.2, accuracy: 1.08, def: 1.02, spd: 1.02 },
             abilities: [
-              { label: "雷槌", modifiers: { atk: 1.1, physPen: 1.06 } },
+              {
+                label: "雷槌",
+                modifiers: { atk: 1.1, physPen: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 7 },
+              },
               {
                 label: "雷連",
                 modifiers: { attackCountBonus: 1, accuracy: 1.06 },
+                hiddenModifiers: { dropChanceBonus: 7, rarityBonus: 7 },
               },
               {
                 label: "雷帝の戦利",
