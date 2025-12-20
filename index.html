@@ -636,7 +636,7 @@
       }
 
       .player-down-overlay {
-        position: absolute;
+        position: fixed;
         inset: 0;
         display: grid;
         place-items: center;
@@ -659,6 +659,10 @@
           transform 0.3s ease,
           visibility 0.3s ease;
         z-index: 12;
+        width: min(460px, 100%);
+        height: min(860px, calc(100dvh - 12px));
+        max-height: calc(100dvh - 12px);
+        margin: auto;
         padding: 12px;
         text-align: center;
         user-select: none;
