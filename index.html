@@ -6173,7 +6173,7 @@
         ];
 
         const EQUIPMENT_TIER_BOUNDARIES = [
-          { maxFloor: 99, key: "tier1", theme: "黎明の", scale: 1 },
+          { maxFloor: 99, key: "tier1", theme: "黎明の", scale: 1.15 },
           { maxFloor: 199, key: "tier2", theme: "蒼炎の", scale: 8 },
           { maxFloor: 299, key: "tier3", theme: "雷閃の", scale: 35 },
           { maxFloor: 399, key: "tier4", theme: "翠嵐の", scale: 120 },
@@ -12748,9 +12748,15 @@
             ? rollArchetypes(game.floor, derived)
             : null;
           const growth = (rate) => Math.pow(rate, floorLevel - 1);
-          const earlyEase = Math.min(1, 0.55 + floorLevel * 0.12);
-          const earlyOffenseEase = Math.min(1, 0.5 + floorLevel * 0.1);
-          const earlyDefenseEase = Math.min(1, 0.52 + floorLevel * 0.095);
+          const earlyEase = Math.min(1, 0.48 + floorLevel * 0.09);
+          const earlyOffenseEase = Math.min(1, 0.34 + floorLevel * 0.08);
+          const earlyDefenseEase = Math.min(1, 0.42 + floorLevel * 0.082);
+          const earlyAttackRelief =
+            floorLevel <= 12 ? 1 - (12 - floorLevel) * 0.028 : 1;
+          const earlyDefenseRelief =
+            floorLevel <= 12 ? 1 - (12 - floorLevel) * 0.02 : 1;
+          const accuracyRelief =
+            floorLevel <= 10 ? 1 - (10 - floorLevel) * 0.018 : 1;
           const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
           const statScale = (
             base,
@@ -12776,18 +12782,23 @@
             hp: Math.round(statScale(hpBase, 1.11, 1.75)),
             maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
             atk: keepDecimal(
-              statScale(atkBase, 1.105, 1.55, earlyOffenseEase),
+              statScale(atkBase, 1.105, 1.55, earlyOffenseEase) *
+                earlyAttackRelief,
               1,
             ),
             def: keepDecimal(
-              statScale(defBase, 1.08, 1.45, earlyDefenseEase),
+              statScale(defBase, 1.08, 1.45, earlyDefenseEase) *
+                earlyDefenseRelief,
               2,
             ),
             spd:
               keepDecimal(statScale(spdBase, 1.03, 1.15), 2) +
               Math.random() * 1.5 +
               (isBoss ? 1.5 : 0),
-            accuracy: Math.min(115, 80 + growth(1.012) * 6 + (isBoss ? 6 : 0)),
+            accuracy: Math.min(
+              115,
+              (80 + growth(1.012) * 6 + (isBoss ? 6 : 0)) * accuracyRelief,
+            ),
             evade: Math.min(28, 6 + growth(1.02) * 2.2 + (isBoss ? 4 : 0)),
             attackCount: 1,
             attacksRemaining: 1,
