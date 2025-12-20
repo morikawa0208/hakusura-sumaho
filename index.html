@@ -12842,6 +12842,30 @@
             }
           }
 
+          const hasAttackModifier = (modifiers = {}) => {
+            return (
+              typeof modifiers.attackCount === "number" ||
+              typeof modifiers.attackCountBonus === "number"
+            );
+          };
+
+          const hasArchetypeMultiAttack =
+            !isBoss &&
+            (enemy.archetypes || []).some(
+              (entry) =>
+                hasAttackModifier(entry.baseModifiers) ||
+                (entry.abilities || []).some(
+                  (ability) =>
+                    hasAttackModifier(ability.modifiers) ||
+                    hasAttackModifier(ability.hiddenModifiers),
+                ),
+            );
+
+          if (!isBoss && !hasArchetypeMultiAttack) {
+            enemy.attackCount = 1;
+            enemy.attacksRemaining = 1;
+          }
+
           ensureCodexState();
           if (enemy.name && !isBoss)
             markCodexEntry("enemyMonsters", enemy.name);
