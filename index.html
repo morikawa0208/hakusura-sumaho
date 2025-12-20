@@ -14091,7 +14091,7 @@ function showDamagePopup(
           }
         }
 
-        const SAVE_VERSION = 1;
+        const CURRENT_SAVE_VERSION = 1;
         const SAVE_SLOTS = [
           { id: "slot1", label: "スロット1" },
           { id: "slot2", label: "スロット2" },
@@ -14124,6 +14124,25 @@ function showDamagePopup(
           return JSON.parse(JSON.stringify(data));
         }
 
+        function deepMerge(target, source) {
+          if (!target || typeof target !== "object" || Array.isArray(target))
+            return target;
+          if (!source || typeof source !== "object") return target;
+          Object.entries(source).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              target[key] = cloneState(value);
+            } else if (value && typeof value === "object") {
+              const base = target[key];
+              if (!base || typeof base !== "object" || Array.isArray(base))
+                target[key] = {};
+              deepMerge(target[key], value);
+            } else {
+              target[key] = value;
+            }
+          });
+          return target;
+        }
+
         function saveStorageKey(slotId, type = "primary") {
           return `hakusura-save-${slotId}-${type}`;
         }
@@ -14136,12 +14155,93 @@ function showDamagePopup(
           return { ...data, state };
         }
 
+        function getSaveVersion(data) {
+          const version = Number(data?.version);
+          if (Number.isInteger(version) && version >= 0) return version;
+          return 0;
+        }
+
+        function migrateFromV0ToV1(payload) {
+          if (!payload.state || typeof payload.state !== "object") {
+            payload.state = {};
+          }
+          if (!payload.state.ui || typeof payload.state.ui !== "object") {
+            payload.state.ui = {};
+          }
+          payload.version = 1;
+        }
+
+        const SAVE_MIGRATIONS = {
+          0: migrateFromV0ToV1,
+        };
+
+        function migrateSavePayload(rawPayload) {
+          const normalized = normalizeSavePayload(rawPayload);
+          if (!normalized?.state) return null;
+          let version = getSaveVersion(rawPayload);
+          const working = cloneState(normalized);
+
+          while (version < CURRENT_SAVE_VERSION) {
+            const migrator = SAVE_MIGRATIONS[version];
+            if (typeof migrator !== "function") break;
+            migrator(working);
+            version += 1;
+          }
+
+          working.version = CURRENT_SAVE_VERSION;
+          return { migratedFromVersion: getSaveVersion(rawPayload), ...working };
+        }
+
+        function prepareLoadedState(rawPayload) {
+          const migrated = migrateSavePayload(rawPayload);
+          if (!migrated?.state) return null;
+
+          const base = cloneState(INITIAL_SAVE_STATE);
+          const safeState =
+            migrated.state && typeof migrated.state === "object"
+              ? migrated.state
+              : {};
+
+          const mergedPlayer = deepMerge(base.player, safeState.player || {});
+          const mergedGame = deepMerge(base.game, safeState.game || {});
+          const mergedSkills = deepMerge(base.skills, safeState.skills || {});
+          const mergedUi = deepMerge(base.ui, safeState.ui || {});
+
+          if (!Array.isArray(mergedGame.enemies)) mergedGame.enemies = [];
+          if (!Array.isArray(mergedGame.turnQueue)) mergedGame.turnQueue = [];
+          if (!mergedGame.reachedBossFloors || typeof mergedGame.reachedBossFloors !== "object")
+            mergedGame.reachedBossFloors = {};
+          if (!mergedGame.legendaryRecords || typeof mergedGame.legendaryRecords !== "object")
+            mergedGame.legendaryRecords = {};
+          if (!mergedGame.codex || typeof mergedGame.codex !== "object")
+            mergedGame.codex = cloneState(INITIAL_SAVE_STATE.game.codex);
+
+          if (!Array.isArray(mergedPlayer.potions)) mergedPlayer.potions = [];
+          if (!mergedPlayer.inventory || typeof mergedPlayer.inventory !== "object")
+            mergedPlayer.inventory = cloneState(INITIAL_SAVE_STATE.player.inventory);
+          if (!Array.isArray(mergedPlayer.inventory.items)) mergedPlayer.inventory.items = [];
+          if (!Array.isArray(mergedPlayer.activeSkillSlots))
+            mergedPlayer.activeSkillSlots = cloneState(
+              INITIAL_SAVE_STATE.player.activeSkillSlots,
+            );
+
+          return {
+            ...migrated,
+            version: CURRENT_SAVE_VERSION,
+            state: {
+              player: mergedPlayer,
+              game: mergedGame,
+              skills: mergedSkills,
+              ui: mergedUi,
+            },
+          };
+        }
+
         function readSave(slotId, type = "primary") {
           try {
             const raw = localStorage.getItem(saveStorageKey(slotId, type));
             if (!raw) return null;
             const data = JSON.parse(raw);
-            if (data?.version !== SAVE_VERSION) return null;
             return normalizeSavePayload(data);
           } catch (err) {
             console.warn("save read failed", err);
@@ -14157,7 +14257,7 @@ function showDamagePopup(
           try {
             const payload = {
               state,
-              version: SAVE_VERSION,
+              version: CURRENT_SAVE_VERSION,
               savedAt: Date.now(),
               reason,
             };
@@ -14268,51 +14368,19 @@ function showDamagePopup(
         }
 
         function applyLoadedState(
-          savePayload,
+          preparedPayload,
           { usedBackup = false, slotId, suppressLog = false } = {},
         ) {
-          const normalized = normalizeSavePayload(savePayload);
-          if (!normalized?.state) return false;
-          const payload = cloneState(normalized.state);
-          // ★ロード時：セーブに無いキーはデフォルトで補完してから適用する
-          function deepMerge(target, source) {
-            if (!source || typeof source !== "object") return target;
-            Object.entries(source).forEach(([k, v]) => {
-              if (v && typeof v === "object" && !Array.isArray(v)) {
-                const base = target[k];
-                if (!base || typeof base !== "object" || Array.isArray(base)) target[k] = {};
-                deepMerge(target[k], v);
-              } else {
-                target[k] = cloneState(v);
-              }
-            });
-            return target;
-          }
-          
-          const mergedPlayer = cloneState(INITIAL_SAVE_STATE.player);
-          deepMerge(mergedPlayer, payload.player || {});
-          replaceObject(player, mergedPlayer);
+          const payload = preparedPayload?.state;
+          if (!payload) return false;
 
-         // --- game を安全に復元（欠けてるキーは初期値で補完） ---
-const mergedGame = cloneState(INITIAL_SAVE_STATE.game);
-deepMerge(mergedGame, payload.game || {});
+          replaceObject(player, payload.player || {});
+          replaceObject(game, payload.game || {});
 
-// ついでに必須キーの保険（壊れたセーブでも落ちない）
-if (!Array.isArray(mergedGame.enemies)) mergedGame.enemies = [];
-if (!Array.isArray(mergedGame.turnQueue)) mergedGame.turnQueue = [];
-if (!mergedGame.reachedBossFloors || typeof mergedGame.reachedBossFloors !== "object") mergedGame.reachedBossFloors = {};
-if (!mergedGame.legendaryRecords || typeof mergedGame.legendaryRecords !== "object") mergedGame.legendaryRecords = {};
-if (!mergedGame.codex || typeof mergedGame.codex !== "object") mergedGame.codex = cloneState(INITIAL_SAVE_STATE.game.codex);
-
-replaceObject(game, mergedGame);
- 
-
-          
           if (typeof game.autoSkillEnabled !== "boolean") {
             game.autoSkillEnabled = false;
           }
 
-          // ここから追記: 階層が変な値だった場合の保険
           if (!Number.isFinite(game.floor) || game.floor <= 0) {
             game.floor = 1;
           }
@@ -14379,24 +14447,69 @@ replaceObject(game, mergedGame);
         }
 
         function startNewRun(slotId) {
-          applyLoadedState(INITIAL_SAVE_STATE, { slotId, suppressLog: true });
+          const initialPayload = {
+            version: CURRENT_SAVE_VERSION,
+            state: cloneState(INITIAL_SAVE_STATE),
+          };
+          const prepared = prepareLoadedState(initialPayload);
+          applyLoadedState(prepared, { slotId, suppressLog: true });
           spawnEnemies();
           setActiveSaveSlot(slotId, { announce: true });
           log("=== 新しく挑戦を開始 ===", "info");
         }
 
+        function applySavePayloadWithBackup(
+          slotId,
+          { primary, backup },
+          { announce = false, suppressLog = false } = {},
+        ) {
+          const attempts = [
+            { payload: primary, usedBackup: false },
+            { payload: backup, usedBackup: true },
+          ];
+
+          for (const attempt of attempts) {
+            if (!attempt.payload) continue;
+            try {
+              const prepared = prepareLoadedState(attempt.payload);
+              if (!prepared) throw new Error("invalid save payload");
+              const ok = applyLoadedState(prepared, {
+                usedBackup: attempt.usedBackup,
+                slotId,
+                suppressLog,
+              });
+              if (ok) {
+                if (isPlayableSlot(slotId))
+                  setActiveSaveSlot(slotId, { announce });
+                return true;
+              }
+            } catch (err) {
+              console.error("failed to load save", err);
+              if (!attempt.usedBackup && backup) {
+                log(
+                  "メインのセーブ読み込みに失敗したため、バックアップから復旧を試みます",
+                  "warning",
+                );
+              }
+            }
+          }
+
+          if (!suppressLog) {
+            log(
+              "セーブデータが読み込めなかったため、新規データで開始します",
+              "warning",
+            );
+          }
+          return false;
+        }
+
         function activateSaveSlot(slotId) {
           if (!isPlayableSlot(slotId)) return;
-          const { primary, backup } = readSlotPair(slotId);
-          const source = primary || backup;
-          if (source) {
-            applyLoadedState(source, {
-              usedBackup: !primary && !!backup,
-              slotId,
-            });
-            setActiveSaveSlot(slotId, { announce: true });
-            return;
-          }
+          const pair = readSlotPair(slotId);
+          const loaded = applySavePayloadWithBackup(slotId, pair, {
+            announce: true,
+          });
+          if (loaded) return;
           startNewRun(slotId);
         }
 
@@ -14411,23 +14524,18 @@ replaceObject(game, mergedGame);
         }
 
         function autoLoadLastActiveSlot() {
-          const { primary, backup } = readSlotPair(activeSaveSlotId);
-          const source = primary || backup;
-          if (!source) return false;
-          try {
-            applyLoadedState(source, {
-              usedBackup: !primary && !!backup,
-              slotId: activeSaveSlotId,
-            });
-            return true;
-          } catch (err) {
-            console.error("failed to load save", err);
+          const pair = readSlotPair(activeSaveSlotId);
+          const loaded = applySavePayloadWithBackup(activeSaveSlotId, pair, {
+            announce: true,
+          });
+          if (!loaded) {
             log(
               "セーブデータ読み込み中にエラーが発生したため、新しく開始します",
               "warning",
             );
             return false;
           }
+          return true;
         }
 
         function readSlotPair(slotId) {
@@ -14540,19 +14648,20 @@ replaceObject(game, mergedGame);
               setActiveSaveSlot(slotId, { announce: true });
             renderSaveSlots();
           } else if (action === "load") {
-            const { primary, backup } = readSlotPair(slotId);
-            const source = primary || backup;
-            if (!source) {
+            const pair = readSlotPair(slotId);
+            const sourceExists = pair.primary || pair.backup;
+            if (!sourceExists) {
               log("保存データがありません", "warning");
               return;
             }
-            applyLoadedState(source, {
-              usedBackup: !primary && !!backup,
-              slotId,
+            const loaded = applySavePayloadWithBackup(slotId, pair, {
+              announce: true,
             });
-            if (isPlayableSlot(slotId))
-              setActiveSaveSlot(slotId, { announce: true });
-            renderSaveSlots();
+            if (loaded) {
+              renderSaveSlots();
+            } else {
+              startNewRun(slotId);
+            }
           } else if (action === "delete") {
             deleteSave(slotId);
             if (slotId === activeSaveSlotId) {
