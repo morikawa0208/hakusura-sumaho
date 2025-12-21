@@ -15039,13 +15039,9 @@ function showDamagePopup(
             }
 
             const floorNumber = Math.max(1, Math.floor(game.floor || 1));
-            const clearedBossFloor =
-              enemy.isBoss &&
-              isBossFloor(floorNumber) &&
-              (game.highestFloor || 1) > floorNumber;
 
             if (refs.retryButton) {
-              const canShowRetry = clearedBossFloor;
+              const canShowRetry = enemy.isBoss;
               refs.retryButton.style.display = canShowRetry ? "inline-flex" : "none";
               refs.retryButton.disabled = enemy.hp > 0;
               refs.retryButton.onclick = (event) => {
