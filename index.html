@@ -9339,7 +9339,20 @@
         const PASSIVE_UNLOCK_SCHEDULE = [
           10, 10, 20, 20, 30, 30, 40, 40, 50, 50,
         ];
-        const THRESHOLD_MULTIPLIERS = { 10: 1.6, 30: 2, 50: 2.4 };
+        const THRESHOLD_MULTIPLIERS = { 10: 2.1, 30: 3.2, 50: 4.4 };
+        const THRESHOLD_FALLBACK_MULTIPLIER = 2.6;
+        const SKILL_GROWTH_BASE = 1.18;
+        const SKILL_GROWTH_CURVE = 1.05;
+
+        function getSkillGrowthMultiplier(level) {
+          if (!level || level <= 0) return 0;
+          const curveLevel = Math.max(0, level - 1);
+          const exponential = Math.pow(SKILL_GROWTH_BASE, curveLevel / 3);
+          const curveBoost =
+            1 +
+            Math.pow(curveLevel + 1, SKILL_GROWTH_CURVE * 0.62) * 0.04;
+          return Number((exponential * curveBoost).toFixed(4));
+        }
 
         function applyUnlockPattern(definitions) {
           const tracker = {};
@@ -9366,7 +9379,13 @@
 
         function amplifyThresholdBonuses(thresholds = []) {
           return thresholds.map((threshold) => {
-            const multiplier = THRESHOLD_MULTIPLIERS[threshold.level] || 1.8;
+            const baseMultiplier =
+              THRESHOLD_MULTIPLIERS[threshold.level] ||
+              THRESHOLD_FALLBACK_MULTIPLIER;
+            const dynamicBoost = 1 + Math.pow(threshold.level / 10, 1.12) * 0.12;
+            const multiplier = Number(
+              (baseMultiplier * dynamicBoost).toFixed(2),
+            );
             const bonus = {};
             Object.entries(threshold.bonus || {}).forEach(([key, value]) => {
               if (typeof value !== "number") return;
@@ -11038,8 +11057,17 @@
           const target = {};
           const effectiveLevel = Math.max(0, level || 0);
           if (!skill || effectiveLevel <= 0) return target;
-          if (skill.scaling?.perLevel)
-            addBonus(target, skill.scaling.perLevel, effectiveLevel);
+          if (skill.scaling?.perLevel) {
+            const growthMultiplier = Math.max(
+              1,
+              getSkillGrowthMultiplier(effectiveLevel),
+            );
+            addBonus(
+              target,
+              skill.scaling.perLevel,
+              effectiveLevel * growthMultiplier,
+            );
+          }
           (skill.thresholds || []).forEach((threshold) => {
             if (effectiveLevel >= threshold.level)
               addBonus(target, threshold.bonus);
@@ -11086,7 +11114,15 @@
             const reached = [];
             if (level > 0) {
               if (skill.scaling?.perLevel) {
-                addBonus(aggregated, skill.scaling.perLevel, level);
+                const growthMultiplier = Math.max(
+                  1,
+                  getSkillGrowthMultiplier(level),
+                );
+                addBonus(
+                  aggregated,
+                  skill.scaling.perLevel,
+                  level * growthMultiplier,
+                );
               }
               (skill.thresholds || []).forEach((threshold) => {
                 if (level >= threshold.level) {
@@ -15726,7 +15762,9 @@ function showDamagePopup(
           if (locked) return "毎Lv: ？？？";
           if (!skill.scaling?.perLevel) return "毎Lv効果なし";
           const text = formatSkillBonusText(skill.scaling.perLevel);
-          return text ? `毎Lv: ${text}` : "毎Lv効果なし";
+          const boost = Math.max(1, getSkillGrowthMultiplier(skill.level || 1));
+          const boostText = boost > 1 ? ` (成長倍率x${boost.toFixed(2)})` : "";
+          return text ? `毎Lv: ${text}${boostText}` : "毎Lv効果なし";
         }
 
         function adjustSkillLevel(key, delta) {
