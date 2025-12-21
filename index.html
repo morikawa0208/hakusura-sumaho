@@ -1102,26 +1102,34 @@
         bottom: 96px;
         transform: translate(-50%, 10px);
         width: min(440px, calc(100% - 16px));
-        background: linear-gradient(
-          135deg,
-          rgba(52, 211, 153, 0.16),
-          rgba(96, 165, 250, 0.12)
-        );
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background:
+          radial-gradient(
+            circle at 20% 20%,
+            rgba(52, 211, 153, 0.18),
+            transparent 38%
+          ),
+          radial-gradient(
+            circle at 80% 80%,
+            rgba(96, 165, 250, 0.2),
+            transparent 44%
+          ),
+          rgba(11, 14, 20, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.16);
         border-radius: 12px;
-        padding: 12px;
+        padding: 14px 14px 12px;
         display: grid;
         grid-template-columns: auto 1fr;
         gap: 10px;
         box-shadow:
-          0 18px 40px rgba(0, 0, 0, 0.45),
-          0 0 0 1px rgba(255, 255, 255, 0.06);
+          0 18px 48px rgba(0, 0, 0, 0.65),
+          0 0 0 1px rgba(52, 211, 153, 0.18),
+          0 0 0 2px rgba(255, 255, 255, 0.04);
+        z-index: 35;
         opacity: 0;
         pointer-events: none;
         transition:
-          opacity 0.2s ease,
-          transform 0.22s ease;
-        z-index: 35;
+          opacity 0.28s ease,
+          transform 0.26s ease;
       }
 
       .level-up-guidance.show {
@@ -1137,8 +1145,10 @@
         display: grid;
         place-items: center;
         font-size: 20px;
-        background: rgba(255, 255, 255, 0.08);
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.12);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+          0 8px 18px rgba(0, 0, 0, 0.35);
       }
 
       .level-up-guidance .guidance-body {
@@ -1149,6 +1159,9 @@
       .level-up-guidance .guidance-title {
         font-weight: 800;
         letter-spacing: 0.02em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
 
       .level-up-guidance .guidance-text {
@@ -11453,7 +11466,6 @@
         );
         const menuSkillButton = document.getElementById("btn-skill-tree");
         const menuStatusButton = document.getElementById("btn-player-modal");
-        let levelUpGuidanceTimer = null;
 
         const dropToastStack = document.getElementById("drop-toast-stack");
         const dropToastTemplate = document.getElementById("drop-toast-template");
@@ -11527,8 +11539,6 @@
         }
 
         function hideLevelUpGuidance() {
-          if (levelUpGuidanceTimer) clearTimeout(levelUpGuidanceTimer);
-          levelUpGuidanceTimer = null;
           levelUpGuidance?.classList.remove("show");
           levelUpGuidance?.setAttribute("aria-hidden", "true");
           setMenuHighlight(false);
@@ -11536,13 +11546,11 @@
 
         function showLevelUpGuidance() {
           if (!levelUpGuidance) return;
-          if (levelUpGuidanceTimer) clearTimeout(levelUpGuidanceTimer);
           levelUpGuidance.classList.remove("show");
           void levelUpGuidance.offsetWidth;
           levelUpGuidance.setAttribute("aria-hidden", "false");
           levelUpGuidance.classList.add("show");
           setMenuHighlight(true);
-          levelUpGuidanceTimer = setTimeout(() => hideLevelUpGuidance(), 6200);
         }
 
         levelUpGuidanceClose?.addEventListener("click", hideLevelUpGuidance);
