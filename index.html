@@ -6374,6 +6374,10 @@
           EQUIPMENT_STAT_POOL.map((s) => [s.key, s]),
         );
 
+        // オプション全体の火力（基礎／ランダム／称号）を底上げする係数
+        const OPTION_POWER_SCALE = 1.5;
+        const TITLE_OPTION_POWER_SCALE = 1.5;
+
         const EQUIPMENT_BASE_TEMPLATE_LIBRARY = {
           weapon: [
             {
@@ -8451,7 +8455,7 @@
           const [min, max] = def.range;
           const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
           const raw = min + Math.random() * (max - min);
-          const scaled = raw * rarityScale;
+          const scaled = raw * rarityScale * OPTION_POWER_SCALE;
           const precision = def.precision ?? (def.unit === "%" ? 1 : 0);
           if (precision > 0) {
             const base = 10 ** precision;
@@ -8465,7 +8469,7 @@
           const rarityScale = 1 + (rarity?.rank ?? 0) * 0.2;
           const precision = def.precision ?? (def.unit === "%" ? 1 : 0);
           const scaleAndRound = (value) => {
-            const scaled = value * rarityScale;
+            const scaled = value * rarityScale * OPTION_POWER_SCALE;
             if (precision > 0) {
               const base = 10 ** precision;
               return Math.round(scaled * base) / base;
@@ -8642,19 +8646,25 @@
             const effect =
               pickRandom(TITLE_PRIMARY_PER_LEVEL_EFFECTS) ||
               TITLE_PRIMARY_PER_LEVEL_EFFECTS[0];
+            const scaledEffect = {
+              amount: effect.amount * TITLE_OPTION_POWER_SCALE,
+              interval: effect.interval,
+            };
             title.primaryPerLevelStats.forEach((statKey) => {
               if (!primaryPerLevel[statKey]) primaryPerLevel[statKey] = [];
               primaryPerLevel[statKey].push({
-                amount: effect.amount,
-                interval: effect.interval,
+                amount: scaledEffect.amount,
+                interval: scaledEffect.interval,
               });
             });
           }
 
           if (title?.primaryFixedStats?.length) {
-            const fixedValue =
-              pickRandom(TITLE_PRIMARY_FIXED_EFFECTS) ||
-              TITLE_PRIMARY_FIXED_EFFECTS[0];
+            const fixedValue = Math.round(
+              (pickRandom(TITLE_PRIMARY_FIXED_EFFECTS) ||
+                TITLE_PRIMARY_FIXED_EFFECTS[0]) *
+                TITLE_OPTION_POWER_SCALE,
+            );
             title.primaryFixedStats.forEach((statKey) => {
               const current = primaryFixed[statKey];
               primaryFixed[statKey] =
@@ -8667,7 +8677,11 @@
           if (title?.attackCountBonus) {
             const extraAttacks =
               pickRandom(TITLE_ATTACK_COUNT_BONUS_EFFECTS) || 0;
-            attackCountBonus += extraAttacks;
+            const scaledAttacks = Math.max(
+              1,
+              Math.round(extraAttacks * TITLE_OPTION_POWER_SCALE),
+            );
+            attackCountBonus += scaledAttacks;
           }
 
           if (typeof title?.attackTargetsBonus === "number") {
