@@ -1057,6 +1057,111 @@
         border-radius: 10px;
       }
 
+      .menu-button-highlight {
+        position: relative;
+        box-shadow:
+          0 0 0 1px rgba(52, 211, 153, 0.65),
+          0 12px 30px rgba(52, 211, 153, 0.35);
+        animation: guidancePulse 1.2s ease-in-out infinite;
+        isolation: isolate;
+      }
+
+      .menu-button-highlight::after {
+        content: "";
+        position: absolute;
+        inset: -4px;
+        border-radius: 12px;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(52, 211, 153, 0.22),
+          rgba(96, 165, 250, 0.1)
+        );
+        z-index: -1;
+        filter: blur(6px);
+      }
+
+      @keyframes guidancePulse {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+          box-shadow:
+            0 0 0 1px rgba(52, 211, 153, 0.55),
+            0 12px 30px rgba(52, 211, 153, 0.25);
+        }
+        50% {
+          transform: translateY(-1px) scale(1.02);
+          box-shadow:
+            0 0 0 2px rgba(52, 211, 153, 0.8),
+            0 16px 36px rgba(52, 211, 153, 0.4);
+        }
+      }
+
+      .level-up-guidance {
+        position: absolute;
+        left: 50%;
+        bottom: 96px;
+        transform: translate(-50%, 10px);
+        width: min(440px, calc(100% - 16px));
+        background: linear-gradient(
+          135deg,
+          rgba(52, 211, 153, 0.16),
+          rgba(96, 165, 250, 0.12)
+        );
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 12px;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        box-shadow:
+          0 18px 40px rgba(0, 0, 0, 0.45),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.2s ease,
+          transform 0.22s ease;
+        z-index: 35;
+      }
+
+      .level-up-guidance.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+        pointer-events: auto;
+      }
+
+      .level-up-guidance .guidance-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        background: rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+
+      .level-up-guidance .guidance-body {
+        display: grid;
+        gap: 6px;
+      }
+
+      .level-up-guidance .guidance-title {
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+
+      .level-up-guidance .guidance-text {
+        color: var(--muted);
+        line-height: 1.4;
+        font-size: 13px;
+      }
+
+      .level-up-guidance .guidance-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
       .pill {
         font-size: 12px;
         background: rgba(255, 255, 255, 0.06);
@@ -3008,6 +3113,25 @@
         <button id="btn-warp">ワープ</button>
         <button id="btn-debug">デバッグ</button>
       </nav>
+
+      <div
+        id="level-up-guidance"
+        class="level-up-guidance"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+      >
+        <div class="guidance-icon" aria-hidden="true">🎉</div>
+        <div class="guidance-body">
+          <div class="guidance-title">Lv2到達おめでとう！</div>
+          <div class="guidance-text">
+            レベルが上がるとステータスポイント5ポイント、スキルポイント1ポイント付与される。リセットも出来るので色々試してみてください。
+          </div>
+          <div class="guidance-actions">
+            <button id="level-up-guidance-close" type="button">OK</button>
+          </div>
+        </div>
+      </div>
 
       <div id="level-up-toast" class="level-up-toast" aria-hidden="true">
         <div class="toast-glow"></div>
@@ -11323,6 +11447,14 @@
         const levelUpValue = document.getElementById("level-up-value");
         let levelUpToastTimer = null;
 
+        const levelUpGuidance = document.getElementById("level-up-guidance");
+        const levelUpGuidanceClose = document.getElementById(
+          "level-up-guidance-close",
+        );
+        const menuSkillButton = document.getElementById("btn-skill-tree");
+        const menuStatusButton = document.getElementById("btn-player-modal");
+        let levelUpGuidanceTimer = null;
+
         const dropToastStack = document.getElementById("drop-toast-stack");
         const dropToastTemplate = document.getElementById("drop-toast-template");
 
@@ -11386,6 +11518,34 @@
             levelUpToast?.setAttribute("aria-hidden", "true");
           }, 1900);
         }
+
+        function setMenuHighlight(enabled) {
+          [menuSkillButton, menuStatusButton].forEach((btn) => {
+            if (!btn) return;
+            btn.classList.toggle("menu-button-highlight", Boolean(enabled));
+          });
+        }
+
+        function hideLevelUpGuidance() {
+          if (levelUpGuidanceTimer) clearTimeout(levelUpGuidanceTimer);
+          levelUpGuidanceTimer = null;
+          levelUpGuidance?.classList.remove("show");
+          levelUpGuidance?.setAttribute("aria-hidden", "true");
+          setMenuHighlight(false);
+        }
+
+        function showLevelUpGuidance() {
+          if (!levelUpGuidance) return;
+          if (levelUpGuidanceTimer) clearTimeout(levelUpGuidanceTimer);
+          levelUpGuidance.classList.remove("show");
+          void levelUpGuidance.offsetWidth;
+          levelUpGuidance.setAttribute("aria-hidden", "false");
+          levelUpGuidance.classList.add("show");
+          setMenuHighlight(true);
+          levelUpGuidanceTimer = setTimeout(() => hideLevelUpGuidance(), 6200);
+        }
+
+        levelUpGuidanceClose?.addEventListener("click", hideLevelUpGuidance);
 
         function isDropToastEnabledForRarity(rarity) {
           if (!rarity) return true;
@@ -19640,6 +19800,7 @@ function showDamagePopup(
         }
 
         function levelUp() {
+          const previousLevel = player.level;
           player.level += 1;
           player.expToLevel = Math.round(player.expToLevel * 1.18);
           recalcDerivedStats();
@@ -19652,6 +19813,9 @@ function showDamagePopup(
             "good",
           );
           triggerLevelUpEffect(player.level);
+          if (previousLevel === 1 && player.level === 2) {
+            showLevelUpGuidance();
+          }
           maybeAutoSave("レベルアップ");
         }
 
