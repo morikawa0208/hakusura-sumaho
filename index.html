@@ -1175,6 +1175,40 @@
         justify-content: flex-end;
       }
 
+      .enemy-guidance {
+        top: 78px;
+        bottom: auto;
+        transform: translate(-50%, -12px);
+      }
+
+      .enemy-guidance.show {
+        transform: translate(-50%, 0);
+      }
+
+      .enemy-highlight {
+        position: relative;
+        box-shadow:
+          0 0 0 1px rgba(52, 211, 153, 0.65),
+          0 12px 30px rgba(52, 211, 153, 0.35);
+        animation: guidancePulse 1.2s ease-in-out infinite;
+        isolation: isolate;
+      }
+
+      .enemy-highlight::after {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 14px;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(52, 211, 153, 0.22),
+          rgba(96, 165, 250, 0.1)
+        );
+        z-index: -1;
+        filter: blur(8px);
+        pointer-events: none;
+      }
+
       .pill {
         font-size: 12px;
         background: rgba(255, 255, 255, 0.06);
@@ -3082,6 +3116,27 @@
         </div>
         <div id="enemies" class="enemy-list"></div>
       </section>
+
+      <div
+        id="enemy-guidance"
+        class="level-up-guidance enemy-guidance"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+      >
+        <div class="guidance-icon" aria-hidden="true">👾</div>
+        <div class="guidance-body">
+          <div class="guidance-title">
+            敵カードとアーキタイプを確認しよう
+          </div>
+          <div class="guidance-text">
+            Lv1ではまず敵の特徴をチェック！メッセージはタップで詳細を確認できます。
+          </div>
+          <div class="guidance-actions">
+            <button id="enemy-guidance-close" type="button">OK</button>
+          </div>
+        </div>
+      </div>
 
       <section class="card">
         <div
@@ -11466,9 +11521,13 @@
         );
         const menuSkillButton = document.getElementById("btn-skill-tree");
         const menuStatusButton = document.getElementById("btn-player-modal");
+        const enemyGuidance = document.getElementById("enemy-guidance");
+        const enemyGuidanceClose = document.getElementById("enemy-guidance-close");
 
         const dropToastStack = document.getElementById("drop-toast-stack");
         const dropToastTemplate = document.getElementById("drop-toast-template");
+        let enemyIntroShown = false;
+        let enemyIntroActive = false;
 
         function fitDropItemName(target) {
           if (!target) return;
@@ -11554,6 +11613,47 @@
         }
 
         levelUpGuidanceClose?.addEventListener("click", hideLevelUpGuidance);
+
+        function syncEnemyHighlight() {
+          const cards = document.querySelectorAll("#enemies .enemy-card");
+          cards.forEach((card) => {
+            card.classList.toggle("enemy-highlight", enemyIntroActive);
+            const archetypeTag = card.querySelector(".tag.clickable");
+            archetypeTag?.classList.toggle("enemy-highlight", enemyIntroActive);
+          });
+        }
+
+        function hideEnemyIntroGuidance() {
+          enemyIntroActive = false;
+          enemyGuidance?.classList.remove("show");
+          enemyGuidance?.setAttribute("aria-hidden", "true");
+          syncEnemyHighlight();
+        }
+
+        function showEnemyIntroGuidance() {
+          if (enemyIntroShown || player.level !== 1 || !enemyGuidance) return;
+          enemyIntroShown = true;
+          enemyIntroActive = true;
+          enemyGuidance.classList.remove("show");
+          void enemyGuidance.offsetWidth;
+          enemyGuidance.setAttribute("aria-hidden", "false");
+          enemyGuidance.classList.add("show");
+          syncEnemyHighlight();
+        }
+
+        enemyGuidanceClose?.addEventListener("click", hideEnemyIntroGuidance);
+        enemyGuidance?.addEventListener("click", (event) => {
+          if (event.target === enemyGuidanceClose) return;
+          const targetEnemy = game.enemies?.find((e) => e);
+          if (targetEnemy) openEnemyModal(targetEnemy);
+        });
+
+        function maybeShowEnemyIntroGuidance() {
+          if (enemyIntroShown) return;
+          if (player.level !== 1) return;
+          if (!game.enemies || game.enemies.length === 0) return;
+          showEnemyIntroGuidance();
+        }
 
         function isDropToastEnabledForRarity(rarity) {
           if (!rarity) return true;
@@ -13767,6 +13867,7 @@ function showDamagePopup(
           );
           renderWeaponEnhancePanel();
           renderTurnOrder();
+          maybeShowEnemyIntroGuidance();
         }
 
         function renderStatusList(container, entity) {
@@ -14678,6 +14779,8 @@ function showDamagePopup(
           normalizeOwnedEquipment();
           hydrateCodexFromOwned();
           calculateSkillBonuses();
+          hideEnemyIntroGuidance();
+          enemyIntroShown = false;
           const derived = recalcDerivedStats();
           const battleActive =
             game.awaitingInput || (game.enemies || []).some((e) => e.hp > 0);
@@ -15281,6 +15384,8 @@ function showDamagePopup(
           existing.forEach((card, id) => {
             if (!used.has(id)) card.remove();
           });
+
+          syncEnemyHighlight();
         }
 
         function renderActions() {
