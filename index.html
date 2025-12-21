@@ -12963,7 +12963,17 @@
             floorLevel <= 10 ? 1 - (10 - floorLevel) * 0.018 : 1;
           const lowFloorAttackScale =
             !isBoss && floorLevel <= 100 ? 0.7 : 1;
-          const difficultyInflation = 1 + Math.pow(floorLevel / 70, 1.22) * 0.9;
+          const calcDifficultyInflation = (floor) => {
+            const capped = Math.max(1, floor);
+            const logCurve = 1 + Math.log1p(capped / 60) * 0.33;
+            const earlyRatio = Math.min(capped, 70) / 70;
+            const earlyExponent = 1 + Math.pow(earlyRatio, 1.08) * 0.08;
+            const lateRatio = Math.max(capped - 70, 0) / 130;
+            const lateExponent = 1 + Math.pow(lateRatio, 0.72) * 0.08;
+            const combined = logCurve * earlyExponent * lateExponent;
+            return Math.min(combined, 1.7);
+          };
+          const difficultyInflation = calcDifficultyInflation(floorLevel);
           const statScale = (
             base,
             rate,
@@ -12978,6 +12988,28 @@
               easeFactor
             );
           };
+          if ([50, 100, 200].includes(floorLevel)) {
+            const hpMultiplier = keepDecimal(statScale(1, 1.11, 1.75), 3);
+            const atkMultiplier = keepDecimal(
+              statScale(1, 1.105, 1.55, earlyOffenseEase) *
+                earlyAttackRelief *
+                lowFloorAttackScale,
+              3,
+            );
+            const defMultiplier = keepDecimal(
+              statScale(1, 1.08, 1.45, earlyDefenseEase) * earlyDefenseRelief,
+              3,
+            );
+            console.log(
+              `[CurveCheck] ${floorLevel}F スケール確認`,
+              {
+                difficultyInflation: keepDecimal(difficultyInflation, 4),
+                hpMultiplier,
+                atkMultiplier,
+                defMultiplier,
+              },
+            );
+          }
           const hpBase = 12;
           const atkBase = 7.5;
           const defBase = 3.2;
