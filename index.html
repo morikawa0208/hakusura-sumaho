@@ -11854,25 +11854,25 @@
             type: "speed",
           });
 
-          const maxHpBase = (player.base.hp + vit * 8) * sustainGrowth;
-          const maxMpBase = (player.base.mp + int * 3) * sustainGrowth;
+          const maxHpBase = (player.base.hp + vit * 8.6) * sustainGrowth;
+          const maxMpBase = (player.base.mp + int * 3.2) * sustainGrowth;
           const physAtkBase =
-            (player.base.physAtk + str * 1.35) * offenseGrowth;
+            (player.base.physAtk + str * 1.55) * offenseGrowth;
           const magAtkBase =
-            (player.base.magAtk + int * 1.4) * offenseGrowth;
+            (player.base.magAtk + int * 1.6) * offenseGrowth;
           const physDefBase =
-            (player.base.physDef + vit * 0.65 + str * 0.22) * sustainGrowth;
+            (player.base.physDef + vit * 0.68 + str * 0.26) * sustainGrowth;
           const magDefBase =
-            (player.base.magDef + vit * 0.55 + int * 0.32) * sustainGrowth;
-          const speedBase = (player.base.speed + agi * 1.12) * speedGrowth;
+            (player.base.magDef + vit * 0.58 + int * 0.36) * sustainGrowth;
+          const speedBase = (player.base.speed + agi * 1.18) * speedGrowth;
 
           // 会心・命中・貫通など
-          const critBase = Math.min(75, (agi + luck) * 0.64);
+          const critBase = Math.min(78, (agi + luck) * 0.7);
           const evadeBase = Math.min(60, (agi + luck) * 0.42);
-          const accuracyBase = Math.min(100, 70 + agi * 0.12);
-          const physPenBase = Math.min(32, str * 0.22);
-          const magPenBase = Math.min(32, int * 0.22);
-          const critDmgBase = Math.min(55, luck * 0.65);
+          const accuracyBase = Math.min(100, 70 + agi * 0.14);
+          const physPenBase = Math.min(34, str * 0.26);
+          const magPenBase = Math.min(34, int * 0.26);
+          const critDmgBase = Math.min(58, luck * 0.7);
 
           // ---- 防御まわり（方針：体力は関与せず、装備・スキル由来のみ） ----
           // ・被ダメ軽減：装備・スキルでのみ積む。ここでは0固定。
