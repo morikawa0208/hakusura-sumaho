@@ -11827,6 +11827,15 @@
           return stat.base + stat.bonus;
         };
 
+        function playerGrowthMultiplier(level, { type = "balanced" } = {}) {
+          const effective = Math.max(1, Math.floor(level || 1));
+          const curve =
+            type === "offense" ? 1.035 : type === "speed" ? 1.02 : 1.028;
+          const cap =
+            type === "offense" ? 1.45 : type === "speed" ? 1.25 : 1.35;
+          return Math.min(cap, Math.pow(curve, effective - 1));
+        }
+
         function calcSecondaryStats() {
           const str = statTotal("str");
           const int = statTotal("int");
@@ -11835,21 +11844,35 @@
           const luck = statTotal("luck");
 
           // ---- 基本ステータス系 ----
-          const maxHpBase = player.base.hp + vit * 8;
-          const maxMpBase = player.base.mp + int * 3;
-          const physAtkBase = player.base.physAtk + str * 1.2;
-          const magAtkBase = player.base.magAtk + int * 1.3;
-          const physDefBase = player.base.physDef + vit * 0.6 + str * 0.2;
-          const magDefBase = player.base.magDef + vit * 0.5 + int * 0.3;
-          const speedBase = player.base.speed + agi;
+          const offenseGrowth = playerGrowthMultiplier(player.level, {
+            type: "offense",
+          });
+          const sustainGrowth = playerGrowthMultiplier(player.level, {
+            type: "balanced",
+          });
+          const speedGrowth = playerGrowthMultiplier(player.level, {
+            type: "speed",
+          });
+
+          const maxHpBase = (player.base.hp + vit * 8.6) * sustainGrowth;
+          const maxMpBase = (player.base.mp + int * 3.2) * sustainGrowth;
+          const physAtkBase =
+            (player.base.physAtk + str * 1.55) * offenseGrowth;
+          const magAtkBase =
+            (player.base.magAtk + int * 1.6) * offenseGrowth;
+          const physDefBase =
+            (player.base.physDef + vit * 0.68 + str * 0.26) * sustainGrowth;
+          const magDefBase =
+            (player.base.magDef + vit * 0.58 + int * 0.36) * sustainGrowth;
+          const speedBase = (player.base.speed + agi * 1.18) * speedGrowth;
 
           // 会心・命中・貫通など
-          const critBase = Math.min(70, (agi + luck) * 0.6);
-          const evadeBase = Math.min(60, (agi + luck) * 0.4);
-          const accuracyBase = Math.min(100, 70 + agi * 0.1);
-          const physPenBase = Math.min(30, str * 0.2);
-          const magPenBase = Math.min(30, int * 0.2);
-          const critDmgBase = Math.min(50, luck * 0.6);
+          const critBase = Math.min(78, (agi + luck) * 0.7);
+          const evadeBase = Math.min(60, (agi + luck) * 0.42);
+          const accuracyBase = Math.min(100, 70 + agi * 0.14);
+          const physPenBase = Math.min(34, str * 0.26);
+          const magPenBase = Math.min(34, int * 0.26);
+          const critDmgBase = Math.min(58, luck * 0.7);
 
           // ---- 防御まわり（方針：体力は関与せず、装備・スキル由来のみ） ----
           // ・被ダメ軽減：装備・スキルでのみ積む。ここでは0固定。
@@ -12584,13 +12607,25 @@
           });
           player.primaryPerLevelBonus = perLevelPrimaryBonus;
           player.primaryFixedBonus = equipmentBonuses.primaryFixed;
+          const levelAttackBonus =
+            player.level >= 28
+              ? 0.9
+              : player.level >= 18
+                ? 0.6
+                : player.level >= 10
+                  ? 0.35
+                  : player.level >= 5
+                    ? 0.15
+                    : 0;
+          const levelTargetBonus =
+            player.level >= 25 ? 0.4 : player.level >= 12 ? 0.2 : 0;
           player.attackCount = Math.max(
             1,
-            Math.round(1 + player.attackCountBonus),
+            Math.round(1 + player.attackCountBonus + levelAttackBonus),
           );
           player.attackTargets = Math.max(
             1,
-            Math.round(1 + player.attackTargetsBonus),
+            Math.round(1 + player.attackTargetsBonus + levelTargetBonus),
           );
           if (!game.awaitingInput) {
             player.attacksRemaining = Math.max(
@@ -13063,6 +13098,9 @@
             floorLevel <= 10 ? 1 - (10 - floorLevel) * 0.018 : 1;
           const lowFloorAttackScale =
             !isBoss && floorLevel <= 100 ? 0.7 : 1;
+          const mobHpEase = isBoss ? 1 : 0.9;
+          const mobDefEase = isBoss ? 1 : 0.9;
+          const mobAtkEase = isBoss ? 1 : 0.95;
           const calcDifficultyInflation = (floor) => {
             const capped = Math.max(1, floor);
             const logCurve = 1 + Math.log1p(capped / 60) * 0.33;
@@ -13117,17 +13155,19 @@
           const enemy = {
             id: generateId("enemy"),
             name: baseName,
-            hp: Math.round(statScale(hpBase, 1.11, 1.75)),
-            maxHp: Math.round(statScale(hpBase, 1.11, 1.75)),
+            hp: Math.round(statScale(hpBase, 1.11, 1.75) * mobHpEase),
+            maxHp: Math.round(statScale(hpBase, 1.11, 1.75) * mobHpEase),
             atk: keepDecimal(
               statScale(atkBase, 1.105, 1.55, earlyOffenseEase) *
                 earlyAttackRelief *
-                lowFloorAttackScale,
+                lowFloorAttackScale *
+                mobAtkEase,
               1,
             ),
             def: keepDecimal(
               statScale(defBase, 1.08, 1.45, earlyDefenseEase) *
-                earlyDefenseRelief,
+                earlyDefenseRelief *
+                mobDefEase,
               2,
             ),
             spd:
