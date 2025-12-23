@@ -4052,6 +4052,8 @@
               </div>
               <div class="inline-buttons" style="margin-top: 0">
                 <button data-debug-boss-floor="10">10F</button>
+                <button data-debug-boss-floor="20">20F</button>
+                <button data-debug-boss-floor="30">30F</button>
                 <button data-debug-boss-floor="50">50F</button>
                 <button data-debug-boss-floor="100">100F</button>
                 <button data-debug-boss-floor="200">200F</button>
@@ -8577,6 +8579,159 @@
                 range: [27, 42],
                 unit: "%",
                 effect: "先制ターンで与ダメ+{value}、回避時に次攻撃が必中化",
+              },
+            },
+            {
+              key: "emberclasp",
+              name: "余燼の篭手",
+              base: [
+                { key: "physAtk", range: [27, 42] },
+                { key: "burn", range: [12, 18] },
+                { key: "hp", range: [30, 48] },
+                { key: "critRate", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "残火の刻印",
+                range: [27, 42],
+                unit: "%",
+                effect: "通常攻撃命中時、{value}で燃焼スタック+1(最大3)と与ダメ+5%/スタック",
+              },
+            },
+            {
+              key: "shadowcoilGrips",
+              name: "影蛇のグリップ",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "speed", range: [6, 10] },
+                { key: "evade", range: [12, 21], unit: "%" },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [27, 45] },
+              ],
+              unique: {
+                name: "影蛇の抱擁",
+                range: [24, 39],
+                unit: "%",
+                effect: "回避成功時、次攻撃の与ダメ+{value}＆必中化＋毒1ターン付与",
+              },
+            },
+            {
+              key: "auroraGrasp",
+              name: "極光の手",
+              base: [
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "hp", range: [36, 57] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "speed", range: [5, 9] },
+              ],
+              unique: {
+                name: "光環連撃",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル命中時、{value}で追加光弾(与ダメ50%)＋行動速度+10%(2ターン)",
+              },
+            },
+            {
+              key: "tempestKnuckles",
+              name: "嵐手の拳具",
+              base: [
+                { key: "physAtk", range: [33, 48] },
+                { key: "speed", range: [6, 11] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "damageReduction", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "嵐駆け",
+                range: [27, 42],
+                unit: "%",
+                effect: "行動開始時、{value}で追加行動を得て次の攻撃が2連撃化",
+              },
+            },
+            {
+              key: "thornlashGauntlet",
+              name: "荊鞭の篭手",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "hp", range: [36, 57] },
+                { key: "bleed", range: [12, 18] },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "荊の打擲",
+                range: [30, 48],
+                unit: "%",
+                effect: "クリティカル時、{value}で出血を即時爆発させ追加ダメージ(残DoTの80%)",
+              },
+            },
+            {
+              key: "glacierPalm",
+              name: "氷牙の手袋",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "magAtk", range: [18, 27] },
+                { key: "speed", range: [6, 10] },
+                { key: "hp", range: [33, 54] },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "氷牙の束縛",
+                range: [27, 42],
+                unit: "%",
+                effect: "スキル命中時、{value}で凍結1ターン+移動不可(速度-30%)を付与",
+              },
+            },
+            {
+              key: "windrunnerClutch",
+              name: "風駆けの手枷",
+              base: [
+                { key: "physAtk", range: [27, 42] },
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [12, 21], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "critRate", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "追い風加速",
+                range: [30, 48],
+                unit: "%",
+                effect: "先制ターンで与ダメ+{value}、回避成功時は行動順が即座に繰り上がる",
+              },
+            },
+            {
+              key: "shadowlaceGloves",
+              name: "影糸の手甲",
+              base: [
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [7, 12], unit: "%" },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "hp", range: [33, 51] },
+                { key: "speed", range: [6, 10] },
+              ],
+              unique: {
+                name: "影縫い",
+                range: [27, 45],
+                unit: "%",
+                effect: "スキル命中時、{value}で束縛1ターン＋回避-15%を付与",
+              },
+            },
+            {
+              key: "skyhunterTalons",
+              name: "空狩りの鉤爪",
+              base: [
+                { key: "physAtk", range: [33, 48] },
+                { key: "accuracy", range: [12, 18], unit: "%" },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "speed", range: [6, 10] },
+                { key: "hp", range: [33, 54] },
+              ],
+              unique: {
+                name: "空撃の舞",
+                range: [30, 48],
+                unit: "%",
+                effect: "遠距離攻撃命中時、{value}で追加射撃(与ダメ50%)＋命中率+10%(2ターン)",
               },
             },
             {
@@ -16369,6 +16524,16 @@ function showDamagePopup(
             };
             card.appendChild(retryButton);
 
+            const legendarySection = document.createElement("details");
+            legendarySection.className = "enemy-legendary";
+            const legendarySummary = document.createElement("summary");
+            legendarySummary.textContent = "レジェンダリー";
+            const legendaryList = document.createElement("div");
+            legendaryList.className = "legendary-records";
+            legendarySection.appendChild(legendarySummary);
+            legendarySection.appendChild(legendaryList);
+            card.appendChild(legendarySection);
+
             card._refs = {
               titleLabel,
               archetype,
@@ -16377,6 +16542,8 @@ function showDamagePopup(
               hpLabel,
               retryButton,
               bossOrnament,
+              legendarySection,
+              legendaryList,
             };
             return card;
           }
@@ -16438,6 +16605,30 @@ function showDamagePopup(
             }
             if (refs.hpLabel) {
               refs.hpLabel.textContent = `${roundedHp} / ${roundedMaxHp} (${hpPct}%)`;
+            }
+
+            if (refs.legendarySection && refs.legendaryList) {
+              const dropInfo = BOSS_LEGENDARY_DROPS[game.floor];
+              const pool =
+                (enemy.bossLegendaryPool && enemy.bossLegendaryPool.length
+                  ? enemy.bossLegendaryPool
+                  : dropInfo?.legendaryKeys || []).filter(Boolean);
+              if (enemy.isBoss && pool.length) {
+                refs.legendarySection.style.display = "";
+                refs.legendaryList.innerHTML = "";
+                pool.forEach((key) => {
+                  const row = document.createElement("div");
+                  row.className = "legendary-record-row";
+                  const template = getLegendaryTemplateByKey(key);
+                  const record = game.legendaryRecords?.[key];
+                  const name = template?.name || key;
+                  const count = record?.drops ?? 0;
+                  row.textContent = `${name} / ドロップ ${count}回`;
+                  refs.legendaryList.appendChild(row);
+                });
+              } else {
+                refs.legendarySection.style.display = "none";
+              }
             }
           }
 
@@ -18701,15 +18892,12 @@ function showDamagePopup(
               ? `${skill.name}${skill.description ? `: ${skill.description}` : ""}`
               : "--";
             const dropInfo = BOSS_LEGENDARY_DROPS[floor];
-            const dropTemplates = dropInfo?.legendaryKeys
-              ? dropInfo.legendaryKeys
-                  .map((key) => getLegendaryTemplateByKey(key))
-                  .filter(Boolean)
-              : dropInfo?.legendaryKey
-                ? [getLegendaryTemplateByKey(dropInfo.legendaryKey)].filter(
-                    Boolean,
-                  )
-                : [];
+            const dropKeys =
+              dropInfo?.legendaryKeys ||
+              (dropInfo?.legendaryKey ? [dropInfo.legendaryKey] : []);
+            const dropTemplates = dropKeys
+              .map((key) => getLegendaryTemplateByKey(key))
+              .filter(Boolean);
             const dropName = discovered
               ? dropTemplates.length
                 ? dropTemplates.map((t) => t.name).join(" / ")
@@ -18738,8 +18926,8 @@ function showDamagePopup(
                 {
                   label: "ドロップ",
                   value: dropName,
-                  interactive: discovered && dropTemplates.length === 1,
-                  dropTemplate: dropTemplates[0],
+                  interactive: discovered && dropTemplates.length > 0,
+                  dropTemplates,
                   dropSlot: dropInfo?.slot,
                 },
                 { label: "レジェンド率", value: dropChanceText || "--" },
@@ -19195,6 +19383,7 @@ function showDamagePopup(
           entries.forEach((entry) => {
             const card = document.createElement("button");
             card.className = `codex-entry ${entry.discovered ? "" : "undiscovered"}`;
+            card.dataset.entryKey = entry.key || "";
 
             const nameRow = document.createElement("div");
             nameRow.className = "codex-name";
@@ -19258,6 +19447,29 @@ function showDamagePopup(
           codexDetailBody.appendChild(preview);
         }
 
+        function openCodexEquipmentEntry(key, slotKey) {
+          if (!key) return;
+          currentCodexCategory = "equipment";
+          openCodexModal();
+          const entries = sortCodexEntries(
+            buildCodexEntries(currentCodexCategory),
+            currentCodexCategory,
+          );
+          const target = entries.find((entry) => entry.key === key);
+          if (target) {
+            openCodexDetail(target);
+            const list = document.getElementById("codex-list");
+            if (list) {
+              const card = Array.from(list.querySelectorAll(".codex-entry")).find(
+                (el) => el.dataset.entryKey === key,
+              );
+              card?.scrollIntoView({ block: "nearest" });
+            }
+          }
+          const template = getLegendaryTemplateByKey(key);
+          if (template) renderCodexEquipmentPreview(template, slotKey);
+        }
+
         function openCodexDetail(entry) {
           if (!codexDetailModal || !codexDetailBody || !codexDetailName) return;
           const discovered = !!entry.discovered;
@@ -19279,16 +19491,30 @@ function showDamagePopup(
               const value = document.createElement("div");
               value.className = "value";
 
-              if (detail.interactive && detail.dropTemplate) {
-                const btn = document.createElement("button");
-                btn.className = "mini-btn";
-                btn.textContent = detail.value || "表示";
-                btn.onclick = () =>
-                  renderCodexEquipmentPreview(
-                    detail.dropTemplate,
-                    detail.dropSlot,
-                  );
-                value.appendChild(btn);
+              if (detail.interactive && (detail.dropTemplate || detail.dropTemplates?.length)) {
+                const templates = detail.dropTemplates?.length
+                  ? detail.dropTemplates
+                  : detail.dropTemplate
+                    ? [detail.dropTemplate]
+                    : [];
+                if (templates.length === 1) {
+                  const btn = document.createElement("button");
+                  btn.className = "mini-btn";
+                  btn.textContent = detail.value || "表示";
+                  const template = templates[0];
+                  btn.onclick = () =>
+                    openCodexEquipmentEntry(template.key, detail.dropSlot);
+                  value.appendChild(btn);
+                } else {
+                  templates.forEach((template) => {
+                    const btn = document.createElement("button");
+                    btn.className = "mini-btn";
+                    btn.textContent = template.name || "表示";
+                    btn.onclick = () =>
+                      openCodexEquipmentEntry(template.key, detail.dropSlot);
+                    value.appendChild(btn);
+                  });
+                }
               } else {
                 value.textContent = detail.value || "--";
               }
