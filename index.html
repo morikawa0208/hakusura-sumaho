@@ -4879,7 +4879,7 @@
           { key: "magic", weight: 40 },
           { key: "rare", weight: 22 },
         ];
-        const BOSS_FLOORS = [10, 50, 100, 200, 500, 700, 1000];
+        const BOSS_FLOORS = [10, 20, 30, 50, 100, 200, 500, 700, 1000];
         const BOSS_DEFINITIONS = {
           10: {
             name: "灰翼の斥候アエロー", // 敏捷特化のスカウトタイプ
@@ -4891,6 +4891,28 @@
               resist: { control: 1.05 },
             },
             legendaryKey: "stormrunnerClaws",
+          },
+          20: {
+            name: "氷蔦の主セレスティア", // 冷気と足止め
+            flavor: "氷の蔦で足元を絡め取り、冷気を纏う森の支配者。",
+            modifiers: {
+              def: 1.12,
+              hp: 1.12,
+              spd: 1.05,
+              resist: { control: 1.1, dot: 1.05 },
+            },
+            legendaryKey: "mistTwinblade",
+          },
+          30: {
+            name: "砂紋の狩人ザラフ", // 命中阻害と継続削り
+            flavor: "砂嵐に紛れて矢雨を放つ狡猾なハンター。",
+            modifiers: {
+              atk: 1.16,
+              accuracy: 1.12,
+              evade: 1.08,
+              resist: { debuff: 1.05 },
+            },
+            legendaryKey: "galeGreaves",
           },
           50: {
             name: "宝守竜グランフォス", // 防御とシールド
@@ -4970,6 +4992,48 @@
                 effects.push("速度低下");
               }
               return { message: effects.join(" / ") || "毒煙をまとって急襲" };
+            },
+          },
+          20: {
+            name: "氷霧の緊縛",
+            cooldown: 3,
+            description: "速度低下と短時間の行動不能を狙う冷気",
+            action: () => {
+              const effects = [];
+              if (
+                applyStatus(player, "speedDown", {
+                  duration: 2,
+                  chance: 75,
+                  potency: 0.28,
+                })
+              ) {
+                effects.push("鈍化");
+              }
+              if (applyStatus(player, "stun", { duration: 1, chance: 40 })) {
+                effects.push("凍結足止め");
+              }
+              return { message: effects.join(" / ") || "冷気で足元を縛る" };
+            },
+          },
+          30: {
+            name: "砂塵の矢雨",
+            cooldown: 3,
+            description: "命中率を奪いつつ出血を狙う矢の連射",
+            action: () => {
+              const effects = [];
+              if (
+                applyStatus(player, "accuracyDown", {
+                  duration: 3,
+                  chance: 75,
+                  potency: 0.2,
+                })
+              ) {
+                effects.push("命中低下");
+              }
+              if (applyStatus(player, "bleed", { duration: 3, chance: 65 })) {
+                effects.push("出血");
+              }
+              return { message: effects.join(" / ") || "砂煙に紛れて射抜く" };
             },
           },
           50: {
@@ -6346,6 +6410,8 @@
         ];
         const BOSS_LEGENDARY_DROPS = {
           10: { slot: "hands", legendaryKey: "stormrunnerClaws" },
+          20: { slot: "weapon", legendaryKey: "mistTwinblade" },
+          30: { slot: "feet", legendaryKey: "galeGreaves" },
           50: { slot: "body", legendaryKey: "aegisCarapace" },
           100: { slot: "subWeapon", legendaryKey: "cinderScepter" },
           200: { slot: "accessory", legendaryKey: "tidebinderChord" },
@@ -7716,6 +7782,176 @@
                 effect: "HP50%以上で被ダメ-{value}、50%未満で与ダメ+{value}",
               },
             },
+            {
+              key: "frostvineHalberd",
+              name: "氷蔦の戦槍",
+              base: [
+                { key: "physAtk", range: [36, 54] },
+                { key: "magAtk", range: [21, 33] },
+                { key: "speed", range: [5, 9] },
+                { key: "hp", range: [45, 75] },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "凍縛の根",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル命中時、{value}で速度低下と根縛(回避不可)を2ターン付与",
+              },
+            },
+            {
+              key: "mistbreakerAxe",
+              name: "霧裂の戦斧",
+              base: [
+                { key: "physAtk", range: [45, 66] },
+                { key: "critDamage", range: [18, 30], unit: "%" },
+                { key: "hp", range: [48, 78] },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "str", range: [6, 10] },
+              ],
+              unique: {
+                name: "霧散崩撃",
+                range: [33, 54],
+                unit: "%",
+                effect: "回避成功時、次の攻撃が必中+与ダメ+{value}",
+              },
+            },
+            {
+              key: "sandstormBow",
+              name: "砂嵐の弓",
+              base: [
+                { key: "physAtk", range: [33, 48] },
+                { key: "accuracy", range: [12, 21], unit: "%" },
+                { key: "evade", range: [9, 18], unit: "%" },
+                { key: "agi", range: [6, 10] },
+                { key: "hp", range: [36, 60] },
+              ],
+              unique: {
+                name: "砂塵遮断",
+                range: [27, 42],
+                unit: "%",
+                effect: "命中時、{value}で命中率ダウン+視界不良(クリ率-20%)を2ターン付与",
+              },
+            },
+            {
+              key: "duneCarverSpear",
+              name: "砂紋の双牙槍",
+              base: [
+                { key: "physAtk", range: [39, 57] },
+                { key: "speed", range: [6, 11] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+                { key: "hp", range: [42, 69] },
+              ],
+              unique: {
+                name: "旋風穿ち",
+                range: [30, 48],
+                unit: "%",
+                effect: "連撃発動時、追加攻撃1回+与ダメ+{value}",
+              },
+            },
+            {
+              key: "auroraEdge",
+              name: "黎明の刃",
+              base: [
+                { key: "physAtk", range: [54, 78] },
+                { key: "magAtk", range: [27, 42] },
+                { key: "speed", range: [6, 11] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [60, 96] },
+              ],
+              unique: {
+                name: "黎明照破",
+                range: [33, 54],
+                unit: "%",
+                effect: "ターン開始時にHP50%以上なら与ダメ+{value}、未満なら被ダメ-{value}",
+              },
+            },
+            {
+              key: "cosmicOathblade",
+              name: "星誓の大刀",
+              base: [
+                { key: "physAtk", range: [69, 96] },
+                { key: "magAtk", range: [33, 48] },
+                { key: "critRate", range: [18, 27], unit: "%" },
+                { key: "damageReduction", range: [9, 15], unit: "%" },
+                { key: "hp", range: [84, 132] },
+              ],
+              unique: {
+                name: "星痕の誓い",
+                range: [36, 57],
+                unit: "%",
+                effect: "戦闘開始時バリア獲得(最大HP{value})＋バリア中は全ステ+8%",
+              },
+            },
+            {
+              key: "voidreaverLance",
+              name: "虚空穿つ槍",
+              base: [
+                { key: "physAtk", range: [72, 99] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "physPen", range: [9, 15], unit: "%" },
+                { key: "hp", range: [90, 138] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "断絶の楔",
+                range: [30, 48],
+                unit: "%",
+                effect: "デバフ状態の敵へ与ダメ+{value}、撃破時CT全回復",
+              },
+            },
+            {
+              key: "stormlordBreaker",
+              name: "雷将の戦槌",
+              base: [
+                { key: "physAtk", range: [75, 105] },
+                { key: "critDamage", range: [21, 33], unit: "%" },
+                { key: "speed", range: [6, 10] },
+                { key: "hp", range: [96, 150] },
+                { key: "damageReduction", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "雷霆連鎖",
+                range: [33, 54],
+                unit: "%",
+                effect: "クリティカル時、{value}で追加雷撃(与ダメ60%)＋感電1ターン",
+              },
+            },
+            {
+              key: "dawnwardenGreatbow",
+              name: "暁衛の大弓",
+              base: [
+                { key: "physAtk", range: [78, 108] },
+                { key: "accuracy", range: [15, 24], unit: "%" },
+                { key: "critRate", range: [18, 27], unit: "%" },
+                { key: "hp", range: [102, 156] },
+                { key: "speed", range: [6, 10] },
+              ],
+              unique: {
+                name: "暁光の守護",
+                range: [30, 48],
+                unit: "%",
+                effect: "戦闘開始時バリア(最大HP25%)＋バリア中は命中・回避+{value}",
+              },
+            },
+            {
+              key: "finalEclipseBlade",
+              name: "終星の双月刃",
+              base: [
+                { key: "physAtk", range: [84, 120] },
+                { key: "magAtk", range: [42, 63] },
+                { key: "speed", range: [7, 12] },
+                { key: "critRate", range: [18, 30], unit: "%" },
+                { key: "hp", range: [114, 174] },
+              ],
+              unique: {
+                name: "終幕の光輪",
+                range: [36, 60],
+                unit: "%",
+                effect: "スキル命中時、HP50%以上なら与ダメ+{value}、未満なら被ダメ-{value}を2ターン",
+              },
+            },
           ],
           subWeapon: [
             {
@@ -7785,6 +8021,91 @@
                 unit: "%",
                 effect:
                   "火傷中の敵へ与ダメ+{value}、自分の火炎DoTダメージ+{value}",
+              },
+            },
+            {
+              key: "glacierPrism",
+              name: "氷晶のプリズム",
+              base: [
+                { key: "magAtk", range: [27, 42] },
+                { key: "magDef", range: [21, 33] },
+                { key: "mp", range: [54, 84] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "氷鎖封結",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル命中時、{value}で凍結1ターン＋魔防-15%を付与",
+              },
+            },
+            {
+              key: "phoenixCenser",
+              name: "鳳炎の香炉",
+              base: [
+                { key: "magAtk", range: [30, 45] },
+                { key: "hp", range: [60, 96] },
+                { key: "burn", range: [12, 18] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "転火再燃",
+                range: [33, 54],
+                unit: "%",
+                effect: "火傷中の敵から被弾時、{value}で自身のHP12%回復＋火傷を再延長",
+              },
+            },
+            {
+              key: "tidalChronicle",
+              name: "潮律の書板",
+              base: [
+                { key: "magAtk", range: [33, 48] },
+                { key: "mp", range: [72, 108] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "speed", range: [5, 9] },
+              ],
+              unique: {
+                name: "律動の奔流",
+                range: [27, 42],
+                unit: "%",
+                effect: "スキル使用で波律スタック+1(最大5)。スタック数×{value}の与ダメ上昇",
+              },
+            },
+            {
+              key: "maelstromLantern",
+              name: "渦潮の灯篭",
+              base: [
+                { key: "magAtk", range: [27, 42] },
+                { key: "mp", range: [60, 96] },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+                { key: "hp", range: [48, 78] },
+                { key: "magDef", range: [21, 33] },
+              ],
+              unique: {
+                name: "水鏡の反射",
+                range: [30, 48],
+                unit: "%",
+                effect: "受けたデバフを{value}で1ターン短縮し、短縮時にシールド(最大HP18%)付与",
+              },
+            },
+            {
+              key: "abyssalHourglass",
+              name: "深淵の砂時計",
+              base: [
+                { key: "magAtk", range: [36, 51] },
+                { key: "mp", range: [78, 120] },
+                { key: "cooldown", range: [9, 15], unit: "%" },
+                { key: "magPen", range: [12, 18], unit: "%" },
+                { key: "hp", range: [60, 96] },
+              ],
+              unique: {
+                name: "奈落の遅滞",
+                range: [27, 45],
+                unit: "%",
+                effect: "スキル命中時、CTを{value}で1短縮し敵に行動遅延1ターン付与",
               },
             },
           ],
@@ -7858,6 +8179,91 @@
                   "弱体化中の敵に与ダメ+{value}、命中時に低確率で沈黙付与",
               },
             },
+            {
+              key: "judicatorCowl",
+              name: "審判者の頭巾",
+              base: [
+                { key: "int", range: [6, 11] },
+                { key: "magAtk", range: [21, 33] },
+                { key: "magDef", range: [18, 30] },
+                { key: "controlResist", range: [15, 24], unit: "%" },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "断罪の視線",
+                range: [30, 48],
+                unit: "%",
+                effect: "デバフ付与時、{value}で沈黙1ターンを追加付与",
+              },
+            },
+            {
+              key: "voidhaloHelm",
+              name: "虚環の兜",
+              base: [
+                { key: "vit", range: [6, 11] },
+                { key: "physDef", range: [24, 36] },
+                { key: "magDef", range: [24, 36] },
+                { key: "hp", range: [60, 96] },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "虚無の庇護",
+                range: [27, 42],
+                unit: "%",
+                effect: "被ダメ時、{value}でダメージを0にしバリア(最大HP20%)を得る",
+              },
+            },
+            {
+              key: "thundercrestCrown",
+              name: "雷紋の冠",
+              base: [
+                { key: "str", range: [6, 11] },
+                { key: "physAtk", range: [21, 33] },
+                { key: "speed", range: [5, 9] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [48, 78] },
+              ],
+              unique: {
+                name: "雷王の咆哮",
+                range: [33, 54],
+                unit: "%",
+                effect: "スキル使用後、次の攻撃が確定クリティカル＋感電付与率+{value}",
+              },
+            },
+            {
+              key: "stormveilHelm",
+              name: "嵐幕の兜",
+              base: [
+                { key: "physDef", range: [24, 36] },
+                { key: "hp", range: [60, 96] },
+                { key: "block", range: [9, 15], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "speed", range: [5, 8] },
+              ],
+              unique: {
+                name: "風壁の守護",
+                range: [24, 39],
+                unit: "%",
+                effect: "回避成功時、風壁スタック+1(最大3)。スタック毎に被ダメ-{value}",
+              },
+            },
+            {
+              key: "auroralDiadem",
+              name: "極光のティアラ",
+              base: [
+                { key: "int", range: [7, 12] },
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [7, 12], unit: "%" },
+                { key: "mp", range: [60, 96] },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "光暈の加護",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル使用時、{value}でシールド(最大HP18%)＋行動速度+15%を2ターン付与",
+              },
+            },
           ],
           body: [
             {
@@ -7926,6 +8332,91 @@
                 range: [570, 780],
                 effect:
                   "戦闘開始時、{value}のシールド&被ダメ時に確率で追加シールド獲得",
+              },
+            },
+            {
+              key: "goldshellArmor",
+              name: "黄金殻の鎧",
+              base: [
+                { key: "physDef", range: [36, 54] },
+                { key: "magDef", range: [27, 42] },
+                { key: "hp", range: [90, 138] },
+                { key: "block", range: [12, 21], unit: "%" },
+                { key: "damageReduction", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "金鱗の守護",
+                range: [30, 48],
+                unit: "%",
+                effect: "被弾時、{value}でシールド(最大HP25%)を得て次ターンの被ダメ-20%",
+              },
+            },
+            {
+              key: "treasuryPlating",
+              name: "宝庫の胸甲",
+              base: [
+                { key: "physDef", range: [33, 48] },
+                { key: "hp", range: [96, 150] },
+                { key: "dropRate", range: [9, 15], unit: "%" },
+                { key: "rarity", range: [6, 11], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "守財の結界",
+                range: [27, 42],
+                unit: "%",
+                effect: "戦闘開始時シールド(最大HP20%)＋シールド中はドロップ率+{value}",
+              },
+            },
+            {
+              key: "gildedAegisCoat",
+              name: "金紋の鎧衣",
+              base: [
+                { key: "magDef", range: [27, 42] },
+                { key: "hp", range: [84, 132] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "speed", range: [5, 9] },
+              ],
+              unique: {
+                name: "輝壁の庇護",
+                range: [30, 48],
+                unit: "%",
+                effect: "被弾時、{value}でCT-1＆次の攻撃を無効化する輝壁を得る",
+              },
+            },
+            {
+              key: "vaultwardenVest",
+              name: "宝守の戦衣",
+              base: [
+                { key: "physDef", range: [33, 48] },
+                { key: "hp", range: [90, 138] },
+                { key: "block", range: [12, 18], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "controlResist", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "宝守の決意",
+                range: [27, 45],
+                unit: "%",
+                effect: "ブロック発動時、{value}で自身を10%回復＋攻撃力+15%(2ターン)",
+              },
+            },
+            {
+              key: "auricBulwark",
+              name: "金光の大盾鎧",
+              base: [
+                { key: "physDef", range: [39, 57] },
+                { key: "hp", range: [102, 162] },
+                { key: "magDef", range: [30, 45] },
+                { key: "damageReduction", range: [9, 15], unit: "%" },
+                { key: "block", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "金光の裁き",
+                range: [30, 48],
+                unit: "%",
+                effect: "被弾時、{value}で攻撃者に最大HP8%の聖光ダメージ＋スタン1ターン",
               },
             },
           ],
@@ -7998,6 +8489,159 @@
                 effect: "先制ターンで与ダメ+{value}、回避時に次攻撃が必中化",
               },
             },
+            {
+              key: "emberclasp",
+              name: "余燼の篭手",
+              base: [
+                { key: "physAtk", range: [27, 42] },
+                { key: "burn", range: [12, 18] },
+                { key: "hp", range: [30, 48] },
+                { key: "critRate", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "残火の刻印",
+                range: [27, 42],
+                unit: "%",
+                effect: "通常攻撃命中時、{value}で燃焼スタック+1(最大3)と与ダメ+5%/スタック",
+              },
+            },
+            {
+              key: "shadowcoilGrips",
+              name: "影蛇のグリップ",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "speed", range: [6, 10] },
+                { key: "evade", range: [12, 21], unit: "%" },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [27, 45] },
+              ],
+              unique: {
+                name: "影蛇の抱擁",
+                range: [24, 39],
+                unit: "%",
+                effect: "回避成功時、次攻撃の与ダメ+{value}＆必中化＋毒1ターン付与",
+              },
+            },
+            {
+              key: "auroraGrasp",
+              name: "極光の手",
+              base: [
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "hp", range: [36, 57] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "speed", range: [5, 9] },
+              ],
+              unique: {
+                name: "光環連撃",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル命中時、{value}で追加光弾(与ダメ50%)＋行動速度+10%(2ターン)",
+              },
+            },
+            {
+              key: "tempestKnuckles",
+              name: "嵐手の拳具",
+              base: [
+                { key: "physAtk", range: [33, 48] },
+                { key: "speed", range: [6, 11] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "damageReduction", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "嵐駆け",
+                range: [27, 42],
+                unit: "%",
+                effect: "行動開始時、{value}で追加行動を得て次の攻撃が2連撃化",
+              },
+            },
+            {
+              key: "thornlashGauntlet",
+              name: "荊鞭の篭手",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "hp", range: [36, 57] },
+                { key: "bleed", range: [12, 18] },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "荊の打擲",
+                range: [30, 48],
+                unit: "%",
+                effect: "クリティカル時、{value}で出血を即時爆発させ追加ダメージ(残DoTの80%)",
+              },
+            },
+            {
+              key: "glacierPalm",
+              name: "氷牙の手袋",
+              base: [
+                { key: "physAtk", range: [30, 45] },
+                { key: "magAtk", range: [18, 27] },
+                { key: "speed", range: [6, 10] },
+                { key: "hp", range: [33, 54] },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "氷牙の束縛",
+                range: [27, 42],
+                unit: "%",
+                effect: "スキル命中時、{value}で凍結1ターン+移動不可(速度-30%)を付与",
+              },
+            },
+            {
+              key: "windrunnerClutch",
+              name: "風駆けの手枷",
+              base: [
+                { key: "physAtk", range: [27, 42] },
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [12, 21], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "critRate", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "追い風加速",
+                range: [30, 48],
+                unit: "%",
+                effect: "先制ターンで与ダメ+{value}、回避成功時は行動順が即座に繰り上がる",
+              },
+            },
+            {
+              key: "shadowlaceGloves",
+              name: "影糸の手甲",
+              base: [
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [7, 12], unit: "%" },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "hp", range: [33, 51] },
+                { key: "speed", range: [6, 10] },
+              ],
+              unique: {
+                name: "影縫い",
+                range: [27, 45],
+                unit: "%",
+                effect: "スキル命中時、{value}で束縛1ターン＋回避-15%を付与",
+              },
+            },
+            {
+              key: "skyhunterTalons",
+              name: "空狩りの鉤爪",
+              base: [
+                { key: "physAtk", range: [33, 48] },
+                { key: "accuracy", range: [12, 18], unit: "%" },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "speed", range: [6, 10] },
+                { key: "hp", range: [33, 54] },
+              ],
+              unique: {
+                name: "空撃の舞",
+                range: [30, 48],
+                unit: "%",
+                effect: "遠距離攻撃命中時、{value}で追加射撃(与ダメ50%)＋命中率+10%(2ターン)",
+              },
+            },
           ],
           feet: [
             {
@@ -8067,6 +8711,159 @@
                 unit: "%",
                 effect:
                   "連続攻撃時の2撃目以降の与ダメ+{value}、行動後に速度小上昇",
+              },
+            },
+            {
+              key: "sandveilBoots",
+              name: "砂幕のブーツ",
+              base: [
+                { key: "speed", range: [6, 11] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "damageReduction", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "砂幕隠走",
+                range: [27, 42],
+                unit: "%",
+                effect: "回避成功時、{value}で砂幕を展開し敵の命中-20%(2ターン)",
+              },
+            },
+            {
+              key: "dunecarverBoots",
+              name: "砂紋の歩装",
+              base: [
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "critRate", range: [9, 15], unit: "%" },
+                { key: "hp", range: [33, 54] },
+                { key: "agi", range: [6, 10] },
+              ],
+              unique: {
+                name: "砂走り",
+                range: [24, 39],
+                unit: "%",
+                effect: "連撃発生時、{value}で追加行動＋与ダメ+15%(1ターン)",
+              },
+            },
+            {
+              key: "oasisStrider",
+              name: "オアシスの旅靴",
+              base: [
+                { key: "speed", range: [6, 11] },
+                { key: "evade", range: [12, 21], unit: "%" },
+                { key: "hp", range: [36, 57] },
+                { key: "hpRegen", range: [12, 18] },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "潤いの歩み",
+                range: [27, 42],
+                unit: "%",
+                effect: "ターン開始時、{value}でHP5%回復＋状態異常1つ解除",
+              },
+            },
+            {
+              key: "duststalkerTreads",
+              name: "塵影の足甲",
+              base: [
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+                { key: "hp", range: [30, 48] },
+                { key: "damageReduction", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "塵中の狩り",
+                range: [27, 42],
+                unit: "%",
+                effect: "バックアタック成功時、与ダメ+{value}＆敵に命中率ダウン2ターン",
+              },
+            },
+            {
+              key: "stormchaserGreaves",
+              name: "雷追いのグリーヴ",
+              base: [
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "hp", range: [42, 69] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "雷走",
+                range: [30, 48],
+                unit: "%",
+                effect: "移動後の最初の攻撃が追加雷撃(与ダメ50%)になり、感電1ターンを付与",
+              },
+            },
+            {
+              key: "thunderstepSabaton",
+              name: "雷歩のサバトン",
+              base: [
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "hp", range: [42, 69] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "agi", range: [6, 10] },
+              ],
+              unique: {
+                name: "雷躍",
+                range: [27, 45],
+                unit: "%",
+                effect: "感電中の敵への与ダメ+{value}、さらに命中時スタン1ターンを判定",
+              },
+            },
+            {
+              key: "stormrenderSandals",
+              name: "嵐裂の履物",
+              base: [
+                { key: "speed", range: [7, 12] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "hp", range: [39, 63] },
+                { key: "accuracy", range: [9, 15], unit: "%" },
+              ],
+              unique: {
+                name: "稲妻の軌跡",
+                range: [30, 48],
+                unit: "%",
+                effect: "行動開始時、{value}で次の攻撃にチェイン雷撃(跳躍3回・威力40%)を付与",
+              },
+            },
+            {
+              key: "tempestStride",
+              name: "暴嵐のストライド",
+              base: [
+                { key: "speed", range: [8, 13] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "hp", range: [45, 72] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "agi", range: [6, 10] },
+              ],
+              unique: {
+                name: "暴嵐疾走",
+                range: [27, 45],
+                unit: "%",
+                effect: "連撃発動時、{value}で追加攻撃(与ダメ40%)と行動順繰り上げ",
+              },
+            },
+            {
+              key: "skybreakerBoots",
+              name: "天破の軍靴",
+              base: [
+                { key: "speed", range: [8, 13] },
+                { key: "evade", range: [15, 24], unit: "%" },
+                { key: "hp", range: [45, 72] },
+                { key: "accuracy", range: [12, 18], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "天破の跳躍",
+                range: [30, 48],
+                unit: "%",
+                effect: "跳躍攻撃時、{value}で追加落雷(与ダメ60%)＋ノックダウン1ターン",
               },
             },
           ],
@@ -8172,6 +8969,91 @@
                 range: [30, 48],
                 unit: "%",
                 effect: "致死ダメージを受けても{value}でHP1で踏みとどまる",
+              },
+            },
+            {
+              key: "tidebinderCharm",
+              name: "潮縛の護符",
+              base: [
+                { key: "magAtk", range: [18, 30] },
+                { key: "hp", range: [60, 96] },
+                { key: "mp", range: [60, 96] },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "潮流の拘束",
+                range: [27, 45],
+                unit: "%",
+                effect: "スキル命中時、{value}で束縛(回避不可)1ターン＋速度-20%を付与",
+              },
+            },
+            {
+              key: "abyssalPearl",
+              name: "深淵の真珠",
+              base: [
+                { key: "magAtk", range: [21, 33] },
+                { key: "hp", range: [72, 108] },
+                { key: "mp", range: [72, 108] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "深淵の囁き",
+                range: [30, 48],
+                unit: "%",
+                effect: "デバフ状態の敵への与ダメ+{value}、被ダメ-12%",
+              },
+            },
+            {
+              key: "coralLyre",
+              name: "珊瑚の竪琴",
+              base: [
+                { key: "magAtk", range: [18, 30] },
+                { key: "mp", range: [66, 102] },
+                { key: "hp", range: [60, 96] },
+                { key: "speed", range: [5, 9] },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "潮鳴の共鳴",
+                range: [24, 39],
+                unit: "%",
+                effect: "スキル使用時、味方全体のクールタイムを{value}で1短縮",
+              },
+            },
+            {
+              key: "whirlpoolMedal",
+              name: "渦潮の勲章",
+              base: [
+                { key: "hp", range: [78, 120] },
+                { key: "physDef", range: [18, 30] },
+                { key: "magDef", range: [18, 30] },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "逆巻く守勢",
+                range: [27, 45],
+                unit: "%",
+                effect: "被弾時、{value}でダメージの一部を吸収し次攻撃に追加水属性ダメージ付与",
+              },
+            },
+            {
+              key: "abyssalSignet",
+              name: "深淵の印環",
+              base: [
+                { key: "magAtk", range: [24, 36] },
+                { key: "magPen", range: [9, 15], unit: "%" },
+                { key: "cooldown", range: [6, 11], unit: "%" },
+                { key: "hp", range: [66, 108] },
+                { key: "mp", range: [66, 108] },
+              ],
+              unique: {
+                name: "深淵の契印",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル命中時、{value}で沈黙1ターン付与しMPを10回復",
               },
             },
           ],
