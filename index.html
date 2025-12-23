@@ -8359,6 +8359,93 @@
           ],
           body: [
             {
+              key: "judicatorCowl",
+              name: "審判者の頭巾",
+              base: [
+                { key: "int", range: [6, 11] },
+                { key: "magAtk", range: [21, 33] },
+                { key: "magDef", range: [18, 30] },
+                { key: "controlResist", range: [15, 24], unit: "%" },
+                { key: "cooldown", range: [6, 10], unit: "%" },
+              ],
+              unique: {
+                name: "断罪の視線",
+                range: [30, 48],
+                unit: "%",
+                effect: "デバフ付与時、{value}で沈黙1ターンを追加付与",
+              },
+            },
+            {
+              key: "voidhaloHelm",
+              name: "虚環の兜",
+              base: [
+                { key: "vit", range: [6, 11] },
+                { key: "physDef", range: [24, 36] },
+                { key: "magDef", range: [24, 36] },
+                { key: "hp", range: [60, 96] },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+              ],
+              unique: {
+                name: "虚無の庇護",
+                range: [27, 42],
+                unit: "%",
+                effect: "被ダメ時、{value}でダメージを0にしバリア(最大HP20%)を得る",
+              },
+            },
+            {
+              key: "thundercrestCrown",
+              name: "雷紋の冠",
+              base: [
+                { key: "str", range: [6, 11] },
+                { key: "physAtk", range: [21, 33] },
+                { key: "speed", range: [5, 9] },
+                { key: "critRate", range: [12, 21], unit: "%" },
+                { key: "hp", range: [48, 78] },
+              ],
+              unique: {
+                name: "雷王の咆哮",
+                range: [33, 54],
+                unit: "%",
+                effect: "スキル使用後、次の攻撃が確定クリティカル＋感電付与率+{value}",
+              },
+            },
+            {
+              key: "stormveilHelm",
+              name: "嵐幕の兜",
+              base: [
+                { key: "physDef", range: [24, 36] },
+                { key: "hp", range: [60, 96] },
+                { key: "block", range: [9, 15], unit: "%" },
+                { key: "damageReduction", range: [6, 11], unit: "%" },
+                { key: "speed", range: [5, 8] },
+              ],
+              unique: {
+                name: "風壁の守護",
+                range: [24, 39],
+                unit: "%",
+                effect: "回避成功時、風壁スタック+1(最大3)。スタック毎に被ダメ-{value}",
+              },
+            },
+            {
+              key: "auroralDiadem",
+              name: "極光のティアラ",
+              base: [
+                { key: "int", range: [7, 12] },
+                { key: "magAtk", range: [24, 36] },
+                { key: "cooldown", range: [7, 12], unit: "%" },
+                { key: "mp", range: [60, 96] },
+                { key: "controlResist", range: [12, 21], unit: "%" },
+              ],
+              unique: {
+                name: "光暈の加護",
+                range: [30, 48],
+                unit: "%",
+                effect: "スキル使用時、{value}でシールド(最大HP18%)＋行動速度+15%を2ターン付与",
+              },
+            },
+          ],
+          body: [
+            {
               key: "azureScaleArmor",
               name: "蒼竜の鱗鎧",
               base: [
@@ -8579,159 +8666,6 @@
                 range: [27, 42],
                 unit: "%",
                 effect: "先制ターンで与ダメ+{value}、回避時に次攻撃が必中化",
-              },
-            },
-            {
-              key: "emberclasp",
-              name: "余燼の篭手",
-              base: [
-                { key: "physAtk", range: [27, 42] },
-                { key: "burn", range: [12, 18] },
-                { key: "hp", range: [30, 48] },
-                { key: "critRate", range: [9, 15], unit: "%" },
-                { key: "cooldown", range: [6, 11], unit: "%" },
-              ],
-              unique: {
-                name: "残火の刻印",
-                range: [27, 42],
-                unit: "%",
-                effect: "通常攻撃命中時、{value}で燃焼スタック+1(最大3)と与ダメ+5%/スタック",
-              },
-            },
-            {
-              key: "shadowcoilGrips",
-              name: "影蛇のグリップ",
-              base: [
-                { key: "physAtk", range: [30, 45] },
-                { key: "speed", range: [6, 10] },
-                { key: "evade", range: [12, 21], unit: "%" },
-                { key: "critRate", range: [12, 21], unit: "%" },
-                { key: "hp", range: [27, 45] },
-              ],
-              unique: {
-                name: "影蛇の抱擁",
-                range: [24, 39],
-                unit: "%",
-                effect: "回避成功時、次攻撃の与ダメ+{value}＆必中化＋毒1ターン付与",
-              },
-            },
-            {
-              key: "auroraGrasp",
-              name: "極光の手",
-              base: [
-                { key: "magAtk", range: [24, 36] },
-                { key: "cooldown", range: [6, 11], unit: "%" },
-                { key: "hp", range: [36, 57] },
-                { key: "magPen", range: [9, 15], unit: "%" },
-                { key: "speed", range: [5, 9] },
-              ],
-              unique: {
-                name: "光環連撃",
-                range: [30, 48],
-                unit: "%",
-                effect: "スキル命中時、{value}で追加光弾(与ダメ50%)＋行動速度+10%(2ターン)",
-              },
-            },
-            {
-              key: "tempestKnuckles",
-              name: "嵐手の拳具",
-              base: [
-                { key: "physAtk", range: [33, 48] },
-                { key: "speed", range: [6, 11] },
-                { key: "critRate", range: [12, 21], unit: "%" },
-                { key: "hp", range: [30, 48] },
-                { key: "damageReduction", range: [6, 10], unit: "%" },
-              ],
-              unique: {
-                name: "嵐駆け",
-                range: [27, 42],
-                unit: "%",
-                effect: "行動開始時、{value}で追加行動を得て次の攻撃が2連撃化",
-              },
-            },
-            {
-              key: "thornlashGauntlet",
-              name: "荊鞭の篭手",
-              base: [
-                { key: "physAtk", range: [30, 45] },
-                { key: "hp", range: [36, 57] },
-                { key: "bleed", range: [12, 18] },
-                { key: "accuracy", range: [9, 15], unit: "%" },
-                { key: "cooldown", range: [6, 10], unit: "%" },
-              ],
-              unique: {
-                name: "荊の打擲",
-                range: [30, 48],
-                unit: "%",
-                effect: "クリティカル時、{value}で出血を即時爆発させ追加ダメージ(残DoTの80%)",
-              },
-            },
-            {
-              key: "glacierPalm",
-              name: "氷牙の手袋",
-              base: [
-                { key: "physAtk", range: [30, 45] },
-                { key: "magAtk", range: [18, 27] },
-                { key: "speed", range: [6, 10] },
-                { key: "hp", range: [33, 54] },
-                { key: "cooldown", range: [6, 10], unit: "%" },
-              ],
-              unique: {
-                name: "氷牙の束縛",
-                range: [27, 42],
-                unit: "%",
-                effect: "スキル命中時、{value}で凍結1ターン+移動不可(速度-30%)を付与",
-              },
-            },
-            {
-              key: "windrunnerClutch",
-              name: "風駆けの手枷",
-              base: [
-                { key: "physAtk", range: [27, 42] },
-                { key: "speed", range: [7, 12] },
-                { key: "evade", range: [12, 21], unit: "%" },
-                { key: "hp", range: [30, 48] },
-                { key: "critRate", range: [9, 15], unit: "%" },
-              ],
-              unique: {
-                name: "追い風加速",
-                range: [30, 48],
-                unit: "%",
-                effect: "先制ターンで与ダメ+{value}、回避成功時は行動順が即座に繰り上がる",
-              },
-            },
-            {
-              key: "shadowlaceGloves",
-              name: "影糸の手甲",
-              base: [
-                { key: "magAtk", range: [24, 36] },
-                { key: "cooldown", range: [7, 12], unit: "%" },
-                { key: "magPen", range: [9, 15], unit: "%" },
-                { key: "hp", range: [33, 51] },
-                { key: "speed", range: [6, 10] },
-              ],
-              unique: {
-                name: "影縫い",
-                range: [27, 45],
-                unit: "%",
-                effect: "スキル命中時、{value}で束縛1ターン＋回避-15%を付与",
-              },
-            },
-            {
-              key: "skyhunterTalons",
-              name: "空狩りの鉤爪",
-              base: [
-                { key: "physAtk", range: [33, 48] },
-                { key: "accuracy", range: [12, 18], unit: "%" },
-                { key: "critRate", range: [12, 21], unit: "%" },
-                { key: "speed", range: [6, 10] },
-                { key: "hp", range: [33, 54] },
-              ],
-              unique: {
-                name: "空撃の舞",
-                range: [30, 48],
-                unit: "%",
-                effect: "遠距離攻撃命中時、{value}で追加射撃(与ダメ50%)＋命中率+10%(2ターン)",
               },
             },
             {
@@ -16623,7 +16557,22 @@ function showDamagePopup(
                   const record = game.legendaryRecords?.[key];
                   const name = template?.name || key;
                   const count = record?.drops ?? 0;
-                  row.textContent = `${name} / ドロップ ${count}回`;
+                  const header = document.createElement("div");
+                  header.className = "option-label";
+                  header.textContent = `${name} / ドロップ ${count}回`;
+                  row.appendChild(header);
+
+                  const details = document.createElement("div");
+                  details.className = "option-value";
+                  const uniqueText = template?.unique?.effect
+                    ? `${template.unique.name} / ${template.unique.effect}`
+                    : "固有効果不明";
+                  const baseText = (template?.base || [])
+                    .map((opt) => formatOptionRangeForCodex(opt))
+                    .filter(Boolean)
+                    .join(" / ");
+                  details.textContent = `${uniqueText}｜${baseText || "基礎情報なし"}`;
+                  row.appendChild(details);
                   refs.legendaryList.appendChild(row);
                 });
               } else {
