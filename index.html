@@ -4879,7 +4879,7 @@
           { key: "magic", weight: 40 },
           { key: "rare", weight: 22 },
         ];
-        const BOSS_FLOORS = [10, 50, 100, 200, 500, 700, 1000];
+        const BOSS_FLOORS = [10, 20, 30, 50, 100, 200, 500, 700, 1000];
         const BOSS_DEFINITIONS = {
           10: {
             name: "灰翼の斥候アエロー", // 敏捷特化のスカウトタイプ
@@ -4891,6 +4891,28 @@
               resist: { control: 1.05 },
             },
             legendaryKey: "stormrunnerClaws",
+          },
+          20: {
+            name: "氷蔦の主セレスティア", // 冷気と足止め
+            flavor: "氷の蔦で足元を絡め取り、冷気を纏う森の支配者。",
+            modifiers: {
+              def: 1.12,
+              hp: 1.12,
+              spd: 1.05,
+              resist: { control: 1.1, dot: 1.05 },
+            },
+            legendaryKey: "frostbinder",
+          },
+          30: {
+            name: "砂紋の狩人ザラフ", // 命中阻害と継続削り
+            flavor: "砂嵐に紛れて矢雨を放つ狡猾なハンター。",
+            modifiers: {
+              atk: 1.16,
+              accuracy: 1.12,
+              evade: 1.08,
+              resist: { debuff: 1.05 },
+            },
+            legendaryKey: "galeGreaves",
           },
           50: {
             name: "宝守竜グランフォス", // 防御とシールド
@@ -4970,6 +4992,48 @@
                 effects.push("速度低下");
               }
               return { message: effects.join(" / ") || "毒煙をまとって急襲" };
+            },
+          },
+          20: {
+            name: "氷霧の緊縛",
+            cooldown: 3,
+            description: "速度低下と短時間の行動不能を狙う冷気",
+            action: () => {
+              const effects = [];
+              if (
+                applyStatus(player, "speedDown", {
+                  duration: 2,
+                  chance: 75,
+                  potency: 0.28,
+                })
+              ) {
+                effects.push("鈍化");
+              }
+              if (applyStatus(player, "stun", { duration: 1, chance: 40 })) {
+                effects.push("凍結足止め");
+              }
+              return { message: effects.join(" / ") || "冷気で足元を縛る" };
+            },
+          },
+          30: {
+            name: "砂塵の矢雨",
+            cooldown: 3,
+            description: "命中率を奪いつつ出血を狙う矢の連射",
+            action: () => {
+              const effects = [];
+              if (
+                applyStatus(player, "accuracyDown", {
+                  duration: 3,
+                  chance: 75,
+                  potency: 0.2,
+                })
+              ) {
+                effects.push("命中低下");
+              }
+              if (applyStatus(player, "bleed", { duration: 3, chance: 65 })) {
+                effects.push("出血");
+              }
+              return { message: effects.join(" / ") || "砂煙に紛れて射抜く" };
             },
           },
           50: {
@@ -6346,6 +6410,8 @@
         ];
         const BOSS_LEGENDARY_DROPS = {
           10: { slot: "hands", legendaryKey: "stormrunnerClaws" },
+          20: { slot: "hands", legendaryKey: "frostbinder" },
+          30: { slot: "feet", legendaryKey: "galeGreaves" },
           50: { slot: "body", legendaryKey: "aegisCarapace" },
           100: { slot: "subWeapon", legendaryKey: "cinderScepter" },
           200: { slot: "accessory", legendaryKey: "tidebinderChord" },
