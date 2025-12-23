@@ -1903,7 +1903,7 @@
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
       }
 
-      .boss-retry-button {
+      .boss-retry-toggle {
         position: absolute;
         right: 6px;
         bottom: 6px;
@@ -1919,14 +1919,17 @@
         color: var(--text);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
 
-      .boss-retry-button:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
+      .boss-retry-toggle input {
+        margin: 0;
+        accent-color: #fcd34d;
       }
 
-      .enemy-card.boss-card .boss-retry-button {
+      .enemy-card.boss-card .boss-retry-toggle {
         background: linear-gradient(
           120deg,
           rgba(255, 214, 102, 0.32),
@@ -11099,6 +11102,7 @@
           turnQueue: [],
           awaitingInput: false,
           autoSkillEnabled: false,
+          bossRetryEnabled: false,
           playerDefeatInProgress: false,
           defeatedBosses: 0,
           legendaryRecords: {},
@@ -16285,6 +16289,9 @@ function showDamagePopup(
           if (typeof game.autoSkillEnabled !== "boolean") {
             game.autoSkillEnabled = false;
           }
+          if (typeof game.bossRetryEnabled !== "boolean") {
+            game.bossRetryEnabled = false;
+          }
 
           if (!Number.isFinite(game.floor) || game.floor <= 0) {
             game.floor = 1;
@@ -16815,15 +16822,26 @@ function showDamagePopup(
             `;
             card.appendChild(bossOrnament);
 
-            const retryButton = document.createElement("button");
-            retryButton.className = "boss-retry-button";
-            retryButton.textContent = "再挑戦";
-            retryButton.title = "このボス階を再挑戦";
-            retryButton.onclick = (event) => {
+            const retryToggle = document.createElement("label");
+            retryToggle.className = "boss-retry-toggle";
+            retryToggle.title = "ボス撃破後に再挑戦するか切り替え";
+            const retryCheckbox = document.createElement("input");
+            retryCheckbox.type = "checkbox";
+            retryCheckbox.checked = !!game.bossRetryEnabled;
+            const retryLabel = document.createElement("span");
+            retryLabel.textContent = "再挑戦する";
+            retryToggle.appendChild(retryCheckbox);
+            retryToggle.appendChild(retryLabel);
+            retryToggle.addEventListener("click", (event) => {
               event.stopPropagation();
-              warpToFloor(game.floor);
-            };
-            card.appendChild(retryButton);
+            });
+            retryCheckbox.addEventListener("change", (event) => {
+              event.stopPropagation();
+              game.bossRetryEnabled = !!retryCheckbox.checked;
+              updateUI();
+              maybeAutoSave("ボス再挑戦切替");
+            });
+            card.appendChild(retryToggle);
 
             const legendarySection = document.createElement("details");
             legendarySection.className = "enemy-legendary";
@@ -16841,7 +16859,8 @@ function showDamagePopup(
               bar,
               fill,
               hpLabel,
-              retryButton,
+              retryToggle,
+              retryCheckbox,
               bossOrnament,
               legendarySection,
               legendaryList,
@@ -16885,14 +16904,12 @@ function showDamagePopup(
 
             const floorNumber = Math.max(1, Math.floor(game.floor || 1));
 
-            if (refs.retryButton) {
+            if (refs.retryToggle) {
               const canShowRetry = enemy.isBoss;
-              refs.retryButton.style.display = canShowRetry ? "inline-flex" : "none";
-              refs.retryButton.disabled = enemy.hp > 0;
-              refs.retryButton.onclick = (event) => {
-                event.stopPropagation();
-                warpToFloor(floorNumber);
-              };
+              refs.retryToggle.style.display = canShowRetry ? "inline-flex" : "none";
+              if (refs.retryCheckbox) {
+                refs.retryCheckbox.checked = !!game.bossRetryEnabled;
+              }
             }
 
             const roundedHp = roundBattleValue(enemy.hp);
@@ -17216,8 +17233,15 @@ function showDamagePopup(
             btn.textContent = "戦闘不能";
             btn.disabled = true;
           } else if (!enemiesAlive) {
-            btn.textContent = "次の階層へ";
-            btn.onclick = nextFloor;
+            const retryBoss =
+              isBossFloor(game.floor) && !!game.bossRetryEnabled;
+            if (retryBoss) {
+              btn.textContent = "再挑戦";
+              btn.onclick = retryBossFloor;
+            } else {
+              btn.textContent = "次の階層へ";
+              btn.onclick = nextFloor;
+            }
           } else {
             btn.textContent = "⚔️ こうげき";
             btn.disabled = !canAct;
@@ -21586,6 +21610,24 @@ function showDamagePopup(
           log("ステータスをリセットしました", "info");
           pendingResetSpent = 0;
           maybeAutoSave("ステータス振り直し");
+        }
+
+        function retryBossFloor() {
+          if (game.enemies.some((e) => e.hp > 0) && player.hp > 0) {
+            log("敵が残っている！", "warning");
+            return;
+          }
+          if (!isBossFloor(game.floor)) {
+            nextFloor();
+            return;
+          }
+          player.buffs.guard = 0;
+          clearTurnOrderPreview();
+          game.turnQueue = [];
+          spawnEnemies();
+          updateUI();
+          log("🔁 ボス階を再挑戦", "info");
+          maybeAutoSave("ボス再挑戦");
         }
 
         function nextFloor() {
