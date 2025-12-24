@@ -3283,6 +3283,7 @@
           <div class="option-label" style="margin-bottom: 6px">
             ボスレジェンダリー
           </div>
+          <div class="option-value" id="modal-boss-kills"></div>
           <div class="option-value" id="modal-legendary-name"></div>
           <div class="option-value" id="modal-legendary-status"></div>
           <div id="modal-legendary-stats" class="legendary-records"></div>
@@ -11105,6 +11106,7 @@
           bossRetryEnabled: false,
           playerDefeatInProgress: false,
           defeatedBosses: 0,
+          bossKillRecords: {},
           legendaryRecords: {},
           codex: {
             enemyMonsters: {},
@@ -16106,6 +16108,8 @@ function showDamagePopup(
           if (!Array.isArray(mergedGame.turnQueue)) mergedGame.turnQueue = [];
           if (!mergedGame.reachedBossFloors || typeof mergedGame.reachedBossFloors !== "object")
             mergedGame.reachedBossFloors = {};
+          if (!mergedGame.bossKillRecords || typeof mergedGame.bossKillRecords !== "object")
+            mergedGame.bossKillRecords = {};
           if (!mergedGame.legendaryRecords || typeof mergedGame.legendaryRecords !== "object")
             mergedGame.legendaryRecords = {};
           if (!mergedGame.codex || typeof mergedGame.codex !== "object")
@@ -16305,6 +16309,7 @@ function showDamagePopup(
           if (!game.reachedBossFloors) game.reachedBossFloors = {};
           recordFloorProgress();
 
+          if (!game.bossKillRecords) game.bossKillRecords = {};
           if (!game.legendaryRecords) game.legendaryRecords = {};
           ensureCodexState();
           debugCodexSnapshot = null;
@@ -16934,6 +16939,17 @@ function showDamagePopup(
               if (enemy.isBoss && pool.length) {
                 refs.legendarySection.style.display = "";
                 refs.legendaryList.innerHTML = "";
+                const killRow = document.createElement("div");
+                killRow.className = "legendary-record-row";
+                const killLabel = document.createElement("div");
+                killLabel.className = "option-label";
+                killLabel.textContent = "討伐数";
+                const killValue = document.createElement("div");
+                killValue.className = "option-value";
+                killValue.textContent = `${getBossKillCount(enemy)}回`;
+                killRow.appendChild(killLabel);
+                killRow.appendChild(killValue);
+                refs.legendaryList.appendChild(killRow);
                 pool.forEach((key) => {
                   const row = document.createElement("div");
                   row.className = "legendary-record-row";
@@ -18758,6 +18774,7 @@ function showDamagePopup(
         const modalLegendarySection = document.getElementById(
           "modal-legendary-section",
         );
+        const modalBossKills = document.getElementById("modal-boss-kills");
         const modalLegendaryName = document.getElementById(
           "modal-legendary-name",
         );
@@ -19024,9 +19041,21 @@ function showDamagePopup(
           return `${formatted}${unit}`;
         }
 
+        function getBossRecordKey(enemy) {
+          const fallback = Math.max(1, Math.floor(game.floor || 1));
+          const keySource = enemy?.bossSkillKey ?? enemy?.bossFloor ?? fallback;
+          return String(Math.max(1, Math.floor(Number(keySource) || fallback)));
+        }
+
+        function getBossKillCount(enemy) {
+          const key = getBossRecordKey(enemy);
+          return game.bossKillRecords?.[key] ?? 0;
+        }
+
         function renderBossLegendarySection(enemy) {
           if (
             !modalLegendarySection ||
+            !modalBossKills ||
             !modalLegendaryName ||
             !modalLegendaryStatus ||
             !modalLegendaryStats
@@ -19035,6 +19064,7 @@ function showDamagePopup(
           if (!enemy?.isBoss) {
             modalLegendarySection.classList.add("hidden");
             modalLegendaryStats.innerHTML = "";
+            modalBossKills.textContent = "";
             return;
           }
 
@@ -19045,6 +19075,7 @@ function showDamagePopup(
               : dropInfo?.legendaryKeys || []).filter(Boolean);
 
           modalLegendarySection.classList.remove("hidden");
+          modalBossKills.textContent = `討伐数: ${getBossKillCount(enemy)}回`;
           modalLegendaryName.textContent = "レジェンダリー";
           modalLegendaryStatus.textContent = pool.length
             ? `候補: ${pool.length}種`
@@ -20945,6 +20976,11 @@ function showDamagePopup(
         function onEnemyDefeated(enemy, { cause = "" } = {}) {
           if (!enemy || enemy.defeated) return;
           enemy.defeated = true;
+          if (enemy.isBoss) {
+            const key = getBossRecordKey(enemy);
+            if (!game.bossKillRecords) game.bossKillRecords = {};
+            game.bossKillRecords[key] = (game.bossKillRecords[key] ?? 0) + 1;
+          }
           const baseGold = Math.max(
             1,
             Math.round(5 + game.floor * 2 + (enemy.isBoss ? 20 : 0)),
