@@ -15922,8 +15922,17 @@ function showDamagePopup(
 
         function runDebugAutoAttackTick() {
           if (!debugAutoAttackEnabled) return;
+          if (player.hp <= 0) return;
           const enemiesAlive = game.enemies?.some((enemy) => enemy.hp > 0);
-          if (!game.awaitingInput || !enemiesAlive || player.hp <= 0) return;
+          if (!enemiesAlive) {
+            if (isBossFloor(game.floor) && game.bossRetryEnabled) {
+              retryBossFloor();
+            } else {
+              nextFloor();
+            }
+            return;
+          }
+          if (!game.awaitingInput) return;
           const attacks = Math.max(
             0,
             Math.floor(player.attacksRemaining ?? player.attackCount ?? 0),
