@@ -8013,9 +8013,14 @@
                 name: "暁光の結界",
                 range: [18, 28],
                 unit: "%",
-                effect: "戦闘開始時、最大HPの{value}%分バリアを得る",
+                effect:
+                  "戦闘開始時、既存バリア+最大HPの{value}%を上限にバリアを得る",
                 trigger: "battleStart",
-                payload: { type: "barrier", percentFromValue: true },
+                payload: {
+                  type: "barrier",
+                  percentFromValue: true,
+                  capWithBarrierMax: true,
+                },
               },
             },
             {
@@ -14464,11 +14469,20 @@
           target.buffs[key] = Math.max(target.buffs[key] || 0, next);
         }
 
-        function addLegendaryBarrier(percent) {
+        function addLegendaryBarrier(percent, { capWithBarrierMax = false } = {}) {
           if (!player.maxHp || percent <= 0) return;
           const barrierGain = Math.max(1, Math.round(player.maxHp * (percent / 100)));
-          player.barrierRemaining = Math.max(0, player.barrierRemaining || 0) + barrierGain;
-          log(`🛡️ バリア+${barrierGain}`, "good");
+          const current = Math.max(0, player.barrierRemaining || 0);
+          let next = current + barrierGain;
+          if (capWithBarrierMax) {
+            const baseBarrier = Math.max(0, roundBattleValue(player.barrierMax ?? 0));
+            next = Math.min(next, baseBarrier + barrierGain);
+          }
+          const added = Math.max(0, next - current);
+          player.barrierRemaining = next;
+          if (added > 0) {
+            log(`🛡️ バリア+${added}`, "good");
+          }
         }
 
         function reduceSkillCooldowns(amount = 1) {
@@ -14555,7 +14569,10 @@
               if (roll()) applyLegendaryBuff(player, payload.key, payload.duration ?? 2);
               break;
             case "barrier":
-              addLegendaryBarrier(payload.percentFromValue ? option.value : payload.percent || 0);
+              addLegendaryBarrier(
+                payload.percentFromValue ? option.value : payload.percent || 0,
+                payload,
+              );
               break;
             case "cleanse": {
               if (!roll()) break;
