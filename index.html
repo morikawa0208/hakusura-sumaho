@@ -16906,16 +16906,6 @@ function showDamagePopup(
             });
             card.appendChild(retryToggle);
 
-            const legendarySection = document.createElement("details");
-            legendarySection.className = "enemy-legendary";
-            const legendarySummary = document.createElement("summary");
-            legendarySummary.textContent = "レジェンダリー";
-            const legendaryList = document.createElement("div");
-            legendaryList.className = "legendary-records";
-            legendarySection.appendChild(legendarySummary);
-            legendarySection.appendChild(legendaryList);
-            card.appendChild(legendarySection);
-
             card._refs = {
               titleLabel,
               archetype,
@@ -16925,8 +16915,7 @@ function showDamagePopup(
               retryToggle,
               retryCheckbox,
               bossOrnament,
-              legendarySection,
-              legendaryList,
+              //legendarySection,
             };
             return card;
           }
