@@ -15165,7 +15165,12 @@
 
         function updateBars(id, current, max, cls) {
           const bar = document.getElementById(id);
-          const percent = Math.max(0, Math.min(100, (current / max) * 100));
+          const safeMax = Math.max(1, roundBattleValue(max));
+          const safeCurrent = Math.max(0, roundBattleValue(current));
+          const percent = Math.max(
+            0,
+            Math.min(100, (safeCurrent / safeMax) * 100),
+          );
           bar.style.width = `${percent}%`;
           bar.className = cls;
         }
@@ -15357,10 +15362,14 @@ function showDamagePopup(
             displayBarrier > 0 ? ` + バリア ${displayBarrier}` : "";
           document.getElementById("hp-label").textContent =
             `HP ${displayHp} / ${displayMaxHp}${barrierText}`;
+          const displayMp = roundBattleValue(player.mp);
+          const displayMaxMp = Math.max(1, roundBattleValue(derived.maxMp.total));
+          const displayExp = roundBattleValue(player.exp);
+          const displayExpToLevel = Math.max(1, roundBattleValue(player.expToLevel));
           document.getElementById("mp-label").textContent =
-            `MP ${Math.ceil(player.mp)} / ${derived.maxMp.total}`;
+            `MP ${displayMp} / ${displayMaxMp}`;
           document.getElementById("exp-label").textContent =
-            `EXP ${player.exp} / ${player.expToLevel}`;
+            `EXP ${displayExp} / ${displayExpToLevel}`;
           document.getElementById("level").textContent = player.level;
           document.getElementById("gold").textContent = formatGold(player.gold);
           document.getElementById("stat-points").textContent =
@@ -15368,8 +15377,8 @@ function showDamagePopup(
           document.getElementById("skill-points-skill").textContent =
             player.skillPoints;
           updateHpBar(displayHp, displayMaxHp, displayBarrier);
-          updateBars("mp-bar", player.mp, derived.maxMp.total, "mp");
-          updateBars("exp-bar", player.exp, player.expToLevel, "exp");
+          updateBars("mp-bar", displayMp, displayMaxMp, "mp");
+          updateBars("exp-bar", displayExp, displayExpToLevel, "exp");
           syncPlayerDownOverlay();
 
           renderEnemies();
@@ -20954,13 +20963,14 @@ function showDamagePopup(
           if (!target || amount <= 0) return 0;
           const maxHp = Math.max(0, roundBattleValue(target.maxHp ?? 0));
           if (maxHp <= 0) return 0;
-          const missing = Math.max(0, maxHp - target.hp);
+          const currentHp = Math.max(0, roundBattleValue(target.hp ?? 0));
+          const missing = Math.max(0, maxHp - currentHp);
           const healed = Math.min(
             Math.max(0, roundBattleValue(amount)),
             missing,
           );
           if (healed <= 0) return 0;
-          target.hp = Math.min(maxHp, target.hp + healed);
+          target.hp = Math.min(maxHp, currentHp + healed);
           if (target === player) {
             flashBar("hp-bar");
             const playerBar = document.getElementById("hp-bar")?.parentElement;
