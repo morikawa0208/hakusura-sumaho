@@ -4083,6 +4083,14 @@
             <div class="subtle">デバッグ専用。再読み込みでオフに戻ります。</div>
           </div>
           <div class="debug-section">
+            <h4>自動進行</h4>
+            <label class="debug-checkbox">
+              <input id="debug-auto-attack" type="checkbox" />
+              自動こうげき（こうげきボタン押しっぱなし相当）
+            </label>
+            <div class="subtle">デバッグ専用。再読み込みでオフに戻ります。</div>
+          </div>
+          <div class="debug-section">
             <h4>図鑑</h4>
             <label class="debug-checkbox">
               <input id="debug-codex-unlock" type="checkbox" />
@@ -15906,8 +15914,47 @@ function showDamagePopup(
           if (debugFloorInput) debugFloorInput.value = game.floor;
           if (debugForceLegendaryCheckbox)
             debugForceLegendaryCheckbox.checked = !!debugForceBossLegendaryDrop;
+          if (debugAutoAttackCheckbox)
+            debugAutoAttackCheckbox.checked = !!debugAutoAttackEnabled;
           if (debugCodexUnlockCheckbox)
             debugCodexUnlockCheckbox.checked = !!debugCodexFullyUnlocked;
+        }
+
+        function runDebugAutoAttackTick() {
+          if (!debugAutoAttackEnabled) return;
+          if (player.hp <= 0) return;
+          const enemiesAlive = game.enemies?.some((enemy) => enemy.hp > 0);
+          if (!enemiesAlive) {
+            if (isBossFloor(game.floor) && game.bossRetryEnabled) {
+              retryBossFloor();
+            } else {
+              nextFloor();
+            }
+            return;
+          }
+          if (!game.awaitingInput) return;
+          const attacks = Math.max(
+            0,
+            Math.floor(player.attacksRemaining ?? player.attackCount ?? 0),
+          );
+          if (attacks <= 0) return;
+          playerAttack();
+        }
+
+        function setDebugAutoAttackEnabled(nextValue) {
+          debugAutoAttackEnabled = nextValue;
+          if (debugAutoAttackEnabled) {
+            if (!debugAutoAttackTimer) {
+              debugAutoAttackTimer = window.setInterval(
+                runDebugAutoAttackTick,
+                280,
+              );
+            }
+            runDebugAutoAttackTick();
+          } else if (debugAutoAttackTimer) {
+            clearInterval(debugAutoAttackTimer);
+            debugAutoAttackTimer = null;
+          }
         }
 
         function applyDebugLevelChange() {
@@ -16010,7 +16057,9 @@ function showDamagePopup(
 
       // ★ buildSaveState / INITIAL_SAVE_STATE より前に置く
       let debugCodexSnapshot = null;
-        let debugForceBossLegendaryDrop = false; // ボスのレジェンダリードロップ強制
+      let debugForceBossLegendaryDrop = false; // ボスのレジェンダリードロップ強制
+      let debugAutoAttackEnabled = false;
+      let debugAutoAttackTimer = null;
       let debugCodexFullyUnlocked = false;
       let debugCodexUnlockCheckbox = null; // 使ってるなら（null初期化でOK）
         
@@ -19011,6 +19060,8 @@ function showDamagePopup(
         const debugForceLegendaryCheckbox = document.getElementById(
           "debug-force-legendary",
         );
+        const debugAutoAttackCheckbox =
+          document.getElementById("debug-auto-attack");
         debugCodexUnlockCheckbox = document.getElementById("debug-codex-unlock");
         const debugApplyLevelButton =
           document.getElementById("debug-apply-level");
@@ -21766,6 +21817,9 @@ function showDamagePopup(
         });
         debugForceLegendaryCheckbox?.addEventListener("change", () => {
           debugForceBossLegendaryDrop = !!debugForceLegendaryCheckbox.checked;
+        });
+        debugAutoAttackCheckbox?.addEventListener("change", () => {
+          setDebugAutoAttackEnabled(!!debugAutoAttackCheckbox.checked);
         });
         debugCodexUnlockCheckbox?.addEventListener("change", () => {
           applyDebugCodexUnlock(!!debugCodexUnlockCheckbox.checked);
