@@ -9753,6 +9753,24 @@
           return lines;
         }
 
+        function formatTitleStars(rank) {
+          const clamped = Math.max(0, Math.round(rank || 0));
+          return "★".repeat(clamped);
+        }
+
+        function formatTitleWithStars(title, kind) {
+          if (!title?.name) return "";
+          const stars = formatTitleStars(title.rank);
+          return kind === "suffix"
+            ? `${title.name}${stars}`
+            : `${stars}${title.name}`;
+        }
+
+        function buildTitleLabel(label, affix, kind) {
+          const name = formatTitleWithStars(affix, kind);
+          return name ? `${label}: ${name}` : label;
+        }
+
         function buildEquipmentName(
           slotKey,
           rarity,
@@ -9761,8 +9779,12 @@
           baseName,
         ) {
           const slotLabel = EQUIPMENT_SLOTS[slotKey]?.label || slotKey;
-          const prefix = prefixTitle?.name ? `${prefixTitle.name} ` : "";
-          const suffix = suffixTitle?.name ? `・${suffixTitle.name}` : "";
+          const prefix = prefixTitle?.name
+            ? `${formatTitleWithStars(prefixTitle, "prefix")} `
+            : "";
+          const suffix = suffixTitle?.name
+            ? `・${formatTitleWithStars(suffixTitle, "suffix")}`
+            : "";
           const base = baseName || slotLabel;
           return `${prefix}${base}${suffix}`;
         }
@@ -16361,7 +16383,7 @@ function showDamagePopup(
             });
           };
 
-          const appendAffix = (label, affix) => {
+          const appendAffix = (label, affix, kind) => {
             if (!affix) return;
             const hasOptions = affix.options?.length;
             const effects = formatAffixEffects(affix.effects);
@@ -16369,7 +16391,7 @@ function showDamagePopup(
 
             const heading = document.createElement("div");
             heading.className = "option-label";
-            heading.textContent = `${label} (★${affix.rank}) ${affix.name}`;
+            heading.textContent = buildTitleLabel(label, affix, kind);
             debugGearPreview.appendChild(heading);
 
             if (hasOptions) {
@@ -16404,8 +16426,8 @@ function showDamagePopup(
           }
           appendList("基礎オプション", item.equipment?.baseOptions);
           appendList("ランダムオプション", item.equipment?.randomOptions);
-          appendAffix("前称号", item.equipment?.prefix);
-          appendAffix("後称号", item.equipment?.suffix);
+          appendAffix("前称号", item.equipment?.prefix, "prefix");
+          appendAffix("後称号", item.equipment?.suffix, "suffix");
         }
 
         function resolveDebugRarity(selection) {
@@ -17182,11 +17204,19 @@ function showDamagePopup(
               appendOptions("基礎", equipment.equipment.baseOptions);
               appendOptions("ランダム", equipment.equipment.randomOptions);
               appendAffix(
-                `前称号: ${equipment.equipment.prefix?.name || ""}`.trim(),
+                buildTitleLabel(
+                  "前称号",
+                  equipment.equipment.prefix,
+                  "prefix",
+                ),
                 equipment.equipment.prefix,
               );
               appendAffix(
-                `後称号: ${equipment.equipment.suffix?.name || ""}`.trim(),
+                buildTitleLabel(
+                  "後称号",
+                  equipment.equipment.suffix,
+                  "suffix",
+                ),
                 equipment.equipment.suffix,
               );
 
@@ -20159,7 +20189,7 @@ function showDamagePopup(
               inventoryItemDetail.appendChild(block);
             };
 
-            const appendAffix = (label, affix) => {
+            const appendAffix = (label, affix, kind) => {
               if (!affix) return;
               const hasOptions = affix.options?.length;
               const effects = formatAffixEffects(affix.effects);
@@ -20168,7 +20198,7 @@ function showDamagePopup(
               block.className = "equipment-option-list";
               const heading = document.createElement("div");
               heading.className = "option-label";
-              heading.textContent = `${label} (★${affix.rank}) ${affix.name}`;
+              heading.textContent = buildTitleLabel(label, affix, kind);
               block.appendChild(heading);
               if (hasOptions) {
                 affix.options.forEach((option) => {
@@ -20207,8 +20237,8 @@ function showDamagePopup(
 
             appendOptions("基礎オプション", item.equipment.baseOptions);
             appendOptions("ランダムオプション", item.equipment.randomOptions);
-            appendAffix("前称号", item.equipment.prefix);
-            appendAffix("後称号", item.equipment.suffix);
+            appendAffix("前称号", item.equipment.prefix, "prefix");
+            appendAffix("後称号", item.equipment.suffix, "suffix");
           } else {
             const empty = document.createElement("div");
             empty.className = "help-panel";
