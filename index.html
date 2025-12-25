@@ -9753,18 +9753,9 @@
           return lines;
         }
 
-        const TITLE_STAR_MAX = 5;
-        const TITLE_STAR_FILLED = "★";
-        const TITLE_STAR_EMPTY = "⚪︎";
-
         function formatTitleStars(rank) {
-          const clamped = Math.max(
-            0,
-            Math.min(TITLE_STAR_MAX, Math.round(rank || 0)),
-          );
-          return `${TITLE_STAR_FILLED.repeat(clamped)}${TITLE_STAR_EMPTY.repeat(
-            TITLE_STAR_MAX - clamped,
-          )}`;
+          const clamped = Math.max(0, Math.round(rank || 0));
+          return "★".repeat(clamped);
         }
 
         function formatTitleWithStars(title, kind) {
