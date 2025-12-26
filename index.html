@@ -13016,8 +13016,8 @@
           isBoss = false,
         } = {}) {
           const base = 10 + floor * 3 + (floor % 5 === 0 ? 10 : 0);
-          const expMultiplier = 1.5;
-          const bossMultiplier = 1.2;
+          const expMultiplier = 2.5;
+          const bossMultiplier = 2.2;
           const boosted = base * expMultiplier;
           const adjusted = isBoss ? boosted * bossMultiplier : boosted;
           return Math.max(1, Math.round(adjusted / Math.max(1, enemyCount)));
