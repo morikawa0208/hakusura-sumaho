@@ -10412,7 +10412,7 @@
           name: "プレイヤー",
           level: 1,
           exp: 0,
-          expToLevel: 40,
+          expToLevel: 30,
           hp: 0,
           mp: 0,
           maxHp: 0,
@@ -15563,9 +15563,9 @@ function showDamagePopup(
         }
 
         function calcExpToNextLevel(targetLevel) {
-          let req = 40;
+          let req = 30;
           for (let level = 1; level < targetLevel; level += 1) {
-            req = Math.round(req * 2.36);
+            req = Math.round(req * 1.6);
           }
           return req;
         }
@@ -21367,7 +21367,7 @@ function showDamagePopup(
         function levelUp() {
           const previousLevel = player.level;
           player.level += 1;
-          player.expToLevel = Math.round(player.expToLevel * 2.36);
+          player.expToLevel = Math.round(player.expToLevel * 1.6);
           recalcDerivedStats();
           player.hp = player.maxHp;
           player.mp = player.maxMp;
