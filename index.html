@@ -12657,13 +12657,22 @@
           return stat.base + stat.bonus;
         };
 
-        function playerGrowthMultiplier(level, { type = "balanced" } = {}) {
+        const BASE_GROWTH_RATE = 1.012;
+        const PLAYER_GROWTH_ADVANTAGE_PER_LEVEL = 0.0008;
+        const PLAYER_GROWTH_ADVANTAGE_CAP = 0.08;
+        const BOSS_GROWTH_MULTIPLIER = 1.1;
+        const BOSS_SECONDARY_MULTIPLIER = 1.05;
+
+        function playerGrowthMultiplier(level) {
           const effective = Math.max(1, Math.floor(level || 1));
-          const curve =
-            type === "offense" ? 2.07 : type === "speed" ? 2.04 : 2.056;
-          const cap =
-            type === "offense" ? 2.9 : type === "speed" ? 2.5 : 2.7;
-          return Math.min(cap, Math.pow(curve, effective - 1));
+          const baseGrowth = Math.pow(BASE_GROWTH_RATE, effective - 1);
+          const advantage =
+            1 +
+            Math.min(
+              PLAYER_GROWTH_ADVANTAGE_CAP,
+              (effective - 1) * PLAYER_GROWTH_ADVANTAGE_PER_LEVEL,
+            );
+          return baseGrowth * advantage;
         }
 
         function calcSecondaryStats() {
@@ -12674,27 +12683,17 @@
           const luck = statTotal("luck");
 
           // ---- 基本ステータス系 ----
-          const offenseGrowth = playerGrowthMultiplier(player.level, {
-            type: "offense",
-          });
-          const sustainGrowth = playerGrowthMultiplier(player.level, {
-            type: "balanced",
-          });
-          const speedGrowth = playerGrowthMultiplier(player.level, {
-            type: "speed",
-          });
+          const baseGrowth = playerGrowthMultiplier(player.level);
 
-          const maxHpBase = (player.base.hp + vit * 17.2) * sustainGrowth;
-          const maxMpBase = (player.base.mp + int * 6.4) * sustainGrowth;
-          const physAtkBase =
-            (player.base.physAtk + str * 3.1) * offenseGrowth;
-          const magAtkBase =
-            (player.base.magAtk + int * 3.2) * offenseGrowth;
+          const maxHpBase = (player.base.hp + vit * 17.2) * baseGrowth;
+          const maxMpBase = (player.base.mp + int * 6.4) * baseGrowth;
+          const physAtkBase = (player.base.physAtk + str * 3.1) * baseGrowth;
+          const magAtkBase = (player.base.magAtk + int * 3.2) * baseGrowth;
           const physDefBase =
-            (player.base.physDef + vit * 1.36 + str * 0.52) * sustainGrowth;
+            (player.base.physDef + vit * 1.36 + str * 0.52) * baseGrowth;
           const magDefBase =
-            (player.base.magDef + vit * 1.16 + int * 0.72) * sustainGrowth;
-          const speedBase = (player.base.speed + agi * 2.36) * speedGrowth;
+            (player.base.magDef + vit * 1.16 + int * 0.72) * baseGrowth;
+          const speedBase = (player.base.speed + agi * 2.36) * baseGrowth;
 
           // 会心・命中・貫通など
           const critBase = Math.min(156, (agi + luck) * 1.4);
@@ -13938,21 +13937,9 @@
         function createEnemy(isBoss = false, derivedStats = null) {
           const derived = derivedStats || recalcDerivedStats();
           const floorLevel = Math.max(1, game.floor);
-          const tierInfo =
-            EQUIPMENT_TIER_BOUNDARIES.find((entry) => floorLevel <= entry.maxFloor) ||
-            EQUIPMENT_TIER_BOUNDARIES[EQUIPMENT_TIER_BOUNDARIES.length - 1];
-          const tierIndex = Math.max(
-            0,
-            EQUIPMENT_TIER_BOUNDARIES.indexOf(tierInfo),
-          );
-          const tierStart =
-            tierIndex === 0
-              ? 1
-              : EQUIPMENT_TIER_BOUNDARIES[tierIndex - 1].maxFloor + 1;
-          const floorInTier = Math.max(1, floorLevel - tierStart + 1);
-          const tierJump = 1 + tierIndex * 0.22;
-          const tierRamp = 0.9 + Math.min(1, (floorInTier - 1) / 99) * 0.28;
-          const tierEntrySurge = floorInTier <= 3 ? 1.12 : 1;
+          const baseGrowth = Math.pow(BASE_GROWTH_RATE, floorLevel - 1);
+          const bossBoost = isBoss ? BOSS_GROWTH_MULTIPLIER : 1;
+          const secondaryBoost = isBoss ? BOSS_SECONDARY_MULTIPLIER : 1;
           const baseName = isBoss
             ? `階層ボス ${game.floor}F`
             : pickEnemyBaseName(game.floor);
@@ -13962,108 +13949,33 @@
           const archetypeRolls = !isBoss
             ? rollArchetypes(game.floor, derived)
             : null;
-          const growth = (rate) => Math.pow(rate, floorInTier - 1);
-          const earlyEase = Math.min(1, 0.48 + floorInTier * 0.09);
-          const earlyOffenseEase = Math.min(1, 0.34 + floorInTier * 0.08);
-          const earlyDefenseEase = Math.min(1, 0.42 + floorInTier * 0.082);
-          const earlyAttackRelief =
-            floorInTier <= 12 ? 1 - (12 - floorInTier) * 0.028 : 1;
-          const earlyDefenseRelief =
-            floorInTier <= 12 ? 1 - (12 - floorInTier) * 0.02 : 1;
-          const accuracyRelief =
-            floorInTier <= 10 ? 1 - (10 - floorInTier) * 0.018 : 1;
-          const lowFloorAttackScale =
-            !isBoss && floorLevel <= 100 ? 0.7 : 1;
-          const mobHpEase = isBoss ? 1 : 0.9;
-          const mobDefEase = isBoss ? 1 : 0.9;
-          const mobAtkEase = isBoss ? 1 : 0.95;
-          const calcDifficultyInflation = (floor) => {
-            const capped = Math.max(1, floor);
-            const logCurve = 1 + Math.log1p(capped / 60) * 0.28;
-            const earlyRatio = Math.min(capped, 70) / 70;
-            const earlyExponent = 1 + Math.pow(earlyRatio, 1.08) * 0.06;
-            const lateRatio = Math.max(capped - 70, 0) / 130;
-            const lateExponent = 1 + Math.pow(lateRatio, 0.72) * 0.05;
-            const combined = logCurve * earlyExponent * lateExponent;
-            return Math.min(combined, 1.45);
-          };
-          const difficultyInflation = calcDifficultyInflation(floorInTier) *
-            tierJump *
-            tierRamp *
-            tierEntrySurge;
-          const statScale = (
-            base,
-            rate,
-            bossMultiplier = 1,
-            easeFactor = earlyEase,
-          ) => {
-            return (
-              base *
-              growth(rate) *
-              difficultyInflation *
-              (isBoss ? bossMultiplier : 1) *
-              easeFactor
-            );
-          };
-          if ([50, 100, 200].includes(floorLevel)) {
-            const hpMultiplier = keepDecimal(statScale(1, 1.11, 1.75), 3);
-            const atkMultiplier = keepDecimal(
-              statScale(1, 1.105, 1.55, earlyOffenseEase) *
-                earlyAttackRelief *
-                lowFloorAttackScale,
-              3,
-            );
-            const defMultiplier = keepDecimal(
-              statScale(1, 1.08, 1.45, earlyDefenseEase) * earlyDefenseRelief,
-              3,
-            );
-            console.log(
-              `[CurveCheck] ${floorLevel}F スケール確認`,
-              {
-                difficultyInflation: keepDecimal(difficultyInflation, 4),
-                hpMultiplier,
-                atkMultiplier,
-                defMultiplier,
-              },
-            );
-          }
           const hpBase = 12;
           const atkBase = 7.5;
           const defBase = 3.2;
           const spdBase = 3.9;
+          const statScale = baseGrowth * bossBoost;
           const enemy = {
             id: generateId("enemy"),
             name: baseName,
-            hp: Math.round(statScale(hpBase, 1.11, 1.75) * mobHpEase),
-            maxHp: Math.round(statScale(hpBase, 1.11, 1.75) * mobHpEase),
-            atk: keepDecimal(
-              statScale(atkBase, 1.105, 1.55, earlyOffenseEase) *
-                earlyAttackRelief *
-                lowFloorAttackScale *
-                mobAtkEase,
-              1,
-            ),
-            def: keepDecimal(
-              statScale(defBase, 1.08, 1.45, earlyDefenseEase) *
-                earlyDefenseRelief *
-                mobDefEase,
-              2,
-            ),
+            hp: Math.round(hpBase * statScale),
+            maxHp: Math.round(hpBase * statScale),
+            atk: keepDecimal(atkBase * statScale, 1),
+            def: keepDecimal(defBase * statScale, 2),
             spd:
-              keepDecimal(statScale(spdBase, 1.03, 1.15), 2) +
-              Math.random() * 1.5 +
-              (isBoss ? 1.5 : 0),
+              keepDecimal(spdBase * statScale, 2) +
+              Math.random() * 1.2 +
+              (isBoss ? 1.2 : 0),
             accuracy: Math.min(
-              115,
-              (80 + growth(1.012) * 6 + (isBoss ? 6 : 0)) * accuracyRelief,
+              120,
+              (80 + baseGrowth * 6) * secondaryBoost,
             ),
-            evade: Math.min(28, 6 + growth(1.02) * 2.2 + (isBoss ? 4 : 0)),
+            evade: Math.min(35, (6 + baseGrowth * 2.2) * secondaryBoost),
             attackCount: 1,
             attacksRemaining: 1,
             resist: {
-              control: Math.min(55, 10 + growth(1.018) * 0.9 + (isBoss ? 8 : 0)),
-              dot: Math.min(52, 8 + growth(1.016) * 0.8 + (isBoss ? 6 : 0)),
-              debuff: Math.min(52, 8 + growth(1.014) * 0.7 + (isBoss ? 6 : 0)),
+              control: Math.min(60, (10 + baseGrowth * 0.9) * secondaryBoost),
+              dot: Math.min(60, (8 + baseGrowth * 0.8) * secondaryBoost),
+              debuff: Math.min(60, (8 + baseGrowth * 0.7) * secondaryBoost),
             },
             isBoss,
             dropChanceBonus: 0,
