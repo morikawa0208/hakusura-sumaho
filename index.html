@@ -21885,11 +21885,15 @@ function showDamagePopup(
         });
         treeViewport?.addEventListener("pointerup", (event) => {
           treeDragging = false;
-          treeViewport.releasePointerCapture(event.pointerId);
+          if (treeViewport.hasPointerCapture(event.pointerId)) {
+            treeViewport.releasePointerCapture(event.pointerId);
+          }
         });
         treeViewport?.addEventListener("pointercancel", (event) => {
           treeDragging = false;
-          treeViewport.releasePointerCapture(event.pointerId);
+          if (treeViewport.hasPointerCapture(event.pointerId)) {
+            treeViewport.releasePointerCapture(event.pointerId);
+          }
         });
         treeViewport?.addEventListener("wheel", (event) => {
           event.preventDefault();
@@ -21899,7 +21903,7 @@ function showDamagePopup(
             Math.max(0.55, TREE_ZOOM_STATE.scale + delta),
           );
           applyTreeTransform();
-        });
+        }, { passive: false });
         enemyModal.addEventListener("click", (e) => {
           if (e.target === enemyModal) closeEnemyModal();
         });
