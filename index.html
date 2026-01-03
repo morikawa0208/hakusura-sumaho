@@ -17794,7 +17794,10 @@ function showDamagePopup(
         let treeOrigin = { x: 0, y: 0 };
 
         function getTreeForJob(jobKey) {
-          return TREE_DEFINITIONS[jobKey] || TREE_DEFINITIONS[SKILL_CATEGORIES[0]];
+          if (!jobKey) return null;
+          return (
+            TREE_DEFINITIONS[jobKey] || TREE_DEFINITIONS[SKILL_CATEGORIES[0]] || null
+          );
         }
 
         function applyTreeTransform() {
@@ -17805,6 +17808,7 @@ function showDamagePopup(
         function centerTreeView() {
           if (!treeViewport || !treeContent) return;
           const tree = getTreeForJob(player.job);
+          if (!tree?.size) return;
           const viewport = treeViewport.getBoundingClientRect();
           const targetX = Math.max(0, (viewport.width - tree.size.width) / 2);
           const targetY = Math.max(0, (viewport.height - tree.size.height) / 2);
@@ -17931,6 +17935,7 @@ function showDamagePopup(
         function renderSkillTree() {
           if (!treeNodes || !treeLines || !treeContent) return;
           const tree = getTreeForJob(player.job);
+          if (!tree?.nodes || !tree?.connections) return;
           ensureTreeState(player.job);
           treeContent.style.width = `${tree.size.width}px`;
           treeContent.style.height = `${tree.size.height}px`;
@@ -21873,7 +21878,9 @@ function showDamagePopup(
           treeDragging = true;
           treeDragStart = { x: event.clientX, y: event.clientY };
           treeOrigin = { x: TREE_ZOOM_STATE.x, y: TREE_ZOOM_STATE.y };
-          treeViewport.setPointerCapture(event.pointerId);
+          if (treeViewport.setPointerCapture) {
+            treeViewport.setPointerCapture(event.pointerId);
+          }
         });
         treeViewport?.addEventListener("pointermove", (event) => {
           if (!treeDragging) return;
