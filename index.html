@@ -13695,9 +13695,14 @@
           return Math.max(1, Math.floor(game.highestFloor || 1)) >= targetFloor;
         }
 
+        function hasClearedBossFloor(targetFloor) {
+          const key = String(Math.max(1, Math.floor(targetFloor || 1)));
+          return (game.bossKillRecords?.[key] ?? 0) > 0;
+        }
+
         function shouldApplyPost1000BossBoost(floor) {
           return (
-            hasClearedFloor(BOSS_RUSH_BASE_DROP_FLOOR) &&
+            hasClearedBossFloor(BOSS_RUSH_BASE_DROP_FLOOR) &&
             floor < BOSS_RUSH_START_FLOOR
           );
         }
