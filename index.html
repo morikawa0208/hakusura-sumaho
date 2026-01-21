@@ -4902,6 +4902,19 @@
           { key: "rare", weight: 22 },
         ];
         const BOSS_FLOORS = [10, 20, 30, 50, 100, 200, 500, 700, 1000];
+        const BOSS_RUSH_START_FLOOR = 1001;
+        const BOSS_RUSH_SEQUENCE_END_FLOOR = 1012;
+        const BOSS_RUSH_BASE_DROP_FLOOR = 1000;
+        const BOSS_RUSH_SEQUENCE_LENGTH =
+          BOSS_RUSH_SEQUENCE_END_FLOOR - BOSS_RUSH_START_FLOOR + 1;
+        const BOSS_RUSH_BOSS_KEYS = [...BOSS_FLOORS];
+        const BOSS_RUSH_SEQUENCE = Array.from(
+          { length: BOSS_RUSH_SEQUENCE_LENGTH },
+          (_, index) =>
+            BOSS_RUSH_BOSS_KEYS.length
+              ? BOSS_RUSH_BOSS_KEYS[index % BOSS_RUSH_BOSS_KEYS.length]
+              : BOSS_RUSH_START_FLOOR,
+        );
         const BOSS_DEFINITIONS = {
           10: {
             name: "灰翼の斥候アエロー", // 敏捷特化のスカウトタイプ
@@ -9520,11 +9533,15 @@
           );
         }
 
-        function pickEquipmentTemplate(slotKey) {
+        function pickEquipmentTemplate(slotKey, floorOverride) {
           const list = EQUIPMENT_TEMPLATE_LIBRARY[slotKey];
           if (!list?.length) return null;
           const tierOrder = EQUIPMENT_TIER_KEYS;
-          const currentTier = getEquipmentTierKeyForFloor(game.floor || 1);
+          const effectiveFloor =
+            Number.isFinite(floorOverride) && floorOverride > 0
+              ? floorOverride
+              : game.floor || 1;
+          const currentTier = getEquipmentTierKeyForFloor(effectiveFloor);
           const currentIndex = tierOrder.indexOf(currentTier);
           const effectiveIndex =
             currentIndex >= 0 ? currentIndex : tierOrder.length - 1;
@@ -9927,6 +9944,7 @@
               rarityKey: rarityOverride,
               legendaryKey: legendaryOverride,
               allowedLegendaryKeys: allowedLegendaryOverride,
+              tierFloor,
             } = arg1;
 
             isDungeonDrop = true;
@@ -9964,13 +9982,16 @@
           const rarity =
             EQUIPMENT_RARITIES[rarityKey] || EQUIPMENT_RARITIES.normal;
 
+          const effectiveFloor =
+            Number.isFinite(tierFloor) && tierFloor > 0 ? tierFloor : game.floor || 1;
+
           const template =
             rarityKey === "legendary"
               ? pickLegendaryEquipment(
                   slot,
                   legendaryKey || allowedLegendaryKeys,
                 )
-              : pickEquipmentTemplate(slot);
+              : pickEquipmentTemplate(slot, effectiveFloor);
 
           const base = template?.base?.length
             ? rollTemplateOptions(template.base, rarity)
@@ -13079,9 +13100,10 @@
           return true;
         }
 
-        function resolveDropSlotForFloor(floor, isBoss) {
-          if (isBoss && BOSS_LEGENDARY_DROPS[floor]?.slot)
-            return BOSS_LEGENDARY_DROPS[floor].slot;
+        function resolveDropSlotForFloor(floor, isBoss, bossKey = null) {
+          const dropKey = bossKey ?? floor;
+          if (isBoss && BOSS_LEGENDARY_DROPS[dropKey]?.slot)
+            return BOSS_LEGENDARY_DROPS[dropKey].slot;
           const table = FLOOR_DROP_TABLE.find(
             (entry) => floor >= entry.min && floor <= entry.max,
           );
@@ -13136,9 +13158,10 @@
           return picked?.key || variants[0]?.key || "";
         }
 
-        function createRandomPotionDrop({ isBoss } = {}) {
+        function createRandomPotionDrop({ isBoss, bossKey } = {}) {
           if (isBoss) {
-            const bossPotions = BOSS_LEGENDARY_POTIONS[game.floor];
+            const potionKey = bossKey ?? game.floor;
+            const bossPotions = BOSS_LEGENDARY_POTIONS[potionKey];
             if (bossPotions?.length) {
               const legendaryKey =
                 bossPotions[randomInt(0, bossPotions.length - 1)];
@@ -13240,12 +13263,20 @@
           return `${formatPercent(effectivePerRoll)} / ロール (伝説判定${formatPercent(finalChance)})`;
         }
 
-        function rollDropRarityForEnemy(enemy, rarityBonus, slot) {
+        function rollDropRarityForEnemy(
+          enemy,
+          rarityBonus,
+          slot,
+          { bossKey, dropFloor } = {},
+        ) {
+          const effectiveBossKey = bossKey ?? game.floor;
+          const effectiveDropFloor = dropFloor ?? game.floor;
           const legendaryCandidate = enemy.isBoss
-            ? BOSS_LEGENDARY_DROPS[game.floor]
+            ? BOSS_LEGENDARY_DROPS[effectiveBossKey]
             : null;
           if (legendaryCandidate && legendaryCandidate.slot === slot) {
-            const baseChance = getBossLegendaryBaseChanceForFloor(game.floor);
+            const baseChance =
+              getBossLegendaryBaseChanceForFloor(effectiveDropFloor);
             const bonus = Math.max(0, rarityBonus || 0) * 0.6;
             const chance = Math.min(60, baseChance + bonus);
             if (Math.random() * 100 < chance) {
@@ -13305,7 +13336,31 @@
           }
         }
 
+        function applyBossRushDropMark(item, enemy) {
+          if (!item) return item;
+          if (!enemy?.isBoss) return item;
+          if (
+            !isBossRushFloor(game.floor) &&
+            !shouldApplyPost1000BossBoost(game.floor)
+          )
+            return item;
+          const prefix = "DX";
+          if (item.name && !item.name.startsWith(prefix)) {
+            item.name = `${prefix}${item.name}`;
+          }
+          if (item.type === "potion" && item.potion) {
+            if (item.potion.name && !item.potion.name.startsWith(prefix)) {
+              item.potion.name = `${prefix}${item.potion.name}`;
+            }
+            if (item.potion.short && !item.potion.short.startsWith(prefix)) {
+              item.potion.short = `${prefix}${item.potion.short}`;
+            }
+          }
+          return item;
+        }
+
         function attemptEnemyDrop(enemy) {
+          if (enemy?.isBoss && !isBossRushDropAllowed(game.floor)) return;
           const derived = recalcDerivedStats();
 
           // ステータス由来の「ドロップ力」
@@ -13320,6 +13375,15 @@
 
           const forceLegendaryDrop =
             enemy.isBoss && debugForceBossLegendaryDrop;
+          const bossKey = enemy.isBoss
+            ? enemy.bossFloor ?? getBossKeyForFloor(game.floor)
+            : null;
+          const dropFloor =
+            enemy.isBoss &&
+            (isBossRushFloor(game.floor) ||
+              shouldApplyPost1000BossBoost(game.floor))
+              ? BOSS_RUSH_BASE_DROP_FLOOR
+              : game.floor;
 
           // 1ロールあたりの「当たり判定」の基本確率
           // ステータス由来の dropRate はここには足さず、
@@ -13356,11 +13420,16 @@
               }
             }
 
-            const slotKey = resolveDropSlotForFloor(game.floor, enemy.isBoss);
+            const slotKey = resolveDropSlotForFloor(
+              game.floor,
+              enemy.isBoss,
+              bossKey,
+            );
             const rarityRoll = rollDropRarityForEnemy(
               enemy,
               rarityBonus,
               slotKey,
+              { bossKey, dropFloor },
             );
             const dropType = forceLegendaryDrop
               ? "equipment"
@@ -13368,10 +13437,11 @@
             let item = null;
 
             if (dropType === "potion") {
-              item = createRandomPotionDrop(enemy);
+              item = createRandomPotionDrop({ isBoss: enemy.isBoss, bossKey });
             } else {
               item = createEquipmentItem({
-                floor: game.floor,
+                floor: dropFloor,
+                tierFloor: dropFloor,
                 isBoss: enemy.isBoss,
                 slotKey,
                 rarityKey: forceLegendaryDrop
@@ -13386,6 +13456,7 @@
 
             if (!item) continue;
 
+            applyBossRushDropMark(item, enemy);
             droppedCount += 1;
             recordLegendaryDrop(item, enemy);
             registerCodexDiscovery(item);
@@ -13597,8 +13668,55 @@
           maybeAutoSave("装備変更");
         }
 
+        function isBossRushFloor(floor) {
+          return floor >= BOSS_RUSH_START_FLOOR;
+        }
+
+        function isBossRushSequenceFloor(floor) {
+          return (
+            floor >= BOSS_RUSH_START_FLOOR &&
+            floor <= BOSS_RUSH_SEQUENCE_END_FLOOR
+          );
+        }
+
+        function isBossRushRandomFloor(floor) {
+          return floor > BOSS_RUSH_SEQUENCE_END_FLOOR;
+        }
+
+        function getBossRushDropFloor(floor) {
+          return isBossRushFloor(floor) ? BOSS_RUSH_BASE_DROP_FLOOR : floor;
+        }
+
+        function isBossRushDropAllowed(floor) {
+          return !isBossRushFloor(floor);
+        }
+
+        function hasClearedFloor(targetFloor) {
+          return Math.max(1, Math.floor(game.highestFloor || 1)) >= targetFloor;
+        }
+
+        function shouldApplyPost1000BossBoost(floor) {
+          return (
+            hasClearedFloor(BOSS_RUSH_BASE_DROP_FLOOR) &&
+            floor < BOSS_RUSH_START_FLOOR
+          );
+        }
+
+        function getBossKeyForFloor(floor, { randomize = false } = {}) {
+          if (!isBossRushFloor(floor)) return floor;
+          if (!BOSS_RUSH_BOSS_KEYS.length) return floor;
+          if (isBossRushSequenceFloor(floor)) {
+            const index = floor - BOSS_RUSH_START_FLOOR;
+            return BOSS_RUSH_SEQUENCE[index] ?? BOSS_RUSH_BOSS_KEYS[0];
+          }
+          if (randomize) {
+            return BOSS_RUSH_BOSS_KEYS[randomInt(0, BOSS_RUSH_BOSS_KEYS.length - 1)];
+          }
+          return BOSS_RUSH_BOSS_KEYS[BOSS_RUSH_BOSS_KEYS.length - 1];
+        }
+
         function isBossFloor(floor) {
-          return BOSS_FLOORS.includes(floor);
+          return isBossRushFloor(floor) || BOSS_FLOORS.includes(floor);
         }
 
         function pickEnemyBaseName(floor) {
@@ -13936,7 +14054,14 @@
         
         function createEnemy(isBoss = false, derivedStats = null) {
           const derived = derivedStats || recalcDerivedStats();
-          const floorLevel = Math.max(1, game.floor);
+          const floorLevel = Math.max(
+            1,
+            isBoss &&
+              (isBossRushFloor(game.floor) ||
+                shouldApplyPost1000BossBoost(game.floor))
+              ? BOSS_RUSH_BASE_DROP_FLOOR
+              : game.floor,
+          );
           const baseGrowth = Math.pow(BASE_GROWTH_RATE, floorLevel - 1);
           const bossBoost = isBoss ? BOSS_GROWTH_MULTIPLIER : 1;
           const secondaryBoost = isBoss ? BOSS_SECONDARY_MULTIPLIER : 1;
@@ -13998,25 +14123,29 @@
           }
 
           if (isBoss) {
-            const bossDef = BOSS_DEFINITIONS[game.floor];
+            const bossKey = getBossKeyForFloor(game.floor, {
+              randomize: isBossRushRandomFloor(game.floor),
+            });
+            const bossDef = BOSS_DEFINITIONS[bossKey];
+            const dropInfo = BOSS_LEGENDARY_DROPS[bossKey];
+            const pool = dropInfo?.legendaryKeys?.length
+              ? dropInfo.legendaryKeys
+              : bossDef?.legendaryKey
+                ? [bossDef.legendaryKey]
+                : [];
+            enemy.bossFloor = bossKey;
+            enemy.bossLegendaryKey =
+              pool.length > 0
+                ? pool[randomInt(0, pool.length - 1)]
+                : bossDef?.legendaryKey || "";
+            enemy.bossLegendaryPool = pool;
+            enemy.bossSkillKey = bossKey;
+            enemy.bossSkillDef = BOSS_SKILLS[bossKey];
+            enemy.bossSkillCooldown = 0;
             if (bossDef) {
               enemy.name = bossDef.name;
               enemy.baseFlavor = bossDef.flavor;
               enemy.flavor = enemy.baseFlavor;
-              const dropInfo = BOSS_LEGENDARY_DROPS[game.floor];
-              const pool = dropInfo?.legendaryKeys?.length
-                ? dropInfo.legendaryKeys
-                : bossDef.legendaryKey
-                  ? [bossDef.legendaryKey]
-                  : [];
-              enemy.bossLegendaryKey =
-                pool.length > 0
-                  ? pool[randomInt(0, pool.length - 1)]
-                  : bossDef.legendaryKey;
-              enemy.bossLegendaryPool = pool;
-              enemy.bossSkillKey = game.floor;
-              enemy.bossSkillDef = BOSS_SKILLS[game.floor];
-              enemy.bossSkillCooldown = 0;
               const { modifiers = {} } = bossDef;
               applyEnemyModifiers(enemy, modifiers);
             }
@@ -14056,7 +14185,10 @@
           } else if (enemy.variant) {
             markCodexEntry("enemyVariants", enemy.variant);
           }
-          if (isBoss) markCodexEntry("bosses", String(game.floor));
+          if (isBoss) {
+            const bossKey = enemy.bossFloor ?? game.floor;
+            markCodexEntry("bosses", String(bossKey));
+          }
 
           enemy.attacksRemaining = enemy.attackCount;
 
@@ -16554,52 +16686,58 @@ function showDamagePopup(
             }
 
             if (refs.legendarySection && refs.legendaryList) {
-              const dropInfo = BOSS_LEGENDARY_DROPS[game.floor];
-              const pool =
-                (enemy.bossLegendaryPool && enemy.bossLegendaryPool.length
-                  ? enemy.bossLegendaryPool
-                  : dropInfo?.legendaryKeys || []).filter(Boolean);
-              if (enemy.isBoss && pool.length) {
-                refs.legendarySection.style.display = "";
-                refs.legendaryList.innerHTML = "";
-                const killRow = document.createElement("div");
-                killRow.className = "legendary-record-row";
-                const killLabel = document.createElement("div");
-                killLabel.className = "option-label";
-                killLabel.textContent = "討伐数";
-                const killValue = document.createElement("div");
-                killValue.className = "option-value";
-                killValue.textContent = `${getBossKillCount(enemy)}回`;
-                killRow.appendChild(killLabel);
-                killRow.appendChild(killValue);
-                refs.legendaryList.appendChild(killRow);
-                pool.forEach((key) => {
-                  const row = document.createElement("div");
-                  row.className = "legendary-record-row";
-                  const template = getLegendaryTemplateByKey(key);
-                  const record = game.legendaryRecords?.[key];
-                  const name = template?.name || key;
-                  const count = record?.drops ?? 0;
-                  const header = document.createElement("div");
-                  header.className = "option-label";
-                  header.textContent = `${name} / ドロップ ${count}回`;
-                  row.appendChild(header);
-
-                  const details = document.createElement("div");
-                  details.className = "option-value";
-                  const uniqueText = template?.unique?.effect
-                    ? `${template.unique.name} / ${template.unique.effect}`
-                    : "固有効果不明";
-                  const baseText = (template?.base || [])
-                    .map((opt) => formatOptionRangeForCodex(opt))
-                    .filter(Boolean)
-                    .join(" / ");
-                  details.textContent = `${uniqueText}｜${baseText || "基礎情報なし"}`;
-                  row.appendChild(details);
-                  refs.legendaryList.appendChild(row);
-                });
-              } else {
+              if (enemy.isBoss && !isBossRushDropAllowed(game.floor)) {
                 refs.legendarySection.style.display = "none";
+                refs.legendaryList.innerHTML = "";
+              } else {
+                const bossKey = enemy.bossFloor ?? game.floor;
+                const dropInfo = BOSS_LEGENDARY_DROPS[bossKey];
+                const pool =
+                  (enemy.bossLegendaryPool && enemy.bossLegendaryPool.length
+                    ? enemy.bossLegendaryPool
+                    : dropInfo?.legendaryKeys || []).filter(Boolean);
+                if (enemy.isBoss && pool.length) {
+                  refs.legendarySection.style.display = "";
+                  refs.legendaryList.innerHTML = "";
+                  const killRow = document.createElement("div");
+                  killRow.className = "legendary-record-row";
+                  const killLabel = document.createElement("div");
+                  killLabel.className = "option-label";
+                  killLabel.textContent = "討伐数";
+                  const killValue = document.createElement("div");
+                  killValue.className = "option-value";
+                  killValue.textContent = `${getBossKillCount(enemy)}回`;
+                  killRow.appendChild(killLabel);
+                  killRow.appendChild(killValue);
+                  refs.legendaryList.appendChild(killRow);
+                  pool.forEach((key) => {
+                    const row = document.createElement("div");
+                    row.className = "legendary-record-row";
+                    const template = getLegendaryTemplateByKey(key);
+                    const record = game.legendaryRecords?.[key];
+                    const name = template?.name || key;
+                    const count = record?.drops ?? 0;
+                    const header = document.createElement("div");
+                    header.className = "option-label";
+                    header.textContent = `${name} / ドロップ ${count}回`;
+                    row.appendChild(header);
+
+                    const details = document.createElement("div");
+                    details.className = "option-value";
+                    const uniqueText = template?.unique?.effect
+                      ? `${template.unique.name} / ${template.unique.effect}`
+                      : "固有効果不明";
+                    const baseText = (template?.base || [])
+                      .map((opt) => formatOptionRangeForCodex(opt))
+                      .filter(Boolean)
+                      .join(" / ");
+                    details.textContent = `${uniqueText}｜${baseText || "基礎情報なし"}`;
+                    row.appendChild(details);
+                    refs.legendaryList.appendChild(row);
+                  });
+                } else {
+                  refs.legendarySection.style.display = "none";
+                }
               }
             }
           }
@@ -18701,7 +18839,17 @@ function showDamagePopup(
             return;
           }
 
-          const dropInfo = BOSS_LEGENDARY_DROPS[game.floor];
+          if (isBossRushFloor(game.floor) && !isBossRushDropAllowed(game.floor)) {
+            modalLegendarySection.classList.remove("hidden");
+            modalBossKills.textContent = `討伐数: ${getBossKillCount(enemy)}回`;
+            modalLegendaryName.textContent = "ドロップなし";
+            modalLegendaryStatus.textContent = "ボスラッシュ(1013F〜)";
+            modalLegendaryStats.innerHTML = "";
+            return;
+          }
+
+          const bossKey = enemy?.bossFloor ?? game.floor;
+          const dropInfo = BOSS_LEGENDARY_DROPS[bossKey];
           const pool =
             (enemy.bossLegendaryPool && enemy.bossLegendaryPool.length
               ? enemy.bossLegendaryPool
