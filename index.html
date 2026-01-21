@@ -10532,6 +10532,7 @@
           playerDefeatInProgress: false,
           defeatedBosses: 0,
           bossKillRecords: {},
+          clearedBoss1000: false,
           legendaryRecords: {},
           codex: {
             enemyMonsters: {},
@@ -13702,7 +13703,8 @@
 
         function shouldApplyPost1000BossBoost(floor) {
           return (
-            hasClearedBossFloor(BOSS_RUSH_BASE_DROP_FLOOR) &&
+            (game.clearedBoss1000 ||
+              hasClearedBossFloor(BOSS_RUSH_BASE_DROP_FLOOR)) &&
             floor < BOSS_RUSH_START_FLOOR
           );
         }
@@ -15881,6 +15883,9 @@ function showDamagePopup(
             mergedGame.reachedBossFloors = {};
           if (!mergedGame.bossKillRecords || typeof mergedGame.bossKillRecords !== "object")
             mergedGame.bossKillRecords = {};
+          if (typeof mergedGame.clearedBoss1000 !== "boolean") {
+            mergedGame.clearedBoss1000 = (mergedGame.bossKillRecords?.["1000"] ?? 0) > 0;
+          }
           if (!mergedGame.legendaryRecords || typeof mergedGame.legendaryRecords !== "object")
             mergedGame.legendaryRecords = {};
           if (!mergedGame.codex || typeof mergedGame.codex !== "object")
@@ -20784,6 +20789,9 @@ function showDamagePopup(
             const key = getBossRecordKey(enemy);
             if (!game.bossKillRecords) game.bossKillRecords = {};
             game.bossKillRecords[key] = (game.bossKillRecords[key] ?? 0) + 1;
+            if (String(key) === String(BOSS_RUSH_BASE_DROP_FLOOR)) {
+              game.clearedBoss1000 = true;
+            }
           }
           const baseGold = Math.max(
             1,
