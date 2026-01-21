@@ -4902,7 +4902,7 @@
           { key: "rare", weight: 22 },
         ];
         const BOSS_FLOORS = [10, 20, 30, 50, 100, 200, 500, 700, 1000];
-        const BOSS_RUSH_START_FLOOR = 1000;
+        const BOSS_RUSH_START_FLOOR = 1001;
         const BOSS_RUSH_SEQUENCE_END_FLOOR = 1012;
         const BOSS_RUSH_BASE_DROP_FLOOR = 1000;
         const BOSS_RUSH_SEQUENCE_LENGTH =
@@ -13336,9 +13336,14 @@
           }
         }
 
-        function applyBossRushDropMark(item) {
+        function applyBossRushDropMark(item, enemy) {
           if (!item) return item;
-          if (!isBossRushSequenceFloor(game.floor)) return item;
+          if (!enemy?.isBoss) return item;
+          if (
+            !isBossRushFloor(game.floor) &&
+            !shouldApplyPost1000BossBoost(game.floor)
+          )
+            return item;
           const prefix = "DX";
           if (item.name && !item.name.startsWith(prefix)) {
             item.name = `${prefix}${item.name}`;
@@ -13373,9 +13378,12 @@
           const bossKey = enemy.isBoss
             ? enemy.bossFloor ?? getBossKeyForFloor(game.floor)
             : null;
-          const dropFloor = enemy.isBoss
-            ? getBossRushDropFloor(game.floor)
-            : game.floor;
+          const dropFloor =
+            enemy.isBoss &&
+            (isBossRushFloor(game.floor) ||
+              shouldApplyPost1000BossBoost(game.floor))
+              ? BOSS_RUSH_BASE_DROP_FLOOR
+              : game.floor;
 
           // 1ロールあたりの「当たり判定」の基本確率
           // ステータス由来の dropRate はここには足さず、
@@ -13448,7 +13456,7 @@
 
             if (!item) continue;
 
-            applyBossRushDropMark(item);
+            applyBossRushDropMark(item, enemy);
             droppedCount += 1;
             recordLegendaryDrop(item, enemy);
             registerCodexDiscovery(item);
@@ -13665,7 +13673,10 @@
         }
 
         function isBossRushSequenceFloor(floor) {
-          return floor >= BOSS_RUSH_START_FLOOR && floor <= BOSS_RUSH_SEQUENCE_END_FLOOR;
+          return (
+            floor >= BOSS_RUSH_START_FLOOR &&
+            floor <= BOSS_RUSH_SEQUENCE_END_FLOOR
+          );
         }
 
         function isBossRushRandomFloor(floor) {
@@ -13673,11 +13684,22 @@
         }
 
         function getBossRushDropFloor(floor) {
-          return isBossRushSequenceFloor(floor) ? BOSS_RUSH_BASE_DROP_FLOOR : floor;
+          return isBossRushFloor(floor) ? BOSS_RUSH_BASE_DROP_FLOOR : floor;
         }
 
         function isBossRushDropAllowed(floor) {
-          return !isBossRushRandomFloor(floor);
+          return !isBossRushFloor(floor);
+        }
+
+        function hasClearedFloor(targetFloor) {
+          return Math.max(1, Math.floor(game.highestFloor || 1)) >= targetFloor;
+        }
+
+        function shouldApplyPost1000BossBoost(floor) {
+          return (
+            hasClearedFloor(BOSS_RUSH_BASE_DROP_FLOOR) &&
+            floor < BOSS_RUSH_START_FLOOR
+          );
         }
 
         function getBossKeyForFloor(floor, { randomize = false } = {}) {
@@ -14032,7 +14054,14 @@
         
         function createEnemy(isBoss = false, derivedStats = null) {
           const derived = derivedStats || recalcDerivedStats();
-          const floorLevel = Math.max(1, game.floor);
+          const floorLevel = Math.max(
+            1,
+            isBoss &&
+              (isBossRushFloor(game.floor) ||
+                shouldApplyPost1000BossBoost(game.floor))
+              ? BOSS_RUSH_BASE_DROP_FLOOR
+              : game.floor,
+          );
           const baseGrowth = Math.pow(BASE_GROWTH_RATE, floorLevel - 1);
           const bossBoost = isBoss ? BOSS_GROWTH_MULTIPLIER : 1;
           const secondaryBoost = isBoss ? BOSS_SECONDARY_MULTIPLIER : 1;
